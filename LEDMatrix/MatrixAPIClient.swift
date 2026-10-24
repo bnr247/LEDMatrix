@@ -33,6 +33,11 @@ struct MatrixSettings: Codable {
     var bootCount: Int = 0
     var divoomEmail: String = ""
     var divoomPasswordSet: Bool = false
+    var macAddress: String = ""
+    var hostName: String = ""
+    var ipAddress: String = ""
+    var hwVersion: String = ""
+    var fwVersion: String = ""
     var digitsColorHex: String = ""
     var colonColorHex: String = ""
     var bgColorHex: String = ""
@@ -53,6 +58,11 @@ struct MatrixSettings: Codable {
         case bootCount = "boot_count"
         case divoomEmail = "divoom_email"
         case divoomPasswordSet = "divoom_password_set"
+        case macAddress = "mac_address"
+        case hostName = "hostname"
+        case ipAddress = "ip_address"
+        case hwVersion = "hw_version"
+        case fwVersion = "fw_version"
         case digitsColorHex = "digits_color_hex"
         case colonColorHex = "colon_color_hex"
         case bgColorHex = "bg_color_hex"
@@ -234,13 +244,19 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
             print("❌ Ошибка отправки команды в блоке catch: \(error)")
         }
     }
-
-    func updateBrightness(brightDay: Int, brightNight: Int) async {
+    
+    func updateBrightnessDay(brightDay: Int) async {
         settings.dayBrightnessPercent = brightDay
+        
+        await sendCommand(endpoint: "cmd", params: [
+            "brightness_day": brightDay
+        ])
+    }
+    
+    func updateBrightnessNight(brightNight: Int) async {
         settings.nightBrightnessPercent = brightNight
         
         await sendCommand(endpoint: "cmd", params: [
-            "brightness_day": brightDay,
             "brightness_night": brightNight
         ])
     }
@@ -266,18 +282,18 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         ])
     }
 
-    func updateClockSettings(font: Int, digColor: String, colColor: String, bgColor: String) async {
-        settings.clockFont = font
-        settings.digitsColorHex = digColor
-        settings.colonColorHex = colColor
-        settings.bgColorHex = bgColor
-        await sendCommand(endpoint: "cmd", params: [
-            "clock_font": font,
-            "digits_color_hex": digColor,
-            "colon_color_hex": colColor,
-            "bg_color_hex": bgColor
-        ])
-    }
+//    func updateClockSettings(font: Int, digColor: String, colColor: String, bgColor: String) async {
+//        settings.clockFont = font
+//        settings.digitsColorHex = digColor
+//        settings.colonColorHex = colColor
+//        settings.bgColorHex = bgColor
+//        await sendCommand(endpoint: "cmd", params: [
+//            "clock_font": font,
+//            "digits_color_hex": digColor,
+//            "colon_color_hex": colColor,
+//            "bg_color_hex": bgColor
+//        ])
+//    }
     
     func updateClockFont(font: Int) async {
         settings.clockFont = font
@@ -304,6 +320,30 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         settings.bgColorHex = bgColor
         await sendCommand(endpoint: "cmd", params: [
             "bg_color_hex": bgColor
+        ])
+    }
+    
+    func deviceRestart() async {
+        await sendCommand(endpoint: "cmd", params: [
+            "action": "restart"
+        ])
+    }
+    
+    func deviceResetWifi() async {
+        await sendCommand(endpoint: "cmd", params: [
+            "action": "reset_wifi"
+        ])
+    }
+    
+    func deviceResetSettings() async {
+        await sendCommand(endpoint: "cmd", params: [
+            "action": "reset_settings"
+        ])
+    }
+    
+    func deviceFactoryReset() async {
+        await sendCommand(endpoint: "cmd", params: [
+            "action": "factory_reset"
         ])
     }
 }

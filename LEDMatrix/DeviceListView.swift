@@ -43,7 +43,7 @@ struct DeviceListView: View {
                     }
                 }
             }
-            .navigationTitle("LED Матрица")
+            .navigationTitle("Список устройств")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
