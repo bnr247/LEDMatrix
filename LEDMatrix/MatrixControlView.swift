@@ -1,20 +1,21 @@
 import SwiftUI
 
 struct MatrixControlView: View {
-    @ObservedObject var manager: MatrixManager // Исправлено: добавлен символ @
+    @ObservedObject var manager: MatrixManager
     let device: LEDMatrixDevice
+    
+    @State private var dayBrightnessPercent: Double = 0
+    @State private var nightBrightnessPercent: Double = 0
+    @State private var brightnessPercent: Double = 0
 
     @State private var textToSend = ""
-    @State private var textColor = Color.blue
-    @State private var scrollSpeed: Float = 25.0
-    @State private var scrollReps: Int = 3
+    @State private var textColor = Color.purple
+    @State private var textBgColor = Color.black
+    @State private var scrollSpeedFps: Float = 25.0
+    @State private var scrollRepeatCount = 3
     
-    @State private var dayBrightness: Double = 64
-    @State private var nightBrightness: Double = 16
-    @State private var brightnessControlMode: Int = 0
-    
-    @State private var selectedFont: Int = 0
-    @State private var digitsColor = Color.cyan
+    @State private var clockFont: Int = 0
+    @State private var digitsColor = Color.blue
     @State private var colonColor = Color.white
     @State private var bgColor = Color.black
 
@@ -23,12 +24,18 @@ struct MatrixControlView: View {
             TextControlTab(
                 textToSend: $textToSend,
                 textColor: $textColor,
-                scrollSpeed: $scrollSpeed,
-                scrollReps: $scrollReps,
+                textBgColor: $textBgColor,
+                scrollSpeed: $scrollSpeedFps,
+                scrollReps: $scrollRepeatCount,
                 onSend: {
-                    let hex = UIColor(textColor).toHex() ?? "0064FF"
                     Task {
-                        await manager.sendText(textToSend, colorHex: hex, speed: scrollSpeed, reps: scrollReps)
+                        await manager.sendText(
+                            textToSend,
+                            textColor: textColor,
+                            bgColor: textBgColor,
+                            speed: Int(scrollSpeedFps),
+                            reps: scrollRepeatCount
+                        )
                     }
                 }
             )
@@ -37,15 +44,21 @@ struct MatrixControlView: View {
             }
 
             BrightnessControlTab(
-                dayBrightness: $dayBrightness,
-                nightBrightness: $nightBrightness,
-                brightnessControlMode: $brightnessControlMode,
+                brightnessPercent: $brightnessPercent,
+                dayBrightnessPercent: $dayBrightnessPercent,
+                nightBrightnessPercent: $nightBrightnessPercent,
                 onSave: {
                     Task {
                         await manager.updateBrightness(
-                            day: Int(dayBrightness),
-                            night: Int(nightBrightness),
-                            controlMode: brightnessControlMode
+                            brightDay: Int(dayBrightnessPercent),
+                            brightNight: Int(nightBrightnessPercent)
+                        )
+                    }
+                },
+                onBrightnessChange: {
+                    Task {
+                        await manager.updateSingleBrightness(
+                            brightness: Int(brightnessPercent)
                         )
                     }
                 }
@@ -55,17 +68,46 @@ struct MatrixControlView: View {
             }
 
             ClockSettingsTab(
-                selectedFont: $selectedFont,
-                digitsColor: $digitsColor,
-                colonColor: $colonColor,
-                bgColor: $bgColor,
+                clockFont: $clockFont,
+                digitsColorHex: $digitsColor,
+                colonColorHex: $colonColor,
+                bgColorHex: $bgColor,
                 onSave: {
                     Task {
                         await manager.updateClockSettings(
-                            font: selectedFont,
+                            font: clockFont,
                             digColor: UIColor(digitsColor).toHex() ?? "0064FF",
                             colColor: UIColor(colonColor).toHex() ?? "FFFFFF",
                             bgColor: UIColor(bgColor).toHex() ?? "000000"
+                        )
+                    }
+                },
+                
+                onFontChange: {
+                    Task {
+                        await manager.updateClockFont(
+                            font: clockFont
+                        )
+                    }
+                },
+                onDigitsColorChange: {
+                    Task {
+                        await manager.updateClockDigitsColor(
+                            digColor: UIColor(digitsColor).toHex() ?? "0064FF"
+                        )
+                    }
+                },
+                onColonColorChange: {
+                    Task {
+                        await manager.updateClockColonColor(
+                            colColor: UIColor(colonColor).toHex() ?? "0064FF"
+                        )
+                    }
+                },
+                onBgColorChange: {
+                    Task {
+                        await manager.updateClockBgColor(
+                            bgColor: UIColor(bgColor).toHex() ?? "0064FF"
                         )
                     }
                 }
@@ -73,15 +115,54 @@ struct MatrixControlView: View {
             .tabItem {
                 Label("Часы", systemImage: "clock")
             }
+            
+            SettingsTab(
+//                onSave: {
+//                    Task {
+//                        await manager.updateClockSettings(
+//                            font: clockFont,
+//                            digColor: UIColor(digitsColor).toHex() ?? "0064FF",
+//                            colColor: UIColor(colonColor).toHex() ?? "FFFFFF",
+//                            bgColor: UIColor(bgColor).toHex() ?? "000000"
+//                        )
+//                    }
+//                }
+            )
+            .tabItem {
+                Label("Настройки", systemImage: "gearshape.2.fill")
+            }
+            InfoTab(
+//                onSave: {
+//                    Task {
+//                        await manager.updateClockSettings(
+//                            font: clockFont,
+//                            digColor: UIColor(digitsColor).toHex() ?? "0064FF",
+//                            colColor: UIColor(colonColor).toHex() ?? "FFFFFF",
+//                            bgColor: UIColor(bgColor).toHex() ?? "000000"
+//                        )
+//                    }
+//                }
+            )
+            .tabItem {
+                Label("Инфо", systemImage: "info.circle")
+            }
         }
         .navigationTitle(device.name)
-        .onAppear {
-            dayBrightness = Double(manager.settings.dayBrightness)
-            nightBrightness = Double(manager.settings.nightBrightness)
-            brightnessControlMode = manager.settings.brightnessControl
-            selectedFont = manager.settings.clockFont
-            scrollSpeed = manager.settings.scrollSpeed
-            scrollReps = manager.settings.scrollReps
+        .onAppear() {
+            Task {
+                await manager.fetchSettings(for: device)
+                brightnessPercent = Double(manager.settings.brightnessPercent)
+                dayBrightnessPercent = Double(manager.settings.dayBrightnessPercent)
+                nightBrightnessPercent = Double(manager.settings.nightBrightnessPercent)
+                clockFont = manager.settings.clockFont
+                scrollSpeedFps = Float(manager.settings.scrollSpeedFps)
+                scrollRepeatCount = manager.settings.scrollRepeatCount
+                
+                // Конвертируем полученные строки с HEX-цветами в SwiftUI Color для интерфейса
+                digitsColor = Color(hex: manager.settings.digitsColorHex)
+                colonColor = Color(hex: manager.settings.colonColorHex)
+                bgColor = Color(hex: manager.settings.bgColorHex)
+            }
         }
     }
 }
@@ -89,24 +170,26 @@ struct MatrixControlView: View {
 struct TextControlTab: View {
     @Binding var textToSend: String
     @Binding var textColor: Color
+    @Binding var textBgColor: Color
     @Binding var scrollSpeed: Float
     @Binding var scrollReps: Int
     var onSend: () -> Void
 
     var body: some View {
         Form {
-            Section(header: Text("Текст для прокрутки")) {
+            Section(header: Text("Бегущая строка")) {
                 TextField("Введите сообщение...", text: $textToSend)
                 ColorPicker("Цвет текста", selection: $textColor)
+                ColorPicker("Цвет фона", selection: $textBgColor)
             }
             Section(header: Text("Параметры анимации")) {
                 VStack(alignment: .leading) {
-                    Text("Скорость (мс/кадр): \(Int(scrollSpeed))")
+                    Text("Скорость: \(Int(scrollSpeed))")
                     Slider(value: $scrollSpeed, in: 10...100, step: 5)
                 }
                 Stepper("Повторов: \(scrollReps)", value: $scrollReps, in: 1...10)
             }
-            Button("Отправить на матрицу") {
+            Button("Отправить") {
                 onSend()
             }
             .buttonStyle(.borderedProminent)
@@ -115,29 +198,39 @@ struct TextControlTab: View {
 }
 
 struct BrightnessControlTab: View {
-    @Binding var dayBrightness: Double
-    @Binding var nightBrightness: Double
-    @Binding var brightnessControlMode: Int
+    @Binding var brightnessPercent: Double
+    @Binding var dayBrightnessPercent: Double
+    @Binding var nightBrightnessPercent: Double
     var onSave: () -> Void
-
+    var onBrightnessChange: () -> Void
+    
     var body: some View {
         Form {
-            Section(header: Text("Режим управления яркостью")) {
-                Picker("Режим", selection: $brightnessControlMode) {
-                    Text("Авто (по времени)").tag(0)
-                    Text("Принудительно День").tag(1)
-                    Text("Принудительно Ночь").tag(2)
-                }
-                .pickerStyle(.segmented)
-            }
-            Section(header: Text("Уровни яркости (8 - 192)")) {
+            Section(header: Text("Уровень яркости")) {
                 VStack(alignment: .leading) {
-                    Text("Дневная яркость: \(Int(dayBrightness))")
-                    Slider(value: $dayBrightness, in: 8...192, step: 1)
+                    Text("Текущая яркость: \(Int(brightnessPercent))")
+                    Slider(value: $brightnessPercent, in: 0...100, step: 5)
+                        .onChange(of: brightnessPercent) { oldValue, newValue in
+                                            // Срабатывает непрерывно при перетаскивании
+                            onBrightnessChange()
+                                        }
+                    //, onEditingChanged: { isEditing in
+//                        if isEditing {
+//                            
+//                        } else {
+//                            onBrightnessChange()
+//                        }
+//                    }
+//                    )
+                }
+                
+                VStack(alignment: .leading) {
+                    Text("Дневная яркость: \(Int(dayBrightnessPercent))")
+                    Slider(value: $dayBrightnessPercent, in: 0...100, step: 5)
                 }
                 VStack(alignment: .leading) {
-                    Text("Ночная яркость: \(Int(nightBrightness))")
-                    Slider(value: $nightBrightness, in: 8...192, step: 1)
+                    Text("Ночная яркость: \(Int(nightBrightnessPercent))")
+                    Slider(value: $nightBrightnessPercent, in: 0...100, step: 5)
                 }
             }
             Button("Применить настройки") {
@@ -149,45 +242,60 @@ struct BrightnessControlTab: View {
 }
 
 struct ClockSettingsTab: View {
-    @Binding var selectedFont: Int
-    @Binding var digitsColor: Color
-    @Binding var colonColor: Color
-    @Binding var bgColor: Color
+    @Binding var clockFont: Int
+    @Binding var digitsColorHex: Color
+    @Binding var colonColorHex: Color
+    @Binding var bgColorHex: Color
     var onSave: () -> Void
+    var onFontChange: () -> Void
+    var onDigitsColorChange: () -> Void
+    var onColonColorChange: () -> Void
+    var onBgColorChange: () -> Void
 
     var body: some View {
         Form {
             Section(header: Text("Шрифт часов")) {
-                Picker("Шрифт", selection: $selectedFont) {
-                    Text("Default Hor (3x5)").tag(0)
-                    Text("Simple Hor (3x7)").tag(1)
-                    Text("Narrow Hor (3x11)").tag(2)
-                    Text("Simple Vert (5x7)").tag(3)
-                    Text("OCR Vert (5x7)").tag(4)
-                    Text("Atari Vert (5x7)").tag(5)
+                Picker("Шрифт", selection: $clockFont) {
+                    Text("Default Horizontal (3x5)").tag(0)
+                    Text("Simple Horizontal (3x7)").tag(1)
+                    Text("Narrow Horizontal (3x11)").tag(2)
+                    Text("Simple Vertical (5x7)").tag(3)
+                    Text("OCR-A Vertical (5x7)").tag(4)
+                    Text("Atari Vertical (5x7)").tag(5)
                 }
             }
             Section(header: Text("Цветовая гамма часов")) {
-                ColorPicker("Цвет цифр", selection: $digitsColor)
-                ColorPicker("Цвет разделителя (:)", selection: $colonColor)
-                ColorPicker("Цвет фона", selection: $bgColor)
+                ColorPicker("Цвет цифр", selection: $digitsColorHex)
+                    .onChange(of: digitsColorHex) { oldValue, newValue in
+                        onDigitsColorChange()
+                    }
+                ColorPicker("Цвет разделителя", selection: $colonColorHex)
+                    .onChange(of: colonColorHex) { oldValue, newValue in
+                        onColonColorChange()
+                    }
+                ColorPicker("Цвет фона", selection: $bgColorHex)
+                    .onChange(of: bgColorHex) { oldValue, newValue in
+                        onBgColorChange()
+                    }
             }
-            Button("Сохранить настройки часов") {
+            Button("Обновить настройки часов") {
                 onSave()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
         }
     }
 }
 
-extension UIColor {
-    func toHex() -> String? {
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        getRed(&r, green: &g, blue: &b, alpha: &a)
-        let rgb: Int = (Int)(r*255)<<16 | (Int)(g*255)<<8 | (Int)(b*255)
-        return String(format: "%06X", rgb)
+struct SettingsTab: View {
+    var body: some View {
+        Form {
+        }
+    }
+}
+
+struct InfoTab: View {
+    var body: some View {
+        Form {
+        }
     }
 }

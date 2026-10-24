@@ -2,18 +2,16 @@ import SwiftUI
 
 struct DeviceListView: View {
     @StateObject private var manager = MatrixManager()
-    @State private var manualIP: String = ""
-    @State private var showManualInput = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section(header: Text("Устройства в сети")) {
                     if manager.isScanning {
                         HStack {
                             ProgressView()
                                 .padding(.trailing, 8)
-                            Text("Поиск устройств LedMatrix-...")
+                            Text("Поиск устройств LedMatrix...")
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -24,11 +22,7 @@ struct DeviceListView: View {
                     }
 
                     ForEach(manager.discoveredDevices) { device in
-                        Button(action: {
-                            Task {
-                                await manager.fetchSettings(for: device)
-                            }
-                        }) {
+                        NavigationLink(destination: MatrixControlView(manager: manager, device: device)) {
                             HStack {
                                 VStack(alignment: .leading) {
                                     Text(device.name)
@@ -38,16 +32,14 @@ struct DeviceListView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
                             }
                         }
                     }
                 }
 
                 Section {
-                    Button("Добавить по IP вручную") {
-                        showManualInput.toggle()
+                    NavigationLink(destination: ManualIPView(manager: manager)) {
+                        Text("Добавить по IP вручную")
                     }
                 }
             }
@@ -61,12 +53,6 @@ struct DeviceListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showManualInput) {
-                ManualIPView(manager: manager, isPresented: $showManualInput)
-            }
-            .sheet(item: $manager.selectedDevice) { device in
-                MatrixControlView(manager: manager, device: device)
-            }
             .onAppear {
                 manager.startScanning()
             }
@@ -75,32 +61,25 @@ struct DeviceListView: View {
 }
 
 struct ManualIPView: View {
-    @ObservedObject var manager: MatrixManager // Исправлено: добавлен символ @
-    @Binding var isPresented: Bool
-    @State var ipAddress: String = ""
+    @ObservedObject var manager: MatrixManager
+    @State private var ipAddress: String = ""
 
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Введите IP адрес матрицы")) {
-                    TextField("192.168.1.50", text: $ipAddress)
-                        .keyboardType(.decimalPad)
-                }
-                Button("Подключиться") {
-                    let device = LEDMatrixDevice(name: "LedMatrix-Manual", ipAddress: ipAddress)
-                    Task {
-                        await manager.fetchSettings(for: device)
-                        isPresented = false
-                    }
-                }
-                .disabled(ipAddress.isEmpty)
+        Form {
+            Section(header: Text("Введите IP адрес матрицы")) {
+                TextField("192.168.1.50", text: $ipAddress)
+                    .keyboardType(.decimalPad)
             }
-            .navigationTitle("Ручное подключение")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { isPresented = false }
+            
+            if !ipAddress.isEmpty {
+                NavigationLink(destination: MatrixControlView(manager: manager, device: LEDMatrixDevice(name: "LedMatrix-Manual", ipAddress: ipAddress))) {
+                    Text("Подключиться")
                 }
+            } else {
+                Button("Подключиться") {}
+                    .disabled(true)
             }
         }
+        .navigationTitle("Ручное подключение")
     }
 }
