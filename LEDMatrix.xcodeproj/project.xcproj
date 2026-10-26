@@ -22,7 +22,6 @@
           "target": "LEDMatrix",
           "exclusions": [
             "Info.plist",
-            "Untitled.swift",
           ],
         },
       ],
