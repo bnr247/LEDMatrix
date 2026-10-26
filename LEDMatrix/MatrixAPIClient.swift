@@ -69,17 +69,40 @@ struct MatrixSettings: Codable {
     }
 }
 
+struct MatrixWifiSettings: Codable {
+    var ssid: String = ""
+    var passwordSet: Bool = false
+    
+    enum CodingKeys: String, CodingKey {
+        case ssid = "ssid"
+        case passwordSet = "password_set"
+    }
+}
+
+
 @MainActor
 class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetServiceDelegate {
     @Published var discoveredDevices: [LEDMatrixDevice] = []
     @Published var selectedDevice: LEDMatrixDevice?
     @Published var settings = MatrixSettings()
+    @Published var wifiSettings = MatrixWifiSettings()
     @Published var isScanning = false
     @Published var connectionStatus = "Не подключено"
+    
+    var authUsername = "admin"
+    var authPassword = "s120Px17"
 
     private var netServiceBrowser = NetServiceBrowser()
     private var resolvingServices: [NetService] = []
 
+    private func addBasicAuthHeader(to request: inout URLRequest) {
+            let loginString = "\(authUsername):\(authPassword)"
+            guard let loginData = loginString.data(using: .utf8) else { return }
+            let base64LoginString = loginData.base64EncodedString()
+        print(base64LoginString)
+            request.setValue("Basic \(base64LoginString)", forHTTPHeaderField: "Authorization")
+    }
+    
     func startScanning() {
         print("🔍 Начать поиск устройств...")
         discoveredDevices.removeAll()
@@ -178,13 +201,11 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     }
 
     func fetchSettings(for device: LEDMatrixDevice) async {
-        print("🔍 fetchSettings вызван для: \(device.name) (\(device.ipAddress))")
         self.selectedDevice = device
         self.connectionStatus = "Подключение к \(device.name)..."
 
         // Исправлено: добавление пути /settings
         guard let url = URL(string: "http://\(device.ipAddress)/settings") else {
-            print("❌ Ошибка: не удалось сформировать URL для /settings")
             return
         }
         print("🔍 Отправка GET-запроса на: \(url)")
@@ -200,6 +221,33 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
             self.connectionStatus = "Подключено к \(device.name)"
         } catch {
             print("❌ Ошибка при запросе /settings: \(error)")
+            connectionStatus = "Ошибка соединения"
+        }
+    }
+    
+    func fetchWifiSettings(for device: LEDMatrixDevice) async {
+        self.selectedDevice = device
+        self.connectionStatus = "Подключение к \(device.name)..."
+
+        guard let url = URL(string: "http://\(device.ipAddress)/wifi") else {
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        addBasicAuthHeader(to: &request)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResp = response as? HTTPURLResponse {
+                print("📥 Ответ от /wifi получен. Код ответа: \(httpResp.statusCode)")
+            }
+            let decoded = try JSONDecoder().decode(MatrixWifiSettings.self, from: data)
+            self.wifiSettings = decoded
+
+            self.connectionStatus = "Подключено к \(device.name)"
+        } catch {
+            print("❌ Ошибка при запросе: \(error)")
             connectionStatus = "Ошибка соединения"
         }
     }
@@ -222,6 +270,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        addBasicAuthHeader(to: &request)
         
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: params, options: [])
@@ -344,6 +393,36 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     func deviceFactoryReset() async {
         await sendCommand(endpoint: "cmd", params: [
             "action": "factory_reset"
+        ])
+    }
+    
+    func updateDivoomEmail(email: String) async {
+        await sendCommand(endpoint: "cmd", params: [
+            "divoom_email": email
+        ])
+    }
+    
+    func updateDivoomPassword(password: String) async {
+        await sendCommand(endpoint: "cmd", params: [
+            "divoom_password": password
+        ])
+    }
+    
+    func updateWifiSsid(ssid: String) async {
+        await sendCommand(endpoint: "wifi", params: [
+            "ssid": ssid
+        ])
+    }
+    
+    func updateWifiPassword(password: String) async {
+        await sendCommand(endpoint: "wifi", params: [
+            "password": password
+        ])
+    }
+    
+    func updateShowTextUsername(showUsername: Bool) async {
+        await sendCommand(endpoint: "cmd", params: [
+            "show_name_text": showUsername
         ])
     }
 }

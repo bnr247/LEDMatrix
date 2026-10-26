@@ -68,7 +68,7 @@ struct ManualIPView: View {
         Form {
             Section(header: Text("Введите IP адрес матрицы")) {
                 TextField("192.168.1.50", text: $ipAddress)
-                    .keyboardType(.decimalPad)
+                    .keyboardType(.numbersAndPunctuation)
             }
             
             if !ipAddress.isEmpty {

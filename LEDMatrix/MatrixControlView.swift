@@ -1,4 +1,5 @@
 import SwiftUI
+import CryptoKit
 
 struct MatrixControlView: View {
     @ObservedObject var manager: MatrixManager
@@ -24,6 +25,16 @@ struct MatrixControlView: View {
     @State private var ipAddress = ""
     @State private var hwVersion = ""
     @State private var fwVersion = ""
+    
+    @State private var wifiSsid = ""
+    @State private var wifiPasswordSet = false
+    @State private var wifiPassword = ""
+    
+    @State private var divoomUsername = ""
+    @State private var divoomPasswordSet = false
+    @State private var divoomPassword = ""
+    
+    @State private var showTextUsername = false
     
     @State private var bootCount = 0
     
@@ -125,27 +136,20 @@ struct MatrixControlView: View {
             }
             
             SettingsTab(
-//                onSave: {
-//                    Task {
-//                        await manager.updateClockSettings(
-//                            font: clockFont,
-//                            digColor: UIColor(digitsColor).toHex() ?? "0064FF",
-//                            colColor: UIColor(colonColor).toHex() ?? "FFFFFF",
-//                            bgColor: UIColor(bgColor).toHex() ?? "000000"
-//                        )
-//                    }
-//                }
-            )
-            .tabItem {
-                Label("Настройки", systemImage: "gearshape.2.fill")
-            }
-            InfoTab(
                 hostName: $hostName,
                 ipAddress: $ipAddress,
                 macAddress: $macAddress,
                 hwVersion: $hwVersion,
                 fwVersion: $fwVersion,
                 bootCount: $bootCount,
+                showTextUsername: $showTextUsername,
+                wifiSsid: $wifiSsid,
+                wifiPasswordSet: $wifiPasswordSet,
+                wifiPassword: $wifiPassword,
+                divoomUsername: $divoomUsername,
+                divoomPasswordSet: $divoomPasswordSet,
+                divoomPassword: $divoomPassword,
+                
                 onDeviceRestart: {
                     Task {
                         await manager.deviceRestart()
@@ -165,10 +169,45 @@ struct MatrixControlView: View {
                     Task {
                         await manager.deviceFactoryReset()
                     }
+                },
+                onSaveWifiSsid: {
+                    Task {
+                        await manager.updateWifiSsid(
+                            ssid: wifiSsid
+                        )
+                    }
+                },
+                onSaveWifiPassword: {
+                    Task {
+                        await manager.updateWifiPassword(
+                            password: wifiPassword
+                        )
+                    }
+                },
+                onSaveDivoomUsername: {
+                    Task {
+                        await manager.updateDivoomEmail(
+                            email: divoomUsername
+                        )
+                    }
+                },
+                onSaveDivoomPassword: {
+                    Task {
+                        await manager.updateDivoomPassword(
+                            password: divoomPassword
+                        )
+                    }
+                },
+                onSaveShowTextUsername: {
+                    Task {
+                        await manager.updateShowTextUsername(
+                            showUsername: showTextUsername
+                        )
+                    }
                 }
             )
             .tabItem {
-                Label("Инфо", systemImage: "info.circle")
+                Label("Настройки", systemImage: "gearshape.2.fill")
             }
         }
         .navigationTitle(device.name)
@@ -190,11 +229,20 @@ struct MatrixControlView: View {
                 fwVersion = manager.settings.fwVersion
                 
                 bootCount = manager.settings.bootCount
+                showTextUsername = manager.settings.showNameText
+                
+                divoomUsername = manager.settings.divoomEmail
+                divoomPasswordSet = manager.settings.divoomPasswordSet
                 
                 // Конвертируем полученные строки с HEX-цветами в SwiftUI Color для интерфейса
                 digitsColor = Color(hex: manager.settings.digitsColorHex)
                 colonColor = Color(hex: manager.settings.colonColorHex)
                 bgColor = Color(hex: manager.settings.bgColorHex)
+            }
+            Task {
+                await manager.fetchWifiSettings(for: device)
+                wifiSsid = manager.wifiSettings.ssid
+                wifiPasswordSet = manager.wifiSettings.passwordSet
             }
         }
     }
@@ -326,61 +374,148 @@ struct ClockSettingsTab: View {
 }
 
 struct SettingsTab: View {
-    var body: some View {
-        Form {
-        }
-    }
-}
-
-struct InfoTab: View {
     @Binding var hostName: String
     @Binding var ipAddress: String
     @Binding var macAddress: String
     @Binding var hwVersion: String
     @Binding var fwVersion: String
     @Binding var bootCount: Int
+    @Binding var showTextUsername: Bool
+    
+    @Binding var wifiSsid: String
+    @Binding var wifiPasswordSet: Bool
+    @Binding var wifiPassword: String
+    
+    @Binding var divoomUsername: String
+    @Binding var divoomPasswordSet: Bool
+    @Binding var divoomPassword: String
+    
     var onDeviceRestart: () -> Void
     var onDeviceResetWifi: () -> Void
     var onDeviceResetSettings: () -> Void
     var onDeviceFactoryReset: () -> Void
     
+    var onSaveWifiSsid: () -> Void
+    var onSaveWifiPassword: () -> Void
     
-    @State private var showRestartConfirmation = false
+    var onSaveDivoomUsername: () -> Void
+    var onSaveDivoomPassword: () -> Void
+    
+    var onSaveShowTextUsername: ()-> Void
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Панель управления")) {
+                    NavigationLink(destination: SettingsGeneralFormView(showTextUsername: $showTextUsername, onSaveShowTextUsername: onSaveShowTextUsername)) {
+                        Label("Обшие", systemImage: "sparkles.tv")
+                    }
+                    
+                    NavigationLink(destination: SettingsWifiFormView(wifiSsid: $wifiSsid, wifiPasswordSet: $wifiPasswordSet, wifiPassword: $wifiPassword, onSaveWifiSsid: onSaveWifiSsid, onSaveWifiPassword: onSaveWifiPassword)) {
+                        Label("Настройки Wifi", systemImage: "wifi")
+                    }
+            
+                    NavigationLink(destination: SettingsDivoomFormView(divoomUsername: $divoomUsername, divoomPasswordSet: $divoomPasswordSet, divoomPassword: $divoomPassword, onSaveDivoomUsername: onSaveDivoomUsername, onSaveDivoomPassword: onSaveDivoomPassword)) {
+                        Label("Настройки Divoom", systemImage: "globe")
+                    }
+
+                    
+                    
+                    
+//                    NavigationLink(destination: SettingsDivoomFormView()) {
+//                        Label("Настройки Divoom", systemImage: "globe")
+//                    }
+                    
+                    NavigationLink(destination: SettingsInfoFormView(
+                        hostName: $hostName,
+                        ipAddress: $ipAddress,
+                        macAddress: $macAddress,
+                        hwVersion: $hwVersion,
+                        fwVersion: $fwVersion,
+                        bootCount: $bootCount,
+                        onDeviceRestart: onDeviceRestart,
+                        onDeviceResetWifi: onDeviceResetWifi,
+                        onDeviceResetSettings: onDeviceResetSettings,
+                        onDeviceFactoryReset: onDeviceFactoryReset
+                    )) {
+                        Label("Об устройстве", systemImage: "info.circle")
+                    }
+                    
+//                    NavigationLink(destination: SettingsDivoomFormView()) {
+//                        Label("Логи", systemImage: "text.document")
+//                    }
+                }
+            }
+            .navigationTitle("Панель управления")
+        }
+    }
+}
+
+struct SettingsGeneralFormView: View {
+    @Binding var showTextUsername: Bool
+    
+    var onSaveShowTextUsername: () -> Void
+    
+    var body: some View {
+            Form {
+                Section(header: Text("Данные для подключения")) {
+                    // Передаем текст прямо в Toggle, SwiftUI сам выровняет его по левому краю, а тумблер — по правому
+                    Toggle("Отображать имя из Telegram", isOn: $showTextUsername)
+                        // Отслеживаем изменение состояния
+                        .onChange(of: showTextUsername) { _, newValue in
+                            // Вызываем метод сохранения при каждом переключении
+                            onSaveShowTextUsername()
+                        }
+                }
+            }
+        }
+}
+
+
+struct SettingsInfoFormView: View {
+    @Binding var hostName: String
+    @Binding var ipAddress: String
+    @Binding var macAddress: String
+    @Binding var hwVersion: String
+    @Binding var fwVersion: String
+    @Binding var bootCount: Int
+    
+    var onDeviceRestart: () -> Void
+    var onDeviceResetWifi: () -> Void
+    var onDeviceResetSettings: () -> Void
+    var onDeviceFactoryReset: () -> Void
+    
     @State private var activeAction: DeviceAction?
     
     var body: some View {
         Form {
-            Section(header: Text("Об устройстве")) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Имя хоста: \(hostName)")
-                    Text("IP адрес: \(ipAddress)")
-                    Text("MAC адрес: \(macAddress)")
-                    Text("Версия HW: \(hwVersion)")
-                    Text("Версия FW: \(fwVersion)")
-                    Text("Запусков: \(bootCount)")
-                }
-               // .listRowBackground(Color.clear)
-            }
-            
             Section {
-                VStack(spacing: 12) { // Задаем отступ между кнопками
+                row(title: "Имя хоста", value: hostName)
+                row(title: "IP адрес", value: ipAddress)
+                row(title: "MAC адрес", value: macAddress)
+                row(title: "Версия HW", value: hwVersion)
+                row(title: "Версия FW", value: fwVersion)
+                row(title: "Запусков", value: "\(bootCount)")
+            }
+            Section {
+                VStack(spacing: 16) {
                     
                     // Кнопка 1: Перезагрузка
                     actionButton(title: "Перезагрузить", color: .blue) {
                         activeAction = .restart
                     }
                     
-                    // Кнопка 2: Выключение
-                    actionButton(title: "Сброс WiFi", color: .yellow) {
+                    // Кнопка 2: Сброс WiFi
+                    actionButton(title: "Сброс WiFi", color: .orange) {
                         activeAction = .resetWifi
                     }
                     
-                    // Кнопка 3: Обновить прошивку
+                    // Кнопка 3: Сброс настроек
                     actionButton(title: "Сброс настроек", color: .orange) {
                         activeAction = .resetSettings
                     }
                     
-                    // Кнопка 4: Сброс
+                    // Кнопка 4: Factory reset
                     actionButton(title: "Factory reset", color: .red) {
                         activeAction = .factoryReset
                     }
@@ -388,7 +523,6 @@ struct InfoTab: View {
                 .listRowBackground(Color.clear)
             }
         }
-        // 4. ОДИН алерт, который реагирует на появление выбранного действия (item)
         .alert(item: $activeAction) { action in
             Alert(
                 title: Text(action.title),
@@ -404,6 +538,236 @@ struct InfoTab: View {
                 },
                 secondaryButton: .cancel(Text("Отмена"))
             )
+        }
+        .navigationTitle("Информация об устройстве")
+    }
+    
+    private func row(title: String, value: String) -> some View {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(value)
+                    .foregroundColor(.secondary)
+            }
+        }
+}
+
+struct SettingsWifiFormView: View {
+    @Binding var wifiSsid: String
+    @Binding var wifiPasswordSet: Bool
+    @Binding var wifiPassword: String
+    
+    var onSaveWifiSsid: () -> Void
+    var onSaveWifiPassword: () -> Void
+    
+    // Локальное состояние для ввода данных в поля
+    @State private var localSsid: String = ""
+    @State private var localPassword: String = ""
+    
+    // Отслеживание фокуса на поле пароля
+    @FocusState private var isPasswordFocused: Bool
+    
+    // Заглушка, имитирующая сохраненный пароль
+    private let passwordPlaceholder = "••••••••••••••••"
+    
+    var body: some View {
+        Form {
+            Section(header: Text("Данные для подключения")) {
+                HStack {
+                    Text("SSID")
+                    Spacer()
+                    TextField("", text: $localSsid)
+                        .multilineTextAlignment(.trailing)
+                        .autocorrectionDisabled(true)
+                }
+                
+                HStack {
+                    Text("Пароль")
+                    Spacer()
+                    SecureField("", text: $localPassword)
+                        .multilineTextAlignment(.trailing)
+                        .focused($isPasswordFocused)
+                }
+            }
+            
+            Section {
+                Button(action: {
+                    isPasswordFocused = false
+                    
+                    // Создаем флаг, чтобы понять, изменилось ли что-то вообще
+                    let ssidChanged = isSsidChanged
+                    let passwordChanged = isPasswordChanged
+                    
+                    // 1. Если изменился SSID — обновляем биндинг и вызываем первый метод
+                    if ssidChanged {
+                        wifiSsid = localSsid
+                        onSaveWifiSsid()
+                    }
+                    
+                    // 2. Если изменился пароль — обновляем биндинг и вызываем второй метод
+                    if passwordChanged {
+                        wifiPassword = localPassword
+                        onSaveWifiPassword()
+                    }
+                }) {
+                    Text("Сохранить")
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!isSsidChanged && !isPasswordChanged)
+            }
+            .listRowBackground(Color.clear)
+        }
+        .navigationTitle("Настройки WiFi")
+        .onAppear {
+            // Инициализируем локальные переменные при появлении экрана
+            localSsid = wifiSsid
+            setupInitialPassword()
+        }
+        .onChange(of: isPasswordFocused) { _, focused in
+            if focused {
+                if wifiPasswordSet && localPassword == passwordPlaceholder {
+                    localPassword = ""
+                }
+            } else {
+                if wifiPasswordSet && localPassword.isEmpty {
+                    localPassword = passwordPlaceholder
+                }
+            }
+        }
+    }
+    
+    // Проверка: изменился ли SSID относительно исходного
+    private var isSsidChanged: Bool {
+        localSsid != wifiSsid && !localSsid.isEmpty
+    }
+    
+    // Проверка: изменился ли пароль относительно заглушки или пустоты
+    private var isPasswordChanged: Bool {
+        if wifiPasswordSet {
+            return localPassword != passwordPlaceholder && !localPassword.isEmpty
+        } else {
+            return !localPassword.isEmpty
+        }
+    }
+    
+    private func setupInitialPassword() {
+        if wifiPasswordSet {
+            localPassword = passwordPlaceholder
+        } else {
+            localPassword = ""
+        }
+    }
+}
+
+struct SettingsDivoomFormView: View {
+    @Binding var divoomUsername: String
+    @Binding var divoomPasswordSet: Bool
+    @Binding var divoomPassword: String
+    
+    var onSaveDivoomUsername: () -> Void
+    var onSaveDivoomPassword: () -> Void
+    
+    // Локальное состояние для ввода данных в поля
+    @State private var localUsername: String = ""
+    @State private var localPassword: String = ""
+    
+    // Отслеживание фокуса на поле пароля
+    @FocusState private var isPasswordFocused: Bool
+    
+    // Заглушка, имитирующая сохраненный пароль
+    private let passwordPlaceholder = "••••••••••••••••"
+    
+    var body: some View {
+        Form {
+            Section(header: Text("Учетные данные Divoom")) {
+                HStack {
+                    Text("Email")
+                    Spacer()
+                    TextField("", text: $localUsername)
+                        .multilineTextAlignment(.trailing)
+                        .autocorrectionDisabled(true)
+                }
+                
+                HStack {
+                    Text("Пароль")
+                    Spacer()
+                    SecureField("", text: $localPassword)
+                        .multilineTextAlignment(.trailing)
+                        .focused($isPasswordFocused)
+                }
+            }
+            
+            Section {
+                Button(action: {
+                    isPasswordFocused = false
+                    
+                    // Создаем флаг, чтобы понять, изменилось ли что-то вообще
+                    let ssidChanged = isUsernameChanged
+                    let passwordChanged = isPasswordChanged
+                    
+                    // 1. Если изменился SSID — обновляем биндинг и вызываем первый метод
+                    if ssidChanged {
+                        divoomUsername = localUsername
+                        onSaveDivoomUsername()
+                    }
+                    
+                    // 2. Если изменился пароль — обновляем биндинг и вызываем второй метод
+                    if passwordChanged {
+                        divoomPassword = localPassword
+                        onSaveDivoomPassword()
+                    }
+                }) {
+                    Text("Сохранить")
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!isUsernameChanged && !isPasswordChanged)
+            }
+            .listRowBackground(Color.clear)
+        }
+        .navigationTitle("Настройки Divoom")
+        .onAppear {
+            // Инициализируем локальные переменные при появлении экрана
+            localUsername = divoomUsername
+            setupInitialPassword()
+        }
+        .onChange(of: isPasswordFocused) { _, focused in
+            if focused {
+                if divoomPasswordSet && localPassword == passwordPlaceholder {
+                    localPassword = ""
+                }
+            } else {
+                if divoomPasswordSet && localPassword.isEmpty {
+                    localPassword = passwordPlaceholder
+                }
+            }
+        }
+    }
+    
+    // Проверка: изменился ли SSID относительно исходного
+    private var isUsernameChanged: Bool {
+        localUsername != divoomUsername && !localUsername.isEmpty
+    }
+    
+    // Проверка: изменился ли пароль относительно заглушки или пустоты
+    private var isPasswordChanged: Bool {
+        if divoomPasswordSet {
+            return localPassword != passwordPlaceholder && !localPassword.isEmpty
+        } else {
+            return !localPassword.isEmpty
+        }
+    }
+    
+    private func setupInitialPassword() {
+        if divoomPasswordSet {
+            localPassword = passwordPlaceholder
+        } else {
+            localPassword = ""
         }
     }
 }
@@ -421,7 +785,7 @@ enum DeviceAction: Identifiable {
         case .restart: return "Перезагрузка"
         case .resetWifi: return "Сброс настроек WiFi"
         case .resetSettings: return "Сброс всех настроек"
-        case .factoryReset: return "Сброс до заводских настроек"
+        case .factoryReset: return "Factory reset"
         }
     }
     
@@ -450,6 +814,19 @@ private func actionButton(title: String, color: Color, action: @escaping () -> V
 extension View {
     func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+
+extension String {
+    func toMD5() -> String {
+        // 1. Переводим строку в Data (набор байт)
+        guard let data = self.data(using: .utf8) else { return "" }
+        
+        // 2. Хэшируем с помощью CryptoKit
+        let digest = Insecure.MD5.hash(data: data)
+        
+        // 3. Преобразуем результат в шестнадцатеричную строку (hex)
+        return digest.map { String(format: "%02hhx", $0) }.joined()
     }
 }
 
