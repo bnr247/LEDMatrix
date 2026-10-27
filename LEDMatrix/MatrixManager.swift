@@ -45,7 +45,8 @@ struct MatrixSettings: Codable {
     var ipAddress: String = ""
     var hwVersion: String = ""
     var fwVersion: String = ""
-    var digitsColorHex: String = ""
+    var hoursColorHex: String = ""
+    var minutesColorHex: String = ""
     var colonColorHex: String = ""
     var bgColorHex: String = ""
     
@@ -70,7 +71,8 @@ struct MatrixSettings: Codable {
         case ipAddress = "ip_address"
         case hwVersion = "hw_version"
         case fwVersion = "fw_version"
-        case digitsColorHex = "digits_color_hex"
+        case hoursColorHex = "hours_color_hex"
+        case minutesColorHex = "minutes_color_hex"
         case colonColorHex = "colon_color_hex"
         case bgColorHex = "bg_color_hex"
     }
@@ -313,10 +315,16 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         await sendCommand(endpoint: "cmd", params: ["clock_font": font])
     }
     
-    func updateClockDigitsColor(_ color: Color) async {
+    func updateClockHoursColor(_ color: Color) async {
         let hex = UIColor(color).toHex() ?? "0064FF"
-        settings.digitsColorHex = hex
-        await sendCommand(endpoint: "cmd", params: ["digits_color_hex": hex])
+        settings.hoursColorHex = hex
+        await sendCommand(endpoint: "cmd", params: ["hours_color_hex": hex])
+    }
+    
+    func updateClockMinutesColor(_ color: Color) async {
+        let hex = UIColor(color).toHex() ?? "0064FF"
+        settings.minutesColorHex = hex
+        await sendCommand(endpoint: "cmd", params: ["minutes_color_hex": hex])
     }
     
     func updateClockColonColor(_ color: Color) async {

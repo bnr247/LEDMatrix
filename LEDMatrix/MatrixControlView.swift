@@ -37,19 +37,18 @@ struct MatrixControlView: View {
     }
 }
 
-// MARK: - ВКЛАДКА: ТЕКСТ
+// MARK: - ВКЛАДКА ТЕКСТ
 struct TextControlTab: View {
     @ObservedObject var manager: MatrixManager
 
     var body: some View {
         Form {
-            // ИСПРАВЛЕНО: Секция общей яркости перенесена в самый верх первой вкладки
-            Section(header: Text("Яркость устройства")) {
+            Section() {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: "sun.max.fill")
                             .foregroundColor(.secondary)
-                        Text("Текущая яркость: \(manager.settings.brightnessPercent)%")
+                        Text("Яркость матрицы : \(manager.settings.brightnessPercent)%")
                             .font(.body)
                         Spacer()
                     }
@@ -70,9 +69,7 @@ struct TextControlTab: View {
                 TextField("Введите сообщение...", text: $manager.textToSend)
                 ColorPicker("Цвет текста", selection: $manager.textColor)
                 ColorPicker("Цвет фона", selection: $manager.textBgColor)
-            }
-            
-            Section(header: Text("Параметры анимации")) {
+                
                 VStack(alignment: .leading) {
                     Text("Скорость: \(Int(manager.scrollSpeedFps))")
                     Slider(value: $manager.scrollSpeedFps, in: 10...100, step: 5)
@@ -117,12 +114,22 @@ struct ClockSettingsTab: View {
                     Text("Simple Vertical (5x7)").tag(3)
                     Text("OCR-A Vertical (5x7)").tag(4)
                     Text("Atari Vertical (5x7)").tag(5)
+                    Text("Atari Vertical Small (3x6)").tag(6)
+                    Text("Atari Vertical Bold (6x7)").tag(7)
+                    Text("Atari Vertical Bold Small (5x5)").tag(8)
+                    Text("Postal Horizontal (3x7)").tag(9)
+                    Text("Postal Vertical (3x7)").tag(10)
+                    Text("Huge Bold (6x9)").tag(11)
                 }
             }
             Section(header: Text("Цветовая гамма часов")) {
-                ColorPicker("Цвет цифр", selection: Binding(
-                    get: { Color(hex: manager.settings.digitsColorHex) },
-                    set: { newValue in Task { await manager.updateClockDigitsColor(newValue) } }
+                ColorPicker("Цвет часов", selection: Binding(
+                    get: { Color(hex: manager.settings.hoursColorHex) },
+                    set: { newValue in Task { await manager.updateClockHoursColor(newValue) } }
+                ))
+                ColorPicker("Цвет минут", selection: Binding(
+                    get: { Color(hex: manager.settings.minutesColorHex) },
+                    set: { newValue in Task { await manager.updateClockMinutesColor(newValue) } }
                 ))
                 ColorPicker("Цвет разделителя", selection: Binding(
                     get: { Color(hex: manager.settings.colonColorHex) },
@@ -144,7 +151,7 @@ struct SettingsTab: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Панель управления")) {
+                Section(header: Text("Настройки устройства")) {
                     NavigationLink(destination: SettingsGeneralFormView(manager: manager)) {
                         Label("Общие", systemImage: "sparkles.tv")
                     }
@@ -172,7 +179,7 @@ struct SettingsGeneralFormView: View {
         Form {
             Section(header: Text("День")) {
                 DatePicker(
-                    "Начало дня",
+                    "Начало",
                     selection: manager.dayStartTimeBinding,
                     displayedComponents: .hourAndMinute
                 )
@@ -200,7 +207,7 @@ struct SettingsGeneralFormView: View {
                 
             Section(header: Text("Ночь")) {
                 DatePicker(
-                    "Начало ночи",
+                    "Начало",
                     selection: manager.nightStartTimeBinding,
                     displayedComponents: .hourAndMinute
                 )
