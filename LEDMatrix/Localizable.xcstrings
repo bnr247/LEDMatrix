@@ -55,6 +55,12 @@
             "state" : "translated",
             "value" : "IP address"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP адрес"
+          }
         }
       }
     },
@@ -64,6 +70,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MAC address"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MAC адрес"
           }
         }
       }
@@ -109,6 +121,12 @@
             "state" : "translated",
             "value" : "Scrolling text"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бегущая строка"
+          }
         }
       }
     },
@@ -118,6 +136,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Input message…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Введите сообщение..."
           }
         }
       }
@@ -129,6 +153,12 @@
             "state" : "translated",
             "value" : "FW version"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия FW"
+          }
         }
       }
     },
@@ -138,6 +168,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "HW version"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия HW"
           }
         }
       }
@@ -149,6 +185,12 @@
             "state" : "translated",
             "value" : "Clock appearance"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Внешний вид часов"
+          }
         }
       }
     },
@@ -159,6 +201,12 @@
             "state" : "translated",
             "value" : "Are you sure you want to upload selected file?\n\nFile: %@"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы действительно хотите установить выбранный файл прошивки?\n\nФайл: %@"
+          }
         }
       }
     },
@@ -168,6 +216,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Connection details"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Данные для подключения"
           }
         }
       }
@@ -195,6 +249,12 @@
             "state" : "translated",
             "value" : "Add"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить"
+          }
         }
       }
     },
@@ -204,6 +264,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add manually"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить по IP вручную"
           }
         }
       }
@@ -215,6 +281,12 @@
             "state" : "translated",
             "value" : "Writing the device's flash memory..."
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись во флэш-память устройства..."
+          }
         }
       }
     },
@@ -224,6 +296,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Boot count"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запусков"
           }
         }
       }
@@ -235,6 +313,12 @@
             "state" : "translated",
             "value" : "Hostname"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя хоста"
+          }
         }
       }
     },
@@ -244,6 +328,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Device info"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Информация об устройстве"
           }
         }
       }
@@ -255,6 +345,12 @@
             "state" : "translated",
             "value" : "My devices"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мои устройства"
+          }
         }
       }
     },
@@ -264,6 +360,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Device name"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название устройства (например, Гостиная)"
           }
         }
       }
@@ -275,6 +377,12 @@
             "state" : "translated",
             "value" : "Device name"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название устройства"
+          }
         }
       }
     },
@@ -284,6 +392,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
           }
         }
       }
@@ -295,6 +409,12 @@
             "state" : "translated",
             "value" : "Divoom settings"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки Divoom"
+          }
         }
       }
     },
@@ -304,6 +424,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wifi Settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки WiFi"
           }
         }
       }
@@ -315,6 +441,12 @@
             "state" : "translated",
             "value" : "Wifi Settings"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки WiFi"
+          }
         }
       }
     },
@@ -324,6 +456,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Device settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки устройства"
           }
         }
       }
@@ -335,6 +473,12 @@
             "state" : "translated",
             "value" : "Starts at"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начало"
+          }
         }
       }
     },
@@ -344,6 +488,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Can not read the file"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать файл"
           }
         }
       }
@@ -355,6 +505,12 @@
             "state" : "translated",
             "value" : "Wrong update URL"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неверный URL обновления"
+          }
         }
       }
     },
@@ -364,6 +520,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No new devices found"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новые устройства не найдены"
           }
         }
       }
@@ -391,6 +553,12 @@
             "state" : "translated",
             "value" : "About"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Об устройстве"
+          }
         }
       }
     },
@@ -400,6 +568,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Update"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить"
           }
         }
       }
@@ -411,6 +585,12 @@
             "state" : "translated",
             "value" : "Update complete. Restarting device…"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновление завершено! Устройство перезагружается..."
+          }
         }
       }
     },
@@ -420,6 +600,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Firmware update"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновление ПО"
           }
         }
       }
@@ -431,6 +617,12 @@
             "state" : "translated",
             "value" : "Firmware update"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновление прошивки"
+          }
         }
       }
     },
@@ -440,6 +632,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "General"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Общие"
           }
         }
       }
@@ -451,6 +649,12 @@
             "state" : "translated",
             "value" : "General settings"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Общие настройки"
+          }
         }
       }
     },
@@ -460,6 +664,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancel"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отмена"
           }
         }
       }
@@ -471,6 +681,12 @@
             "state" : "translated",
             "value" : "Show Telegram user’s name"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отображать имя из Telegram"
+          }
         }
       }
     },
@@ -480,6 +696,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить"
           }
         }
       }
@@ -491,6 +713,12 @@
             "state" : "translated",
             "value" : "Sending data packets…"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправка пакетов данных..."
+          }
         }
       }
     },
@@ -500,6 +728,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Error (%1$lld): %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ошибка (%lld): %@"
           }
         }
       }
@@ -511,6 +745,12 @@
             "state" : "translated",
             "value" : "Network error: %@"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ошибка сети: %@"
+          }
         }
       }
     },
@@ -520,6 +760,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Control panel"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Панель управления"
           }
         }
       }
@@ -531,6 +777,12 @@
             "state" : "translated",
             "value" : "Device parameters"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Параметры матрицы"
+          }
         }
       }
     },
@@ -540,6 +792,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Password"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль"
           }
         }
       }
@@ -551,6 +809,12 @@
             "state" : "translated",
             "value" : "Reboot"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезагрузить"
+          }
         }
       }
     },
@@ -560,6 +824,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rename device"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать устройство"
           }
         }
       }
@@ -571,6 +841,12 @@
             "state" : "translated",
             "value" : "Repeats: %lld"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторов: %lld"
+          }
         }
       }
     },
@@ -580,6 +856,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Preparing the firmware…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подготовка прошивки..."
           }
         }
       }
@@ -591,6 +873,12 @@
             "state" : "translated",
             "value" : "Confirm"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтвердить"
+          }
         }
       }
     },
@@ -600,6 +888,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Searching LedMatrix devices…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск устройств LedMatrix..."
           }
         }
       }
@@ -611,6 +905,12 @@
             "state" : "translated",
             "value" : "Screen mode"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Режим экрана"
+          }
         }
       }
     },
@@ -620,6 +920,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manual connect"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ручное подключение"
           }
         }
       }
@@ -663,6 +969,12 @@
             "state" : "translated",
             "value" : "Speed: %lld"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скорость: %lld"
+          }
         }
       }
     },
@@ -672,6 +984,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mixed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смешанный"
           }
         }
       }
@@ -683,6 +1001,12 @@
             "state" : "translated",
             "value" : "Save"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить"
+          }
         }
       }
     },
@@ -692,6 +1016,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Save and connect"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить и подключиться"
           }
         }
       }
@@ -703,6 +1033,12 @@
             "state" : "translated",
             "value" : "Device list"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Список устройств"
+          }
         }
       }
     },
@@ -712,6 +1048,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Text"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст"
           }
         }
       }
@@ -723,6 +1065,12 @@
             "state" : "translated",
             "value" : "Animation only"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только анимация"
+          }
         }
       }
     },
@@ -732,6 +1080,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clock only"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только часы"
           }
         }
       }
@@ -743,6 +1097,12 @@
             "state" : "translated",
             "value" : "Upload firmware (.bin)"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить прошивку (.bin)"
+          }
         }
       }
     },
@@ -752,6 +1112,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Available devices"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройства в сети"
           }
         }
       }
@@ -763,6 +1129,12 @@
             "state" : "translated",
             "value" : "No selected devices"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройство не выбрано"
+          }
         }
       }
     },
@@ -772,6 +1144,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Divoom credentials"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Учетные данные Divoom"
           }
         }
       }
@@ -783,6 +1161,12 @@
             "state" : "translated",
             "value" : "File is not selected: %@"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл не выбран: %@"
+          }
         }
       }
     },
@@ -792,6 +1176,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Minutes color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет минут"
           }
         }
       }
@@ -803,6 +1193,12 @@
             "state" : "translated",
             "value" : "Colon color"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет разделителя"
+          }
         }
       }
     },
@@ -812,6 +1208,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Text color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет текста"
           }
         }
       }
@@ -823,6 +1225,12 @@
             "state" : "translated",
             "value" : "Background color"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет фона"
+          }
         }
       }
     },
@@ -832,6 +1240,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hours color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет часов"
           }
         }
       }
@@ -843,6 +1257,12 @@
             "state" : "translated",
             "value" : "Clock color palette"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цветовая гамма часов"
+          }
         }
       }
     },
@@ -852,6 +1272,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Clock"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часы"
           }
         }
       }
@@ -863,6 +1289,12 @@
             "state" : "translated",
             "value" : "Font"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шрифт"
+          }
         }
       }
     },
@@ -873,6 +1305,12 @@
             "state" : "translated",
             "value" : "Brightness: %@"
           }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркость: %@"
+          }
         }
       }
     },
@@ -882,6 +1320,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Brightness: %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркость: %lld"
           }
         }
       }
