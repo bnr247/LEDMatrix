@@ -190,49 +190,49 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     // MARK: - Сканирование Сети
     
     func startScanning() {
-           print("🔍 Начать поиск устройств...")
-           
-           // 1. Обязательно останавливаем прошлый поиск и очищаем ТОЛЬКО системные службы,
-           // чтобы избежать конфликта "handler to 0 from 0"
-           netServiceBrowser.stop()
-           for service in resolvingServices {
-               service.stop()
-           }
-           resolvingServices.removeAll()
-           
-           // ВАЖНО: Массив discoveredDevices НЕ очищаем, чтобы уже найденные матрицы
-           // оставались на экране, даже если сеть их временно потеряла.
-           
-           isScanning = true
-           connectionStatus = "Поиск устройств..."
-           
-           netServiceBrowser.delegate = self
-           netServiceBrowser.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
-           
-           // Тайм-аут поиска через 10 секунд
-           DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-               self?.stopScanning()
-           }
-       }
-       
-       func stopScanning() {
-           netServiceBrowser.stop()
-           for service in resolvingServices {
-               service.stop()
-           }
-           // Очищаем службы, освобождая системные хендлеры iOS
-           resolvingServices.removeAll()
-           
-           isScanning = false
-           
-           let totalCount = savedDevices.count + discoveredDevices.count
-           print("🔍 Поиск завершен. Найдено новых: \(discoveredDevices.count)")
-           if totalCount == 0 {
-               connectionStatus = "Устройства не найдены"
-           } else {
-               connectionStatus = "Устройств доступно: \(totalCount)"
-           }
-       }
+        print("🔍 Начать поиск устройств...")
+        
+        // 1. Обязательно останавливаем прошлый поиск и очищаем ТОЛЬКО системные службы,
+        // чтобы избежать конфликта "handler to 0 from 0"
+        netServiceBrowser.stop()
+        for service in resolvingServices {
+            service.stop()
+        }
+        resolvingServices.removeAll()
+        
+        // ВАЖНО: Массив discoveredDevices НЕ очищаем, чтобы уже найденные матрицы
+        // оставались на экране, даже если сеть их временно потеряла.
+        
+        isScanning = true
+        connectionStatus = "Поиск устройств..."
+        
+        netServiceBrowser.delegate = self
+        netServiceBrowser.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
+        
+        // Тайм-аут поиска через 10 секунд
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            self?.stopScanning()
+        }
+    }
+    
+    func stopScanning() {
+        netServiceBrowser.stop()
+        for service in resolvingServices {
+            service.stop()
+        }
+        // Очищаем службы, освобождая системные хендлеры iOS
+        resolvingServices.removeAll()
+        
+        isScanning = false
+        
+        let totalCount = savedDevices.count + discoveredDevices.count
+        print("🔍 Поиск завершен. Найдено новых: \(discoveredDevices.count)")
+        if totalCount == 0 {
+            connectionStatus = "Устройства не найдены"
+        } else {
+            connectionStatus = "Устройств доступно: \(totalCount)"
+        }
+    }
     
     // MARK: - NetServiceBrowserDelegate
     nonisolated func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
@@ -305,7 +305,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         return nil
     }
     
-// MARK: - Запросы и инициализация данных
+    // MARK: - Запросы и инициализация данных
     
     func fetchSettings(for device: LEDMatrixDevice) async {
         self.selectedDevice = device
@@ -396,7 +396,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
             "repeat_count": scrollRepeatCount
         ])
     }
-
+    
     func updateClockFont(_ font: Int) async {
         settings.clockFont = font
         await sendCommand(endpoint: "cmd", params: ["clock_font": font])
@@ -470,7 +470,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
             }
         )
     }
-        
+    
     var nightDeviceModeBinding: Binding<String> {
         Binding(
             get: { self.settings.nightDeviceMode },
@@ -496,7 +496,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
     }
-
+    
     
     // MARK: - Сохранение форм настроек (Вызывается по кнопке сохранить)
     
@@ -533,6 +533,128 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     var isWifiPasswordChanged: Bool { wifiSettings.passwordSet ? (localWifiPassword != passwordPlaceholder && !localWifiPassword.isEmpty) : !localWifiPassword.isEmpty }
     var isDivoomEmailChanged: Bool { localDivoomEmail != settings.divoomEmail && !localDivoomEmail.isEmpty }
     var isDivoomPasswordChanged: Bool { settings.divoomPasswordSet ? (localDivoomPassword != passwordPlaceholder && !localDivoomPassword.isEmpty) : !localDivoomPassword.isEmpty }
+    
+    // MARK: - OTA-Обновление
+    @Published var otaProgress: Double = 0.0
+    @Published var isOtaUpdating = false
+    @Published var otaStatusMessage: LocalizedStringKey = ""
+    
+    var pendingOtaFileURL: URL?
+    
+    /// Метод для отправки прошивки через стрим данных с честным прогрессом
+    func uploadFirmware(fileURL: URL) async {
+        guard let device = selectedDevice else {
+            self.otaStatusMessage = "Устройство не выбрано"
+            return
+        }
+        
+        let accessing = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        self.isOtaUpdating = true
+        self.otaProgress = 0.0
+        self.otaStatusMessage = "Подготовка прошивки..."
+        
+        let urlString = "http://\(device.ipAddress)/update"
+        guard let url = URL(string: urlString) else {
+            self.otaStatusMessage = "Неверный URL обновления"
+            self.isOtaUpdating = false
+            return
+        }
+        
+        guard let firmwareData = try? Data(contentsOf: fileURL) else {
+            self.otaStatusMessage = "Не удалось прочитать файл"
+            self.isOtaUpdating = false
+            return
+        }
+        
+        // Формируем multipart тело вручную
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var bodyHeader = Data()
+        bodyHeader.append("--\(boundary)\r\n".data(using: .utf8)!)
+        bodyHeader.append("Content-Disposition: form-data; name=\"update\"; filename=\"\(fileURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
+        bodyHeader.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        
+        var bodyFooter = Data()
+        bodyFooter.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        // Собираем полный пакет данных для отправки
+        var fullBodyData = Data()
+        fullBodyData.append(bodyHeader)
+        fullBodyData.append(firmwareData)
+        fullBodyData.append(bodyFooter)
+        
+        let totalBytes = Double(fullBodyData.count)
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        addBasicAuthHeader(to: &request)
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("\(fullBodyData.count)", forHTTPHeaderField: "Content-Length")
+        
+        // Кастомный делегат для получения реального прогресса от URLSession
+        let uploadDelegate = OTAUploadDelegate { [weak self] progress in
+            Task { @MainActor in
+                // Защита от резкого прыжка: берем минимум между системным прогрессом и 0.99,
+                // пока плата не пришлет HTTP 200 ОК
+                if progress >= 0.98 {
+                    self?.otaProgress = 0.98
+                    self?.otaStatusMessage = "Запись во флэш-память устройства..."
+                } else {
+                    self?.otaProgress = progress
+                    self?.otaStatusMessage = "Отправка пакетов данных..."
+                }
+            }
+        }
+        
+        do {
+            let config = URLSessionConfiguration.default
+            // Важно: отключаем кэширование и прокси-буферы для этого запроса
+            config.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+            config.urlCache = nil
+            
+            let session = URLSession(configuration: config, delegate: uploadDelegate, delegateQueue: nil)
+            
+            // Используем классический upload из Data, но с конфигурацией без кэша
+            let (data, response) = try await session.upload(for: request, from: fullBodyData)
+            
+            if let httpResp = response as? HTTPURLResponse {
+                if httpResp.statusCode == 200 {
+                    self.otaProgress = 1.0
+                    self.otaStatusMessage = "Обновление завершено! Устройство перезагружается..."
+                } else {
+                    let serverResponse = String(data: data, encoding: .utf8) ?? ""
+                    self.otaStatusMessage = "Ошибка (\(httpResp.statusCode)): \(serverResponse)"
+                }
+            }
+        } catch {
+            print("❌ Ошибка OTA обновления: \(error)")
+            self.otaStatusMessage = "Ошибка сети: \(error.localizedDescription)"
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+            self?.isOtaUpdating = false
+            self?.otaProgress = 0.0
+        }
+    }
+}
+
+    // MARK: - Вспомогательный класс-делегат
+class OTAUploadDelegate: NSObject, URLSessionTaskDelegate {
+    let onProgress: (Double) -> Void
+    
+    init(onProgress: @escaping (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        let progress = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
+        onProgress(progress)
+    }
 }
 
 extension UIColor {

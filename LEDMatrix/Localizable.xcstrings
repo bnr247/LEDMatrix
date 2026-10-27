@@ -4,6 +4,9 @@
     "" : {
 
     },
+    "%lld%%" : {
+      "shouldTranslate" : false
+    },
     "192.168.1.50" : {
 
     },
@@ -149,6 +152,16 @@
         }
       }
     },
+    "Вы действительно хотите установить выбранный файл прошивки?\n\nФайл: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to upload selected file?\n\nFile: %@"
+          }
+        }
+      }
+    },
     "Данные для подключения" : {
       "localizations" : {
         "en" : {
@@ -164,7 +177,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Day"
+            "value" : "Day mode"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дневной режим"
           }
         }
       }
@@ -189,12 +208,22 @@
         }
       }
     },
+    "Запись во флэш-память устройства..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writing the device's flash memory..."
+          }
+        }
+      }
+    },
     "Запусков" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restarts"
+            "value" : "Boot count"
           }
         }
       }
@@ -309,6 +338,26 @@
         }
       }
     },
+    "Не удалось прочитать файл" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can not read the file"
+          }
+        }
+      }
+    },
+    "Неверный URL обновления" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wrong update URL"
+          }
+        }
+      }
+    },
     "Новые устройства не найдены" : {
       "localizations" : {
         "en" : {
@@ -324,7 +373,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Night"
+            "value" : "Night mode"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ночной режим"
           }
         }
       }
@@ -335,6 +390,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "About"
+          }
+        }
+      }
+    },
+    "Обновить" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        }
+      }
+    },
+    "Обновление завершено! Устройство перезагружается..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update complete. Restarting device…"
+          }
+        }
+      }
+    },
+    "Обновление ПО" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Firmware update"
+          }
+        }
+      }
+    },
+    "Обновление прошивки" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Firmware update"
           }
         }
       }
@@ -385,6 +480,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send"
+          }
+        }
+      }
+    },
+    "Отправка пакетов данных..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending data packets…"
+          }
+        }
+      }
+    },
+    "Ошибка (%lld): %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error (%1$lld): %2$@"
+          }
+        }
+      }
+    },
+    "Ошибка сети: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network error: %@"
           }
         }
       }
@@ -449,6 +574,16 @@
         }
       }
     },
+    "Подготовка прошивки..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing the firmware…"
+          }
+        }
+      }
+    },
     "Подтвердить" : {
       "localizations" : {
         "en" : {
@@ -494,7 +629,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reset WiFi"
+            "value" : "Reset WiFi settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить настройки WiFi"
           }
         }
       }
@@ -504,7 +645,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reset settings"
+            "value" : "Clear settings"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Очистить настройки"
           }
         }
       }
@@ -589,6 +736,16 @@
         }
       }
     },
+    "Установить прошивку (.bin)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload firmware (.bin)"
+          }
+        }
+      }
+    },
     "Устройства в сети" : {
       "localizations" : {
         "en" : {
@@ -599,12 +756,32 @@
         }
       }
     },
+    "Устройство не выбрано" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No selected devices"
+          }
+        }
+      }
+    },
     "Учетные данные Divoom" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Divoom credentials"
+          }
+        }
+      }
+    },
+    "Файл не выбран: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File is not selected: %@"
           }
         }
       }
@@ -689,7 +866,7 @@
         }
       }
     },
-    "Яркость матрицы : %@" : {
+    "Яркость: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {

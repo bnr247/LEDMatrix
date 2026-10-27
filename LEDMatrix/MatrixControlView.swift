@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CryptoKit
+import UniformTypeIdentifiers
 
 struct MatrixControlView: View {
     @ObservedObject var manager: MatrixManager
@@ -48,7 +49,7 @@ struct TextControlTab: View {
                     HStack {
                         Image(systemName: "sun.max.fill")
                             .foregroundColor(.secondary)
-                        Text("Яркость матрицы : \((Double(manager.settings.brightnessPercent) / 100.0), format: .percent)")
+                        Text("Яркость: \((Double(manager.settings.brightnessPercent) / 100.0), format: .percent)")
                             .font(.body)
                         Spacer()
                     }
@@ -147,6 +148,9 @@ struct ClockSettingsTab: View {
 // MARK: - ВКЛАДКА НАСТРОЕК
 struct SettingsTab: View {
     @ObservedObject var manager: MatrixManager
+    @State private var isFilePickerPresented = false
+    @State private var isConfirmAlertPresented = false
+    @State private var selectedFileName = ""
     
     var body: some View {
         NavigationStack {
@@ -165,11 +169,72 @@ struct SettingsTab: View {
                         Label("Об устройстве", systemImage: "info.circle")
                     }
                 }
+                
+                Section(header: Text("Обновление ПО")) {
+                    if manager.isOtaUpdating {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(manager.otaStatusMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            // Отображает плавное заполнение индикатора в реальном времени
+                            ProgressView(value: manager.otaProgress, total: 1.0)
+                                .progressViewStyle(.linear)
+                            
+                            Text("\(Int(manager.otaProgress * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        Button(action: {
+                            isFilePickerPresented = true
+                        }) {
+                            Label("Установить прошивку (.bin)", systemImage: "arrow.clockwise.icloud")
+                        }
+                    }
+                }
             }
             .navigationTitle("Панель управления")
+            // 1. Окно выбора файла
+            .fileImporter(
+                isPresented: $isFilePickerPresented,
+                allowedContentTypes: [.data],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let selectedFileURL = urls.first else { return }
+                    // Сохраняем имя и URL в менеджер для последующего подтверждения
+                    self.selectedFileName = selectedFileURL.lastPathComponent
+                    manager.pendingOtaFileURL = selectedFileURL
+                    
+                    // Открываем диалог подтверждения вместо мгновенной загрузки
+                    self.isConfirmAlertPresented = true
+                    
+                case .failure(let error):
+                    manager.otaStatusMessage = "Файл не выбран: \(error.localizedDescription)"
+                }
+            }
+            // 2. Диалог подтверждения перед прошивкой
+            .alert("Обновление прошивки", isPresented: $isConfirmAlertPresented) {
+                Button("Обновить", role: .none) {
+                    if let fileURL = manager.pendingOtaFileURL {
+                        Task {
+                            await manager.uploadFirmware(fileURL: fileURL)
+                        }
+                    }
+                }
+                Button("Отмена", role: .cancel) {
+                    manager.pendingOtaFileURL = nil
+                }
+            } message: {
+                Text("Вы действительно хотите установить выбранный файл прошивки?\n\nФайл: \(selectedFileName)")
+            }
         }
     }
 }
+
 
 // MARK: - ФОРМА: ОБЩИЕ НАСТРОЙКИ
 struct SettingsGeneralFormView: View {
@@ -262,9 +327,8 @@ struct SettingsInfoFormView: View {
             Section {
                 VStack(spacing: 16) {
                     actionButton(title: "Перезагрузить", color: .blue) { activeAction = .restart }
-                    actionButton(title: "Сброс WiFi", color: .orange) { activeAction = .resetWifi }
-                    
                     actionButton(title: "Сброс настроек", color: .orange) { activeAction = .resetSettings }
+                    actionButton(title: "Сброс WiFi", color: .orange) { activeAction = .resetWifi }
                     actionButton(title: "Factory reset", color: .red) { activeAction = .factoryReset }
                 }
                 .listRowBackground(Color.clear)
