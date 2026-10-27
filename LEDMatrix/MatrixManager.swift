@@ -13,8 +13,10 @@ import UIKit
 
 extension NetService: @retroactive @unchecked Sendable {}
 
+// Для стабильной работы ForEach id должен быть привязан к уникальному IP,
+// так как UUID() генерировался бы заново при каждом создании объекта.
 struct LEDMatrixDevice: Identifiable, Equatable {
-    let id = UUID()
+    var id: String { ipAddress }
     var name: String
     var ipAddress: String
     var port: Int = 80
@@ -91,6 +93,9 @@ struct MatrixWifiSettings: Codable {
 @MainActor
 class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetServiceDelegate {
     @Published var discoveredDevices: [LEDMatrixDevice] = []
+    // НОВОЕ: Массив для хранения добавленных пользователем устройств
+    @Published var savedDevices: [LEDMatrixDevice] = []
+    
     @Published var selectedDevice: LEDMatrixDevice?
     @Published var settings = MatrixSettings()
     @Published var wifiSettings = MatrixWifiSettings()
@@ -117,6 +122,15 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     private var resolvingServices: [NetService] = []
     let passwordPlaceholder = "••••••••••••••••"
     
+    // Ключи UserDefaults
+    private let savedDevicesKey = "led_matrix_saved_devices_list"
+    private let customNamesKey = "led_matrix_custom_names_dict"
+    
+    override init() {
+        super.init()
+        loadSavedDevices()
+    }
+    
     private func addBasicAuthHeader(to request: inout URLRequest) {
         let loginString = "\(authUsername):\(authPassword)"
         guard let loginData = loginString.data(using: .utf8) else { return }
@@ -124,34 +138,101 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         request.setValue("Basic \(base64LoginString)", forHTTPHeaderField: "Authorization")
     }
     
-    func startScanning() {
-        print("🔍 Начать поиск устройств...")
-        discoveredDevices.removeAll()
-        resolvingServices.removeAll()
-        isScanning = true
-        connectionStatus = "Поиск устройств..."
+    // MARK: - Управление Сохранением и Переименованием
+    
+    func saveDevice(_ device: LEDMatrixDevice) {
+        // Проверяем, нет ли уже такого устройства в сохраненных
+        if !savedDevices.contains(where: { $0.ipAddress == device.ipAddress }) {
+            savedDevices.append(device)
+            persistSavedDevices()
+        }
+        // Удаляем из списка найденных, так как оно теперь перешло в категорию сохраненных
+        discoveredDevices.removeAll { $0.ipAddress == device.ipAddress }
+    }
+    
+    func renameDevice(ipAddress: String, newName: String) {
+        // 1. Обновляем имя в списке сохраненных
+        if let index = savedDevices.firstIndex(where: { $0.ipAddress == ipAddress }) {
+            savedDevices[index].name = newName
+            persistSavedDevices()
+        }
         
-        netServiceBrowser.delegate = self
-        netServiceBrowser.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
+        // 2. Сохраняем маппинг "IP -> Кастомное имя", чтобы при повторном поиске имя подтягивалось
+        var customNames = UserDefaults.standard.dictionary(forKey: customNamesKey) as? [String: String] ?? [:]
+        customNames[ipAddress] = newName
+        UserDefaults.standard.set(customNames, forKey: customNamesKey)
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-            self?.stopScanning()
+        // 3. Если устройство сейчас выбрано — обновляем его состояние
+        if selectedDevice?.ipAddress == ipAddress {
+            selectedDevice?.name = newName
         }
     }
     
-    func stopScanning() {
-        netServiceBrowser.stop()
-        for service in resolvingServices {
-            service.stop()
-        }
-        isScanning = false
-        print("🔍 Поиск завершен. Найдено устройств: \(discoveredDevices.count)")
-        if discoveredDevices.isEmpty {
-            connectionStatus = "Устройства не найдены"
-        } else {
-            connectionStatus = "Найдено устройств: \(discoveredDevices.count)"
+    func removeDevice(at offsets: IndexSet) {
+        savedDevices.remove(atOffsets: offsets)
+        persistSavedDevices()
+    }
+    
+    private func persistSavedDevices() {
+        // Для сохранения структуры в UserDefaults превращаем ее в компактный массив словарей
+        let representation = savedDevices.map { ["name": $0.name, "ip": $0.ipAddress, "port": String($0.port)] }
+        UserDefaults.standard.set(representation, forKey: savedDevicesKey)
+    }
+    
+    private func loadSavedDevices() {
+        guard let rawList = UserDefaults.standard.array(forKey: savedDevicesKey) as? [[String: String]] else { return }
+        self.savedDevices = rawList.compactMap { dict in
+            guard let name = dict["name"], let ip = dict["ip"], let portStr = dict["port"], let port = Int(portStr) else { return nil }
+            return LEDMatrixDevice(name: name, ipAddress: ip, port: port)
         }
     }
+    
+    // MARK: - Сканирование Сети
+    
+    func startScanning() {
+           print("🔍 Начать поиск устройств...")
+           
+           // 1. Обязательно останавливаем прошлый поиск и очищаем ТОЛЬКО системные службы,
+           // чтобы избежать конфликта "handler to 0 from 0"
+           netServiceBrowser.stop()
+           for service in resolvingServices {
+               service.stop()
+           }
+           resolvingServices.removeAll()
+           
+           // ВАЖНО: Массив discoveredDevices НЕ очищаем, чтобы уже найденные матрицы
+           // оставались на экране, даже если сеть их временно потеряла.
+           
+           isScanning = true
+           connectionStatus = "Поиск устройств..."
+           
+           netServiceBrowser.delegate = self
+           netServiceBrowser.searchForServices(ofType: "_http._tcp.", inDomain: "local.")
+           
+           // Тайм-аут поиска через 10 секунд
+           DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+               self?.stopScanning()
+           }
+       }
+       
+       func stopScanning() {
+           netServiceBrowser.stop()
+           for service in resolvingServices {
+               service.stop()
+           }
+           // Очищаем службы, освобождая системные хендлеры iOS
+           resolvingServices.removeAll()
+           
+           isScanning = false
+           
+           let totalCount = savedDevices.count + discoveredDevices.count
+           print("🔍 Поиск завершен. Найдено новых: \(discoveredDevices.count)")
+           if totalCount == 0 {
+               connectionStatus = "Устройства не найдены"
+           } else {
+               connectionStatus = "Устройств доступно: \(totalCount)"
+           }
+       }
     
     // MARK: - NetServiceBrowserDelegate
     nonisolated func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
@@ -168,15 +249,16 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     }
     
     nonisolated func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
-        let name = service.name
+        // Чтобы устройства не исчезали во время сессии, если пропал Bonjour-сигнал,
+        // мы больше не удаляем их из discoveredDevices принудительно внутри didRemove.
         Task { @MainActor in
             service.stop()
             self.resolvingServices.removeAll { $0 === service }
-            self.discoveredDevices.removeAll { $0.name == name }
         }
     }
     
     // MARK: - NetServiceDelegate
+    
     nonisolated func netServiceDidResolveAddress(_ sender: NetService) {
         let name = sender.name
         var addressStr = getIPAddress(from: sender.addresses) ?? ""
@@ -187,10 +269,19 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         
         Task { @MainActor in
             if !cleanAddress.isEmpty {
-                let device = LEDMatrixDevice(name: name, ipAddress: cleanAddress)
-                if !self.discoveredDevices.contains(where: { $0.name == name || $0.ipAddress == cleanAddress }) {
+                // 1. Проверяем, нет ли этого устройства уже в списке СОХРАНЕННЫХ
+                if self.savedDevices.contains(where: { $0.ipAddress == cleanAddress }) {
+                    return // Игнорируем появление в результатах поиска
+                }
+                
+                // 2. Проверяем словарь кастомных имен на случай, если его переименовывали ранее
+                let customNames = UserDefaults.standard.dictionary(forKey: self.customNamesKey) as? [String: String] ?? [:]
+                let finalName = customNames[cleanAddress] ?? name
+                let device = LEDMatrixDevice(name: finalName, ipAddress: cleanAddress)
+                // 3. Добавляем в список найденных, если его там еще нет
+                if !self.discoveredDevices.contains(where: { $0.ipAddress == cleanAddress }) {
                     self.discoveredDevices.append(device)
-                    self.connectionStatus = "Найдено устройств: \(self.discoveredDevices.count)"
+                    self.connectionStatus = "Найдено устройств: (self.savedDevices.count + self.discoveredDevices.count)"
                 }
             }
         }
@@ -205,6 +296,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
                 let sockAddrPtr = addrBase.assumingMemoryBound(to: sockaddr.self)
                 return getnameinfo(sockAddrPtr, socklen_t(address.count), &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST) == 0
             }
+            
             if success {
                 let ip = String(cString: hostname)
                 if !ip.contains(":") { return ip }
@@ -213,17 +305,15 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         return nil
     }
     
-    // MARK: - Запросы и инициализация данных
+// MARK: - Запросы и инициализация данных
+    
     func fetchSettings(for device: LEDMatrixDevice) async {
         self.selectedDevice = device
         self.connectionStatus = "Подключение к \(device.name)..."
-        
         guard let url = URL(string: "http://\(device.ipAddress)/settings") else { return }
-        
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addBasicAuthHeader(to: &request)
-        
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
@@ -234,7 +324,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
                 self.connectionStatus = "Подключено к \(device.name)"
             }
         } catch {
-            print("❌ Ошибка при запросе /settings: \(error)")
+            print("❌ Ошибка при запросе /settings: (error)")
             connectionStatus = "Ошибка соединения"
         }
     }
@@ -242,11 +332,9 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     func fetchWifiSettings(for device: LEDMatrixDevice) async {
         self.selectedDevice = device
         guard let url = URL(string: "http://\(device.ipAddress)/wifi") else { return }
-        
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addBasicAuthHeader(to: &request)
-        
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
@@ -256,7 +344,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
                 self.localWifiPassword = decoded.passwordSet ? passwordPlaceholder : ""
             }
         } catch {
-            print("❌ Ошибка при запросе /wifi: \(error)")
+            print("❌ Ошибка при запросе /wifi: (error)")
         }
     }
     
@@ -264,12 +352,10 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         guard let device = selectedDevice else { return }
         let urlString = "http://\(device.ipAddress)/\(endpoint)"
         guard let url = URL(string: urlString) else { return }
-        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         addBasicAuthHeader(to: &request)
-        
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: params, options: [])
             _ = try await URLSession.shared.data(for: request)
@@ -279,6 +365,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     }
     
     // MARK: - API методы изменений
+    
     func updateSingleBrightness(_ brightness: Int) async {
         settings.brightnessPercent = brightness
         await sendCommand(endpoint: "cmd", params: ["brightness": brightness])
@@ -300,7 +387,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
         let bgComp = UIColor(textBgColor).rgbComponents()
         let textComp = UIColor(textColor).rgbComponents()
         
-        // ИСПРАВЛЕНО: Добавлены обратные слэши для корректной интерполяции данных
+        // ИСПРАВЛЕНО: Строго проверяйте наличие всех \ перед скобками
         let formattedText = "[\(bgComp.0),\(bgComp.1),\(bgComp.2)][\(textComp.0),\(textComp.1),\(textComp.2)]\(textToSend)"
         
         await sendCommand(endpoint: "cmd", params: [
@@ -345,6 +432,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     }
     
     // MARK: - Пикеры Времени (Конвертация String <-> Date)
+    
     var dayStartTimeBinding: Binding<Date> {
         Binding(
             get: { self.parseTime(self.settings.dayStart) },
@@ -411,6 +499,7 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
 
     
     // MARK: - Сохранение форм настроек (Вызывается по кнопке сохранить)
+    
     func saveWifiSettings() async {
         if isWifiSsidChanged {
             await sendCommand(endpoint: "wifi", params: ["ssid": localWifiSsid])
@@ -432,12 +521,14 @@ class MatrixManager: NSObject, ObservableObject, NetServiceBrowserDelegate, NetS
     }
     
     // MARK: - Системные действия
+    
     func deviceRestart() async { await sendCommand(endpoint: "cmd", params: ["action": "restart"]) }
     func deviceResetWifi() async { await sendCommand(endpoint: "cmd", params: ["action": "reset_wifi"]) }
     func deviceResetSettings() async { await sendCommand(endpoint: "cmd", params: ["action": "reset_settings"]) }
     func deviceFactoryReset() async { await sendCommand(endpoint: "cmd", params: ["action": "factory_reset"]) }
     
     // MARK: - Валидация изменений для кнопок сохранения
+    
     var isWifiSsidChanged: Bool { localWifiSsid != wifiSettings.ssid && !localWifiSsid.isEmpty }
     var isWifiPasswordChanged: Bool { wifiSettings.passwordSet ? (localWifiPassword != passwordPlaceholder && !localWifiPassword.isEmpty) : !localWifiPassword.isEmpty }
     var isDivoomEmailChanged: Bool { localDivoomEmail != settings.divoomEmail && !localDivoomEmail.isEmpty }

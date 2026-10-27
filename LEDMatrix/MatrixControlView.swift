@@ -48,7 +48,7 @@ struct TextControlTab: View {
                     HStack {
                         Image(systemName: "sun.max.fill")
                             .foregroundColor(.secondary)
-                        Text("Яркость матрицы : \(manager.settings.brightnessPercent)%")
+                        Text("Яркость матрицы : \((Double(manager.settings.brightnessPercent) / 100.0), format: .percent)")
                             .font(.body)
                         Spacer()
                     }
@@ -289,9 +289,10 @@ struct SettingsInfoFormView: View {
         }
         .navigationTitle("Информация об устройстве")
     }
-    private func row(title: String, value: String) -> some View {
+    
+    private func row(title: LocalizedStringKey, value: String) -> some View {
         HStack {
-            Text(title)
+            Text(title) // Теперь Text сразу понимает, что это ключ локализации
             Spacer()
             Text(value).foregroundColor(.secondary)
         }
@@ -451,7 +452,7 @@ extension Color {
 }
 
 @ViewBuilder
-func actionButton(title: String, color: Color, action: @escaping () -> Void) -> some View {
+func actionButton(title: LocalizedStringKey, color: Color, action: @escaping () -> Void) -> some View {
     Button(action: action) {
         Text(title)
             .bold()
