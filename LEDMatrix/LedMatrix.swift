@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct MyApp: App {
+struct LedMatrix: App {
     var body: some Scene {
         WindowGroup {
             DeviceListView()

@@ -9,7 +9,6 @@
 
 import SwiftUI
 
-
 struct DrawingTab: View {
     @ObservedObject var manager: MatrixManager
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 16)
@@ -19,7 +18,7 @@ struct DrawingTab: View {
     }
     
     @State private var selectedTool: DrawingTool = .brush
-    // Состояние для хранения холста на момент начала текущего штриха/жеста
+    /// Состояние для хранения холста на момент начала текущего штриха/жеста
     @State private var canvasStateBeforeStroke: [Color]? = nil
     
     @Environment(\.scenePhase) private var scenePhase
@@ -100,14 +99,13 @@ struct DrawingTab: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 
-                
                 // СЕТКА 16x16
                 GeometryReader { geometry in
                     let size = min(geometry.size.width, geometry.size.height)
                     
                     VStack {
                         LazyVGrid(columns: columns, spacing: 2) {
-                            ForEach(0..<256, id: \.self) { index in
+                            ForEach(0 ..< 256, id: \.self) { index in
                                 Rectangle()
                                     .fill(manager.drawPixels[index])
                                     .aspectRatio(1, contentMode: .fit)
@@ -140,11 +138,11 @@ struct DrawingTab: View {
                                 }
                                 .onEnded { _ in
                                     // Палец оторван: штрих завершен. Если были изменения, коммитим в историю Undo
-                                    if let prevState = canvasStateBeforeStroke {
-                                        // Проверяем, действительно ли что-то изменилось за время штриха
-                                        if prevState != manager.drawPixels {
-                                            manager.pushCustomStateToUndo(prevState)
-                                        }
+                                    if let prevState = canvasStateBeforeStroke,
+                                       // Проверяем, действительно ли что-то изменилось за время штриха
+                                       prevState != manager.drawPixels
+                                    {
+                                        manager.pushCustomStateToUndo(prevState)
                                     }
                                     canvasStateBeforeStroke = nil
                                     manager.sendDrawFrame()
@@ -159,7 +157,6 @@ struct DrawingTab: View {
                 
                 // КНОПКИ ОТМЕНИТЬ / ПОВТОРИТЬ НАД СЕТКОЙ
                 HStack {
-                    
                     // Кнопка Отменить
                     Button(action: {
                         manager.undoDrawing()
@@ -245,7 +242,7 @@ struct DrawingTab: View {
         }
     }
     
-    // Вспомогательный метод рисования пикселей штриха во время движения пальца
+    /// Вспомогательный метод рисования пикселей штриха во время движения пальца
     private func applyDrawingAt(location: CGPoint, in size: CGFloat) {
         let adjustedX = location.x - 5
         let adjustedY = location.y - 5
@@ -255,7 +252,7 @@ struct DrawingTab: View {
         let col = Int(adjustedX / cellWidth)
         let row = Int(adjustedY / cellWidth)
         
-        if col >= 0 && col < 16 && row >= 0 && row < 16 {
+        if col >= 0, col < 16, row >= 0, row < 16 {
             let targetIndex = row * 16 + col
             let targetColor = (selectedTool == .eraser) ? Color.black : manager.drawBrushColor
             
@@ -268,7 +265,8 @@ struct DrawingTab: View {
     
     private func disableSwipeBack() {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let navController = windowScene.windows.first?.rootViewController?.findNavigationController() {
+           let navController = windowScene.windows.first?.rootViewController?.findNavigationController()
+        {
             navController.interactivePopGestureRecognizer?.isEnabled = false
             navController.interactivePopGestureRecognizer?.delegate = nil
         }
@@ -276,7 +274,8 @@ struct DrawingTab: View {
     
     private func enableSwipeBack() {
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let navController = windowScene.windows.first?.rootViewController?.findNavigationController() {
+           let navController = windowScene.windows.first?.rootViewController?.findNavigationController()
+        {
             navController.interactivePopGestureRecognizer?.isEnabled = true
         }
     }

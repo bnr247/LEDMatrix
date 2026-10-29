@@ -9,7 +9,6 @@
 
 import SwiftUI
 
-
 struct ScreenTab: View {
     @ObservedObject var manager: MatrixManager
     
@@ -24,7 +23,7 @@ struct ScreenTab: View {
                 
                 VStack {
                     LazyVGrid(columns: columns, spacing: currentSpacing) {
-                        ForEach(0..<256, id: \.self) { index in
+                        ForEach(0 ..< 256, id: \.self) { index in
                             Rectangle()
                                 .fill(manager.screenPixels[index])
                                 .aspectRatio(1, contentMode: .fit)

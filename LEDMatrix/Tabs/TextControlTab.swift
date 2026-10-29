@@ -9,18 +9,17 @@
 
 import SwiftUI
 
-
 struct TextControlTab: View {
     @ObservedObject var manager: MatrixManager
-
+    
     var body: some View {
         Form {
-            Section() {
+            Section {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: "sun.max.fill")
                             .foregroundColor(.secondary)
-                        Text("Яркость: \((Double(manager.settings.brightnessPercent) / 100.0), format: .percent)")
+                        Text("Яркость: \(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)")
                             .font(.body)
                         Spacer()
                     }
@@ -38,7 +37,7 @@ struct TextControlTab: View {
             }
             
             Section(header: Text("Бегущая строка")) {
-                TextField("Введите сообщение...",text: $manager.textToSend)
+                TextField("Введите сообщение...", text: $manager.textToSend)
                 ColorPicker("Цвет текста", selection: $manager.textColor, supportsOpacity: false)
                 ColorPicker("Цвет фона", selection: $manager.textBgColor, supportsOpacity: false)
                 
@@ -66,13 +65,5 @@ struct TextControlTab: View {
             Task { await manager.sendCurrentText() }
             hideKeyboard()
         }
-    }
-}
-
-extension View {
-    func hideKeyboard() {
-        #if os(iOS)
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        #endif
     }
 }
