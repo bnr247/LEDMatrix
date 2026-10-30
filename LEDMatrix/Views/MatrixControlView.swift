@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Перечисление всех вкладок
 enum MatrixTab: Int, CaseIterable, Identifiable {
-    case text, clock, drawing, screen, camera, settings
+    case text, clock, drawing, screen, camera, settings, divoom
     var id: Int {
         rawValue
     }
@@ -22,6 +22,7 @@ enum MatrixTab: Int, CaseIterable, Identifiable {
         case .screen: return "Экран"
         case .camera: return "Камера"
         case .settings: return "Настройки"
+        case .divoom: return "Divoom"
         }
     }
     
@@ -33,6 +34,7 @@ enum MatrixTab: Int, CaseIterable, Identifiable {
         case .screen: return "tv"
         case .camera: return "camera.fill"
         case .settings: return "gearshape.fill"
+        case .divoom: return "globe"
         }
     }
 }
@@ -109,6 +111,8 @@ struct MatrixControlView: View {
                     CameraTab(manager: manager)
                 case .settings:
                     SettingsTab(manager: manager)
+                case .divoom:
+                    DivoomTab(manager: manager)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
