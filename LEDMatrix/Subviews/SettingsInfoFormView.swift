@@ -22,15 +22,48 @@ struct SettingsInfoFormView: View {
                 row(title: "Версия HW", value: manager.settings.hwVersion)
                 row(title: "Версия FW", value: manager.settings.fwVersion)
                 row(title: "Запусков", value: "\(manager.settings.bootCount)")
+                row(title: "Последний старт", value: manager.settings.formattedBootTime)
+                row(title: "Время работы", value: manager.settings.formattedUptime)
             }
             Section {
-                VStack(spacing: 16) {
-                    actionButton(title: "Перезагрузить", color: .blue) { activeAction = .restart }
-                    actionButton(title: "Сброс настроек", color: .orange) { activeAction = .resetSettings }
-                    actionButton(title: "Сброс WiFi", color: .orange) { activeAction = .resetWifi }
-                    actionButton(title: "Factory reset", color: .red) { activeAction = .factoryReset }
+                Button(action: {
+                    activeAction = .restart
+                }) {
+                    Label("Перезагрузить", systemImage: "arrow.clockwise")
                 }
-                .listRowBackground(Color.clear)
+                .foregroundStyle(.blue)
+
+                Button(action: {
+                    activeAction = .resetSettings
+                }) {
+                    Label("Сброс настроек", systemImage: "slider.horizontal.2.arrow.trianglehead.counterclockwise")
+                }
+                .foregroundStyle(.orange)
+
+                Button(action: {
+                    activeAction = .resetWifi
+                }) {
+                    Label("Сброс WiFi", systemImage: "wifi")
+                }
+                .foregroundStyle(.orange)
+
+                Button(action: {
+                    activeAction = .factoryReset
+                }) {
+                    Label("Factory reset", systemImage: "exclamationmark.triangle.fill")
+                }
+                .foregroundStyle(.red)
+
+//                    actionButton(title: "Перезагрузить", color: .blue) { activeAction = .restart }
+//                    actionButton(title: "Сброс настроек", color: .orange) { activeAction = .resetSettings }
+//                    actionButton(title: "Сброс WiFi", color: .orange) { activeAction = .resetWifi }
+//                    actionButton(title: "Factory reset", color: .red) { activeAction = .factoryReset }
+            }
+        }
+        .refreshable {
+            // Запрашиваем актуальные настройки по текущему выбранному устройству
+            if let device = manager.selectedDevice {
+                await manager.fetchSettings(for: device)
             }
         }
         .alert(item: $activeAction) { action in

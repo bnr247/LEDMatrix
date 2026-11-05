@@ -22,7 +22,7 @@ extension MatrixManager: NetServiceBrowserDelegate, NetServiceDelegate {
         }
         resolvingServices.removeAll()
         
-        // ВАЖНО: Массив discoveredDevices НЕ очищаем, чтобы уже найденные матрицы
+        // ВАЖНО: Массив discoveredDevices НЕ очищаем, чтобы уже найденные устройства
         // оставались на экране, даже если сеть их временно потеряла.
         
         isScanning = true

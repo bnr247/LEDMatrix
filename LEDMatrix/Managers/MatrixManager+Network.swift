@@ -57,6 +57,28 @@ extension MatrixManager {
         }
     }
     
+    func fetchClockFonts() async -> [ClockFont] {
+        guard let device = selectedDevice,
+              let url = URL(string: "http://\(device.ipAddress)/clock/fonts") else { return [] }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("close", forHTTPHeaderField: "Connection")
+        request.timeoutInterval = 3.0
+        addBasicAuthHeader(to: &request)
+            
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
+            if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
+                return try JSONDecoder().decode([ClockFont].self, from: data)
+            }
+        } catch {
+            print("❌ Ошибка при запросе /clock/fonts: \(error)")
+        }
+        return []
+    }
+    
     /// Добавляем ключевое слово throws, чтобы метод умел пробрасывать ошибки наверх
     func sendCommand(endpoint: String, params: [String: Any]) async throws {
         guard let device = selectedDevice else { return }
@@ -146,7 +168,7 @@ extension MatrixManager {
     }
     
     func updateClockFont(_ font: Int) async {
-        settings.clockFont = font
+        settings.currentClockFontId = font
         try? await self.sendCommand(endpoint: "cmd", params: ["clock_font": font])
     }
     
@@ -179,8 +201,22 @@ extension MatrixManager {
         try? await self.sendCommand(endpoint: "cmd", params: ["show_name_text": showUsername])
     }
     
-    // MARK: - Пикеры Времени (Конвертация String <-> Date)
+    func updateClockDisplaySeconds(_ seconds: Int) async {
+        settings.clockDisplaySeconds = seconds
+        try? await self.sendCommand(endpoint: "cmd", params: ["clock_display_seconds": seconds])
+    }
+
+    func updateAnimationDisplaySeconds(_ seconds: Int) async {
+        settings.animationDisplaySeconds = seconds
+        try? await self.sendCommand(endpoint: "cmd", params: ["animation_display_seconds": seconds])
+    }
     
+    func updateAnimationType(_ animationType: AnimationType) async throws {
+        settings.animationType = animationType
+        try await self.sendCommand(endpoint: "cmd", params: animationType.parameters)
+    }
+    
+    // MARK: - Пикеры Времени (Конвертация String <-> Date)
     var dayStartTimeBinding: Binding<Date> {
         Binding(
             get: { self.parseTime(self.settings.dayStart) },
@@ -231,6 +267,41 @@ extension MatrixManager {
         )
     }
     
+    var clockDisplaySecondsBinding: Binding<Int> {
+        Binding(
+            get: { self.settings.clockDisplaySeconds },
+            set: { newValue in
+                self.settings.clockDisplaySeconds = newValue
+                Task {
+                    try? await self.sendCommand(endpoint: "cmd", params: ["clock_display_seconds": newValue])
+                }
+            }
+        )
+    }
+
+    var animationDisplaySecondsBinding: Binding<Int> {
+        Binding(
+            get: { self.settings.animationDisplaySeconds },
+            set: { newValue in
+                self.settings.animationDisplaySeconds = newValue
+                Task {
+                    try? await self.sendCommand(endpoint: "cmd", params: ["animation_display_seconds": newValue])
+                }
+            }
+        )
+    }
+    
+    var animationTypeBinding: Binding<AnimationType> {
+        Binding(
+            get: { self.settings.animationType ?? .standard },
+            set: { newType in
+                Task {
+                    try? await self.updateAnimationType(newType)
+                }
+            }
+        )
+    }
+    
     /// Вспомогательные методы для работы с форматом ЧЧ:ММ
     private func parseTime(_ timeStr: String) -> Date {
         let formatter = DateFormatter()
@@ -246,7 +317,6 @@ extension MatrixManager {
     }
     
     // MARK: - Сохранение форм настроек (Вызывается по кнопке сохранить)
-
     func saveWifiSettings() async {
         self.isSavingSettings = true
         self.saveErrorMessage = nil
@@ -261,12 +331,8 @@ extension MatrixManager {
                 try await self.sendCommand(endpoint: "wifi", params: ["password": localWifiPassword])
             }
             
-            // Как только ESP32 ответила 200 — МГНОВЕННО фиксируем успех и тушим загрузку
             self.isSaveSuccess = true
             self.isSavingSettings = false
-            
-            // ВАЖНО: Больше никаких скрытых фоновых fetch-запросов, которые вешают UI!
-            // Плата сама применит настройки, а интерфейс уже разблокирован.
             
         } catch {
             print("❌ Ошибка сохранения WiFi: \(error)")
@@ -291,12 +357,8 @@ extension MatrixManager {
                 try await self.sendCommand(endpoint: "cmd", params: ["divoom_password": md5Password])
             }
             
-            // Как только Divoom-настройки улетели — МГНОВЕННО освобождаем интерфейс
             self.isSaveSuccess = true
             self.isSavingSettings = false
-            
-            // Никаких фоновых fetchSettings. Кнопка отвиснет моментально.
-            
         } catch {
             print("❌ Ошибка сохранения Divoom: \(error)")
             self.isSaveSuccess = false
@@ -306,7 +368,6 @@ extension MatrixManager {
     }
     
     // MARK: - Системные действия
-
     func deviceRestart() async {
         try? await self.sendCommand(endpoint: "cmd", params: ["action": "restart"])
     }
@@ -324,7 +385,6 @@ extension MatrixManager {
     }
     
     // MARK: - Валидация изменений для кнопок сохранения
-    
     var isWifiSsidChanged: Bool {
         localWifiSsid != wifiSettings.ssid && !localWifiSsid.isEmpty
     }

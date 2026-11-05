@@ -12,13 +12,13 @@ import SwiftUI
 final class ImageCache {
     static let shared = ImageCache()
     private init() {}
-    
+
     private var cache = NSCache<NSURL, UIImage>()
-    
+
     func image(for url: URL) -> UIImage? {
         return cache.object(forKey: url as NSURL)
     }
-    
+
     func insert(_ image: UIImage, for url: URL) {
         cache.setObject(image, forKey: url as NSURL)
     }
@@ -30,7 +30,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let url: URL?
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
-    
+
     @State private var image: UIImage? = nil
     @State private var isLoading = false
 
@@ -55,7 +55,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
         // 1. Проверяем оперативный кэш (NSCache)
         if let cachedImage = ImageCache.shared.image(for: url) {
-            self.image = cachedImage
+            image = cachedImage
             return
         }
 

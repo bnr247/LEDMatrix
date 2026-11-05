@@ -14,6 +14,34 @@ struct SettingsGeneralFormView: View {
     
     var body: some View {
         Form {
+            Section(header: Text("Время на экране")) {
+                Stepper(value: manager.clockDisplaySecondsBinding, in: 1...86400, step: 10) {
+                    HStack {
+                        Text("Часы (сек.)")
+                        Spacer()
+                        Text("\(manager.settings.clockDisplaySeconds)")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Stepper(value: manager.animationDisplaySecondsBinding, in: 1...86400, step: 10) {
+                    HStack {
+                        Text("Анимации (сек.)")
+                        Spacer()
+                        Text("\(manager.settings.animationDisplaySeconds)")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            
+            Section(header: Text("Тип анимации")) {
+                Picker("Режим", selection: manager.animationTypeBinding) {
+                    Text("Стандартный").tag(AnimationType.standard)
+                    Text("Категории").tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0))
+                    Text("Альбом").tag(AnimationType.album(id: manager.settings.animationType?.id ?? 0))
+                }
+            }
+            
             Section(header: Text("День")) {
                 DatePicker(
                     "Начало",
@@ -28,7 +56,6 @@ struct SettingsGeneralFormView: View {
                     Text("Только анимация").tag("animation_only")
                 }
                 
-                // Перенесенный слайдер яркости для дневного режима
                 VStack(alignment: .leading) {
                     Text("Яркость: \(manager.settings.dayBrightnessPercent)")
                     Slider(
@@ -56,7 +83,6 @@ struct SettingsGeneralFormView: View {
                     Text("Только анимация").tag("animation_only")
                 }
                 
-                // Перенесенный слайдер яркости для ночного режима
                 VStack(alignment: .leading) {
                     Text("Яркость: \(manager.settings.nightBrightnessPercent)")
                     Slider(

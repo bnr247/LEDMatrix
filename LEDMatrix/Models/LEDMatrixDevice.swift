@@ -33,12 +33,14 @@ struct MatrixSettings: Codable {
     var nightDeviceMode: String = ""
     var deviceMode: String = ""
     var showNameText: Bool = false
-    var clockFont: Int = 0
+    var currentClockFontId: Int = 0
     var scrollSpeedFps: Int = 0
     var scrollRepeatCount: Int = 0
     var bootCount: Int = 0
     var divoomEmail: String = ""
-    var divoomPasswordSet: Bool = false
+    var divoomPassword: String = ""
+    var divoomUserId: Int = 0
+    var divoomToken: Int = 0
     var macAddress: String = ""
     var hostName: String = ""
     var ipAddress: String = ""
@@ -48,6 +50,11 @@ struct MatrixSettings: Codable {
     var minutesColorHex: String = ""
     var colonColorHex: String = ""
     var bgColorHex: String = ""
+    var clockDisplaySeconds: Int = 0
+    var animationDisplaySeconds: Int = 0
+    var animationTypeString: String? = ""
+    var animationTypeId: Int? = 0
+    var uptime: Int = 0
 
     enum CodingKeys: String, CodingKey {
         case brightnessPercent = "brightness"
@@ -59,12 +66,14 @@ struct MatrixSettings: Codable {
         case nightDeviceMode = "night_device_mode"
         case deviceMode = "device_mode"
         case showNameText = "show_name_text"
-        case clockFont = "clock_font"
+        case currentClockFontId = "current_clock_font_id"
         case scrollSpeedFps = "scroll_speed_fps"
         case scrollRepeatCount = "scroll_repeat_count"
         case bootCount = "boot_count"
         case divoomEmail = "divoom_email"
-        case divoomPasswordSet = "divoom_password_set"
+        case divoomPassword = "divoom_password"
+        case divoomUserId = "divoom_user_id"
+        case divoomToken = "divoom_token"
         case macAddress = "mac_address"
         case hostName = "hostname"
         case ipAddress = "ip_address"
@@ -74,7 +83,66 @@ struct MatrixSettings: Codable {
         case minutesColorHex = "minutes_color_hex"
         case colonColorHex = "colon_color_hex"
         case bgColorHex = "bg_color_hex"
+        case clockDisplaySeconds = "clock_display_seconds"
+        case animationDisplaySeconds = "animation_display_seconds"
+        case animationTypeString = "animation_type"
+        case animationTypeId = "animation_id"
+        case uptime
     }
+
+    var animationType: AnimationType? {
+        get {
+            guard let type = animationTypeString else { return nil }
+            let id = animationTypeId ?? 0
+            switch type {
+            case "category": return .category(id: id)
+            case "album": return .album(id: id)
+            case "standard": return .standard
+            default: return nil
+            }
+        }
+        set {
+            animationTypeString = newValue?.typeKey
+            animationTypeId = newValue?.id
+        }
+    }
+
+    var divoomPasswordSet: Bool {
+        !divoomPassword.isEmpty
+    }
+
+    var formattedUptime: String {
+        let currentEpoch = Int(Date().timeIntervalSince1970)
+        let totalSeconds = currentEpoch - uptime
+        guard totalSeconds > 0 else { return "0 сек." }
+
+        let days = totalSeconds / 86400
+        let hours = (totalSeconds % 86400) / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        var components: [String] = []
+        if days > 0 {
+            components.append("\(days) дн.")
+        }
+        if days > 0 || hours > 0 {
+            components.append("\(hours) ч")
+        }
+        if days > 0 || hours > 0 || minutes > 0 {
+            components.append("\(minutes) мин.")
+        }
+        components.append("\(seconds) сек.")
+
+        return components.joined(separator: " ")
+    }
+    
+    var formattedBootTime: String {
+            guard uptime > 0 else { return "—" }
+            let date = Date(timeIntervalSince1970: TimeInterval(uptime))
+            let formatter = DateFormatter()
+            formatter.dateFormat = "dd.MM.yyyy HH:mm"
+            return formatter.string(from: date)
+        }
 }
 
 struct MatrixWifiSettings: Codable {

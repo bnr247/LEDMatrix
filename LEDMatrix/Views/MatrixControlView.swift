@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-/// Перечисление всех вкладок
+/// Перечисление всех вкладок (без divoom)
 enum MatrixTab: Int, CaseIterable, Identifiable {
-    case text, clock, drawing, screen, camera, settings, divoom
+    case text, clock, drawing, screen, camera, settings
     var id: Int {
         rawValue
     }
@@ -22,7 +22,6 @@ enum MatrixTab: Int, CaseIterable, Identifiable {
         case .screen: return "Экран"
         case .camera: return "Камера"
         case .settings: return "Настройки"
-        case .divoom: return "Divoom"
         }
     }
     
@@ -34,7 +33,6 @@ enum MatrixTab: Int, CaseIterable, Identifiable {
         case .screen: return "tv"
         case .camera: return "camera.fill"
         case .settings: return "gearshape.fill"
-        case .divoom: return "globe"
         }
     }
 }
@@ -111,8 +109,6 @@ struct MatrixControlView: View {
                     CameraTab(manager: manager)
                 case .settings:
                     SettingsTab(manager: manager)
-                case .divoom:
-                    DivoomTab(manager: manager)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -122,6 +118,11 @@ struct MatrixControlView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
+                    // Кнопка перехода в Divoom галерею (с двумя вкладками внутри: Категории и Альбомы)
+                    NavigationLink(destination: DivoomMainView(manager: manager)) {
+                        Label("Divoom", systemImage: "globe")
+                    }
+                    
                     Button(action: {
                         newDeviceName = device.name
                         isRenameAlertPresented = true

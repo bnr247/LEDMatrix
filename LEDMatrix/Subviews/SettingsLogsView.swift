@@ -32,7 +32,7 @@ struct SettingsLogsView: View {
                         .foregroundColor(Color(red: 0.17, green: 1, blue: 0)) // Зеленый #b7f7b7
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
-                        // ХИТРОСТЬ: Переворачиваем сам текст обратно, чтобы он читался нормально
+                        // Переворачиваем сам текст обратно, чтобы он читался нормально
                         .rotationEffect(.radians(.pi))
                         .scaleEffect(x: -1, y: 1, anchor: .center)
                 }
