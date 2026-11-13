@@ -14,7 +14,7 @@ struct DivoomAnimationResult {
     let rawSpeed: UInt16
     let swappedSpeed: UInt16
     let speedMs: Int
-    let firstByte: UInt8 // Первый байт самого файла (тип из бинарника)
+    let firstByte: UInt8
 }
 
 enum DivoomAnimationLoader {
@@ -36,20 +36,18 @@ enum DivoomAnimationLoader {
     static func parseAnimationData(_ responseData: Data) -> DivoomAnimationResult? {
         guard responseData.count > 0 else { return nil }
         
-        let firstByte = responseData[0] // Запоминаем первый байт файла
+        let firstByte = responseData[0]
         let fileType = firstByte
         let headerLength: Int
         let isEncrypted: Bool
         var rawSpeed: UInt16 = 100
         
-        // Читаем скорость из 4-го байта заголовка (индекс 3), если в файле достаточно данных
         let speedFromByte4: UInt16? = responseData.count >= 4 ? UInt16(responseData[3]) : nil
         
         switch fileType {
         case 0x0c:
             headerLength = 4
             isEncrypted = true
-            // Скорость берем из 4-го байта (индекс 3), если он есть и не равен 0
             if let s4 = speedFromByte4, s4 > 0 {
                 rawSpeed = s4
             } else if responseData.count >= 4 {
@@ -76,13 +74,13 @@ enum DivoomAnimationLoader {
                 rawSpeed = UInt16(responseData[1])
             }
         case 8:
-            headerLength = 1
+            headerLength = 1 // 1 байт заголовка (только тип)
             isEncrypted = true
-            rawSpeed = 100
+            rawSpeed = 10000 // 10 секунд (10000 мс) для статичной картинки
         case 3:
-            headerLength = 1
+            headerLength = 1 // 1 байт заголовка (только тип)
             isEncrypted = false
-            rawSpeed = 100
+            rawSpeed = 10000 // 10 секунд (10000 мс) для статичной картинки
         default:
             headerLength = 4
             isEncrypted = true
@@ -94,40 +92,51 @@ enum DivoomAnimationLoader {
         let swappedSpeed = (rawSpeed >> 8) | (rawSpeed << 8)
         let speedMs = Int(rawSpeed)
         
-        guard responseData.count >= headerLength else { return nil }
+        guard responseData.count > headerLength else { return nil }
         
-        let payloadData = responseData.advanced(by: headerLength)
+        let payloadData = Data(responseData[headerLength...])
+        guard !payloadData.isEmpty else { return nil }
         
         let processedPayload: Data
         if isEncrypted {
             let keyHex = "37386872657932337932386F67733839"
             let ivHex = "31323334353637383930313233343536"
             
-            guard let keyData = hexToData(keyHex),
-                  let ivData = hexToData(ivHex),
-                  let decrypted = aes128Decrypt(data: payloadData, key: keyData, iv: ivData)
-            else {
-                return nil
+            // Безопасное дешифрование с фоллбеком на raw payload, если файл не зашифрован
+            if let keyData = hexToData(keyHex),
+               let ivData = hexToData(ivHex),
+               let decrypted = aes128Decrypt(data: payloadData, key: keyData, iv: ivData)
+            {
+                processedPayload = decrypted
+            } else {
+                processedPayload = payloadData
             }
-            processedPayload = decrypted
         } else {
             processedPayload = payloadData
         }
         
-        // Получаем кадры в зависимости от типа анимации
         let framesData: [Data]
         if fileType == 0x0c {
             let direction = responseData.count > 1 ? responseData[1] : 0x02
             framesData = generateSeamlessScrollFrames(from: processedPayload, direction: direction)
         } else {
             let frameSize = 768
-            let totalFrames = processedPayload.count / frameSize
+            var workingPayload = processedPayload
+            if workingPayload.count < frameSize {
+                workingPayload.append(Data(repeating: 0, count: frameSize - workingPayload.count))
+            }
+            
+            let totalFrames = workingPayload.count / frameSize
             var extracted: [Data] = []
-            for i in 0..<totalFrames {
+            for i in 0..<max(1, totalFrames) {
                 let start = i * frameSize
                 let end = start + frameSize
-                if end <= processedPayload.count {
-                    extracted.append(processedPayload.subdata(in: start..<end))
+                if end <= workingPayload.count {
+                    extracted.append(workingPayload.subdata(in: start..<end))
+                } else if start < workingPayload.count {
+                    var chunk = workingPayload.subdata(in: start..<workingPayload.count)
+                    chunk.append(Data(repeating: 0, count: frameSize - chunk.count))
+                    extracted.append(chunk)
                 }
             }
             framesData = extracted
@@ -148,10 +157,27 @@ enum DivoomAnimationLoader {
         
         guard !images.isEmpty else { return nil }
         
-        let frameDuration = Double(speedMs) / 1000.0
-        let totalDuration = frameDuration * Double(images.count)
+        let totalDuration: Double = (fileType == 8 || fileType == 3) ? 10.0 : (Double(speedMs) / 1000.0 * Double(images.count))
         
-        guard let finalImage = UIImage.animatedImage(with: images, duration: totalDuration) else { return nil }
+        if images.count == 1 {
+            return DivoomAnimationResult(
+                image: images.first!,
+                rawSpeed: rawSpeed,
+                swappedSpeed: swappedSpeed,
+                speedMs: speedMs,
+                firstByte: firstByte
+            )
+        }
+        
+        guard let finalImage = UIImage.animatedImage(with: images, duration: totalDuration) else {
+            return DivoomAnimationResult(
+                image: images.first!,
+                rawSpeed: rawSpeed,
+                swappedSpeed: swappedSpeed,
+                speedMs: speedMs,
+                firstByte: firstByte
+            )
+        }
         
         return DivoomAnimationResult(
             image: finalImage,
@@ -162,66 +188,65 @@ enum DivoomAnimationLoader {
         )
     }
     
-    /// Алгоритм генерации кадров с зацикливанием для прокрутки (тип 0C)
     private static func generateSeamlessScrollFrames(from payload: Data, direction: UInt8) -> [Data] {
         let width = 16
         let height = 16
         let bytesPerPixel = 3
-        let frameSize = width * height * bytesPerPixel // 768 байт на кадр
-        let rowStride = width * bytesPerPixel // 48 байт на строку
+        let frameSize = width * height * bytesPerPixel
+        let rowStride = width * bytesPerPixel
         
         var frames: [Data] = []
+        guard payload.count >= rowStride * height else { return [] }
         
         if direction == 0x02 {
-            // Снизу вверх: построчный сдвиг полотна
             let totalRows = payload.count / rowStride
             guard totalRows >= height else { return [] }
             
             for startRow in 0..<totalRows {
                 var frameData = Data(count: frameSize)
                 frameData.withUnsafeMutableBytes { destBytes in
-                    let destBase = destBytes.baseAddress!
+                    guard let destBase = destBytes.baseAddress else { return }
                     payload.withUnsafeBytes { srcBytes in
-                        let srcBase = srcBytes.baseAddress!
+                        guard let srcBase = srcBytes.baseAddress else { return }
                         for r in 0..<height {
                             let currentRow = (startRow + r) % totalRows
                             let srcOffset = currentRow * rowStride
                             let destOffset = r * rowStride
-                            memcpy(destBase.advanced(by: destOffset), srcBase.advanced(by: srcOffset), rowStride)
+                            if srcOffset + rowStride <= payload.count, destOffset + rowStride <= frameSize {
+                                memcpy(destBase.advanced(by: destOffset), srcBase.advanced(by: srcOffset), rowStride)
+                            }
                         }
                     }
                 }
                 frames.append(frameData)
             }
         } else if direction == 0x01 {
-            // Справа налево / Слева направо: плавный попиксельный сдвиг по соединенным блокам (768 байт)
             let numBlocks = payload.count / frameSize
             guard numBlocks > 0 else { return [] }
-            let totalWidthInPixels = numBlocks * width // Общая ширина всех блоков в пикселях
+            let totalWidthInPixels = numBlocks * width
             
             for startCol in 0..<totalWidthInPixels {
                 var frameData = Data(count: frameSize)
                 frameData.withUnsafeMutableBytes { destBytes in
-                    let destBase = destBytes.baseAddress!
+                    guard let destBase = destBytes.baseAddress else { return }
                     payload.withUnsafeBytes { srcBytes in
-                        let srcBase = srcBytes.baseAddress!
+                        guard let srcBase = srcBytes.baseAddress else { return }
                         
                         for r in 0..<height {
                             let rowDestOffset = r * rowStride
                             for x in 0..<width {
-                                // Вычисляем глобальную колонку с учетом зацикливания
                                 let globalCol = (startCol + x) % totalWidthInPixels
                                 let blockIndex = globalCol / width
                                 let localX = globalCol % width
                                 
-                                // Смещение нужного пикселя в расшифрованном payload
                                 let pixelSrcOffset = blockIndex * frameSize + r * rowStride + localX * bytesPerPixel
                                 let pixelDestOffset = rowDestOffset + x * bytesPerPixel
                                 
-                                // Копируем 3 байта RGB
-                                destBase.storeBytes(of: srcBase.load(fromByteOffset: pixelSrcOffset, as: UInt8.self), toByteOffset: pixelDestOffset, as: UInt8.self)
-                                destBase.storeBytes(of: srcBase.load(fromByteOffset: pixelSrcOffset + 1, as: UInt8.self), toByteOffset: pixelDestOffset + 1, as: UInt8.self)
-                                destBase.storeBytes(of: srcBase.load(fromByteOffset: pixelSrcOffset + 2, as: UInt8.self), toByteOffset: pixelDestOffset + 2, as: UInt8.self)
+                                if pixelSrcOffset + 2 < payload.count, pixelDestOffset + 2 < frameSize {
+                                    destBase.storeBytes(of: srcBase.load(fromByteOffset: pixelSrcOffset, as: UInt8.self), toByteOffset: pixelDestOffset, as: UInt8.self)
+                                    destBase.storeBytes(of: srcBase.load(fromByteOffset: pixelSrcOffset + 1, as: UInt8.self), toByteOffset: pixelDestOffset + 1, as: UInt8.self)
+                                    destBase.storeBytes(of: srcBase.load(fromByteOffset: pixelSrcOffset + 2, as: UInt8.self), toByteOffset: pixelDestOffset + 2, as: UInt8.self)
+                                }
                             }
                         }
                     }
@@ -229,7 +254,6 @@ enum DivoomAnimationLoader {
                 frames.append(frameData)
             }
         } else {
-            // Дефолтная нарезка по 768 байт
             let totalFrames = payload.count / frameSize
             for i in 0..<totalFrames {
                 let start = i * frameSize
@@ -244,63 +268,78 @@ enum DivoomAnimationLoader {
     }
     
     private static func aes128Decrypt(data: Data, key: Data, iv: Data) -> Data? {
-        let count = data.count
-        var decryptedData = Data(count: count + kCCBlockSizeAES128)
-        let bufferSize = decryptedData.count
-        var numBytesDecrypted: size_t = 0
-        
-        let status = data.withUnsafeBytes { dataBytes in
-            key.withUnsafeBytes { keyBytes in
-                iv.withUnsafeBytes { ivBytes in
-                    decryptedData.withUnsafeMutableBytes { decryptedBytes in
-                        CCCrypt(
-                            CCOperation(kCCDecrypt),
-                            CCAlgorithm(kCCAlgorithmAES),
-                            CCOptions(kCCOptionPKCS7Padding),
-                            keyBytes.baseAddress,
-                            key.count,
-                            ivBytes.baseAddress,
-                            dataBytes.baseAddress,
-                            count,
-                            decryptedBytes.baseAddress,
-                            bufferSize,
-                            &numBytesDecrypted
-                        )
+            let count = data.count
+            // Жесткая защита: размер данных должен быть в разумных пределах
+            guard count > 0, count < 10000000 else { return nil }
+                
+            // Безопасное вычисление размера буфера с защитой от переполнения (integer overflow)
+            let (bufferSize, overflow) = count.addingReportingOverflow(kCCBlockSizeAES128)
+            guard !overflow, bufferSize > 0 else { return nil }
+                
+            var decryptedData = Data(count: bufferSize)
+            var numBytesDecrypted: size_t = 0
+                
+            let status = data.withUnsafeBytes { dataBytes in
+                key.withUnsafeBytes { keyBytes in
+                    iv.withUnsafeBytes { ivBytes in
+                        decryptedData.withUnsafeMutableBytes { decryptedBytes in
+                            CCCrypt(
+                                CCOperation(kCCDecrypt),
+                                CCAlgorithm(kCCAlgorithmAES),
+                                CCOptions(kCCOptionPKCS7Padding),
+                                keyBytes.baseAddress,
+                                key.count,
+                                ivBytes.baseAddress,
+                                dataBytes.baseAddress,
+                                count,
+                                decryptedBytes.baseAddress,
+                                bufferSize,
+                                &numBytesDecrypted
+                            )
+                        }
                     }
                 }
             }
+                
+            guard status == kCCSuccess else { return nil }
+            
+            // Защита от некорректного размера расшифрованных данных
+            guard numBytesDecrypted <= decryptedData.count else { return nil }
+            
+            decryptedData.removeSubrange(numBytesDecrypted..<decryptedData.count)
+            return decryptedData
         }
-        
-        guard status == kCCSuccess else { return nil }
-        decryptedData.removeSubrange(numBytesDecrypted..<decryptedData.count)
-        return decryptedData
-    }
     
     private static func createImage(from frameData: Data, targetSize: CGSize) -> UIImage? {
         let width = 16
         let height = 16
         
+        guard frameData.count >= width * height * 3 else { return nil }
+        
         var rgbBytes = [UInt8](repeating: 0, count: width * height * 4)
         
-        for y in 0..<height {
-            for x in 0..<width {
-                let srcX = x
-                let srcY = 15 - y
-                
-                let pixelIndex = srcY * width + srcX
-                let byteOffset = pixelIndex * 3
-                
-                guard byteOffset + 2 < frameData.count else { continue }
-                
-                let r = frameData[byteOffset]
-                let g = frameData[byteOffset + 1]
-                let b = frameData[byteOffset + 2]
-                
-                let destOffset = (y * width + x) * 4
-                rgbBytes[destOffset] = r
-                rgbBytes[destOffset + 1] = g
-                rgbBytes[destOffset + 2] = b
-                rgbBytes[destOffset + 3] = 255
+        frameData.withUnsafeBytes { srcPtr in
+            guard let srcBase = srcPtr.baseAddress else { return }
+            for y in 0..<height {
+                for x in 0..<width {
+                    let srcX = x
+                    let srcY = 15 - y
+                    
+                    let pixelIndex = srcY * width + srcX
+                    let byteOffset = pixelIndex * 3
+                    
+                    guard byteOffset + 2 < frameData.count else { continue }
+                    
+                    let r = srcBase.load(fromByteOffset: byteOffset, as: UInt8.self)
+                    let g = srcBase.load(fromByteOffset: byteOffset + 1, as: UInt8.self)
+                    let b = srcBase.load(fromByteOffset: byteOffset + 2, as: UInt8.self)
+                    
+                    let destOffset = (y * width + x) * 4
+                    rgbBytes[destOffset] = r
+                    rgbBytes[destOffset + 1] = g
+                    rgbBytes[destOffset + 2] = b
+                    rgbBytes[destOffset + 3] = 255
+                }
             }
         }
         

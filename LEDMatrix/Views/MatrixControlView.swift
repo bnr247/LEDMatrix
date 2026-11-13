@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-/// Перечисление всех вкладок (без divoom)
+/// Перечисление вкладок управления устройством (без вкладки настроек в горизонтальном баре)
 enum MatrixTab: Int, CaseIterable, Identifiable {
-    case text, clock, drawing, screen, camera, settings
+    case text, clock, drawing, screen, camera
     var id: Int {
         rawValue
     }
@@ -21,7 +21,6 @@ enum MatrixTab: Int, CaseIterable, Identifiable {
         case .drawing: return "Рисование"
         case .screen: return "Экран"
         case .camera: return "Камера"
-        case .settings: return "Настройки"
         }
     }
     
@@ -32,21 +31,30 @@ enum MatrixTab: Int, CaseIterable, Identifiable {
         case .drawing: return "paintpalette"
         case .screen: return "tv"
         case .camera: return "camera.fill"
-        case .settings: return "gearshape.fill"
         }
     }
+}
+
+/// Главные разделы экрана устройства
+enum MainRootTab: String, CaseIterable, Identifiable {
+    case device = "Устройство"
+    case divoom = "Divoom"
+    
+    var id: String { rawValue }
 }
 
 struct MatrixControlView: View {
     @ObservedObject var manager: MatrixManager
     let device: LEDMatrixDevice
     
-    /// Активная вкладка (по умолчанию — Текст)
+    /// Корневая вкладка (Устройство / Divoom)
+    @State private var selectedRootTab: MainRootTab = .device
+    
+    /// Активная вкладка устройства (по умолчанию — Текст)
     @State private var selectedTab: MatrixTab = .text
     
-    // Состояния для переименования внутри экрана устройства
-    @State private var isRenameAlertPresented = false
-    @State private var newDeviceName = ""
+    /// Флаг отображения вкладки настроек (открывается по кнопке-шестеренке)
+    @State private var isShowingSettingsTab = false
     
     // ПРЕДОХРАНИТЕЛЬ: Гарантирует, что сеть дергается строго ОДИН раз при входе на экран
     @State private var hasLoadedData = false
@@ -56,101 +64,117 @@ struct MatrixControlView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // ВЕРХНЯЯ ПРОКРУЧИВАЕМАЯ ПАНЕЛЬ ВКЛАДОК (Scrollable Tab Bar)
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(MatrixTab.allCases) { tab in
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedTab = tab
+            // Переключаем контент в зависимости от выбранного главного раздела в NavigationBar
+            Group {
+                if selectedRootTab == .device {
+                    // Контент управления устройством
+                    VStack(spacing: 0) {
+                        // Если открыта вкладка настроек, показываем её, иначе горизонтальный бар вкладок и контент
+                        if isShowingSettingsTab {
+                            SettingsView(manager: manager)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            // ВЕРХНЯЯ ПРОКРУЧИВАЕМАЯ ПАНЕЛЬ ВКЛАДОК (Scrollable Tab Bar)
+                            ScrollViewReader { proxy in
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(MatrixTab.allCases) { tab in
+                                            Button(action: {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    selectedTab = tab
+                                                }
+                                            }) {
+                                                HStack(spacing: 6) {
+                                                    Image(systemName: tab.icon)
+                                                    Text(tab.title)
+                                                }
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .padding(.horizontal, 14)
+                                                .padding(.vertical, 8)
+                                                .background(selectedTab == tab ? Color.accentColor : Color(UIColor.secondarySystemBackground))
+                                                .foregroundColor(selectedTab == tab ? .white : .primary)
+                                                .clipShape(Capsule())
+                                            }
+                                            .id(tab)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
                                 }
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: tab.icon)
-                                    Text(tab.title)
+                                .background(Color(UIColor.systemBackground))
+                                .onChange(of: selectedTab) { _, newTab in
+                                    withAnimation {
+                                        proxy.scrollTo(newTab, anchor: .center)
+                                    }
                                 }
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(selectedTab == tab ? Color.accentColor : Color(UIColor.secondarySystemBackground))
-                                .foregroundColor(selectedTab == tab ? .white : .primary)
-                                .clipShape(Capsule())
                             }
-                            .id(tab)
+                            
+                            Divider()
+                            
+                            // КОНТЕНТ АКТИВНОЙ ВКЛАДКИ УСТРОЙСТВА
+                            Group {
+                                switch selectedTab {
+                                case .text:
+                                    TextControlTab(manager: manager)
+                                case .clock:
+                                    ClockSettingsTab(manager: manager)
+                                case .drawing:
+                                    DrawingTab(manager: manager)
+                                case .screen:
+                                    ScreenTab(manager: manager)
+                                case .camera:
+                                    CameraTab(manager: manager)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                }
-                .background(Color(UIColor.systemBackground))
-                .onChange(of: selectedTab) { _, newTab in
-                    withAnimation {
-                        proxy.scrollTo(newTab, anchor: .center)
-                    }
-                }
-            }
-            
-            Divider()
-            
-            // КОНТЕНТ АКТИВНОЙ ВКЛАДКИ
-            Group {
-                switch selectedTab {
-                case .text:
-                    TextControlTab(manager: manager)
-                case .clock:
-                    ClockSettingsTab(manager: manager)
-                case .drawing:
-                    DrawingTab(manager: manager)
-                case .screen:
-                    ScreenTab(manager: manager)
-                case .camera:
-                    CameraTab(manager: manager)
-                case .settings:
-                    SettingsTab(manager: manager)
+                } else {
+                    // Вкладка Divoom (DivoomMainView)
+                    DivoomMainView(manager: manager)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle(device.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Размещаем переключатель «Устройство / Divoom» по центру
+            ToolbarItem(placement: .principal) {
+                Picker("Раздел", selection: $selectedRootTab) {
+                    ForEach(MainRootTab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 200)
+                .onChange(of: selectedRootTab) { _, newTab in
+                    // Скрываем вкладку настроек устройства при переключении на Divoom
+                    if newTab == .divoom {
+                        isShowingSettingsTab = false
+                    }
+                }
+            }
+            
+            // Кнопка настроек отображается только во вкладке «Устройство»
             ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    // Кнопка перехода в Divoom галерею (с двумя вкладками внутри: Категории и Альбомы)
-                    NavigationLink(destination: DivoomMainView(manager: manager)) {
-                        Label("Divoom", systemImage: "globe")
-                    }
-                    
+                if selectedRootTab == .device {
                     Button(action: {
-                        newDeviceName = device.name
-                        isRenameAlertPresented = true
+                        withAnimation {
+                            isShowingSettingsTab.toggle()
+                        }
                     }) {
-                        Label("Переименовать", systemImage: "pencil")
+                        Image(systemName: isShowingSettingsTab ? "xmark.circle.fill" : "gearshape.fill")
+                            .font(.body)
+                            .foregroundColor(isShowingSettingsTab ? .accentColor : .primary)
                     }
-                } label: {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.body)
                 }
             }
         }
-        // Диалоговое окно переименования устройства
-        .alert("Переименовать устройство", isPresented: $isRenameAlertPresented) {
-            TextField("Новое название", text: $newDeviceName)
-            Button("Сохранить") {
-                manager.renameDevice(ipAddress: device.ipAddress, newName: newDeviceName)
-            }
-            Button("Отмена", role: .cancel) {}
-        }
         .onAppear {
-            // 1. Сразу закрепляем устройство за менеджером, чтобы IP был доступен для UserDefaults
             manager.selectedDevice = device
-            
-            // 2. Загружаем локальные сохраненные настройки для этой конкретной матрицы
             manager.loadSettingsForCurrentDevice()
             
-            // Если данные уже загружались — мгновенно выходим, не забивая сокеты ESP32
             guard !hasLoadedData else { return }
             hasLoadedData = true
             
@@ -163,12 +187,9 @@ struct MatrixControlView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
-                // Обычное сворачивание — отправляем стандартный метод
                 Task {
                     manager.emergencyStopDrawing()
                 }
-            } else if newPhase == .inactive {
-                // При закрытии приложения или уходе в неактивное состояние перед убийством
             }
         }
     }

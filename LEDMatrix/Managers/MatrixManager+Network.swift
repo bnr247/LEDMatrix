@@ -172,16 +172,28 @@ extension MatrixManager {
         try? await self.sendCommand(endpoint: "cmd", params: ["clock_font": font])
     }
     
-    func updateClockHoursColor(_ color: Color) async {
+    func updateClockHoursColor1(_ color: Color) async {
         let hex = UIColor(color).toHex() ?? "0064FF"
-        settings.hoursColorHex = hex
-        try? await self.sendCommand(endpoint: "cmd", params: ["hours_color_hex": hex])
+        settings.hoursColor1Hex = hex
+        try? await self.sendCommand(endpoint: "cmd", params: ["hours_color_1_hex": hex])
     }
     
-    func updateClockMinutesColor(_ color: Color) async {
+    func updateClockHoursColor2(_ color: Color) async {
         let hex = UIColor(color).toHex() ?? "0064FF"
-        settings.minutesColorHex = hex
-        try? await self.sendCommand(endpoint: "cmd", params: ["minutes_color_hex": hex])
+        settings.hoursColor2Hex = hex
+        try? await self.sendCommand(endpoint: "cmd", params: ["hours_color_2_hex": hex])
+    }
+    
+    func updateClockMinutesColor1(_ color: Color) async {
+        let hex = UIColor(color).toHex() ?? "0064FF"
+        settings.minutesColor1Hex = hex
+        try? await self.sendCommand(endpoint: "cmd", params: ["minutes_color_1_hex": hex])
+    }
+    
+    func updateClockMinutesColor2(_ color: Color) async {
+        let hex = UIColor(color).toHex() ?? "0064FF"
+        settings.minutesColor2Hex = hex
+        try? await self.sendCommand(endpoint: "cmd", params: ["minutes_color_2_hex": hex])
     }
     
     func updateClockColonColor(_ color: Color) async {
@@ -217,6 +229,7 @@ extension MatrixManager {
     }
     
     // MARK: - Пикеры Времени (Конвертация String <-> Date)
+
     var dayStartTimeBinding: Binding<Date> {
         Binding(
             get: { self.parseTime(self.settings.dayStart) },
@@ -293,7 +306,7 @@ extension MatrixManager {
     
     var animationTypeBinding: Binding<AnimationType> {
         Binding(
-            get: { self.settings.animationType ?? .standard },
+            get: { self.settings.animationType ?? .standard(sortOrder: 0) },
             set: { newType in
                 Task {
                     try? await self.updateAnimationType(newType)
@@ -317,6 +330,7 @@ extension MatrixManager {
     }
     
     // MARK: - Сохранение форм настроек (Вызывается по кнопке сохранить)
+
     func saveWifiSettings() async {
         self.isSavingSettings = true
         self.saveErrorMessage = nil
@@ -348,13 +362,12 @@ extension MatrixManager {
         self.isSaveSuccess = false
         
         do {
-            if self.isDivoomEmailChanged {
-                try await self.sendCommand(endpoint: "cmd", params: ["divoom_email": localDivoomEmail])
-            }
-            
-            if self.isDivoomPasswordChanged {
+            if self.isDivoomEmailChanged || self.isDivoomPasswordChanged {
                 let md5Password = localDivoomPassword.md5Hex()
-                try await self.sendCommand(endpoint: "cmd", params: ["divoom_password": md5Password])
+                try await self.sendCommand(endpoint: "cmd", params:
+                                            ["divoom_email": localDivoomEmail,
+                                             "divoom_password": md5Password
+                                            ])
             }
             
             self.isSaveSuccess = true
@@ -368,6 +381,7 @@ extension MatrixManager {
     }
     
     // MARK: - Системные действия
+
     func deviceRestart() async {
         try? await self.sendCommand(endpoint: "cmd", params: ["action": "restart"])
     }
@@ -385,6 +399,7 @@ extension MatrixManager {
     }
     
     // MARK: - Валидация изменений для кнопок сохранения
+
     var isWifiSsidChanged: Bool {
         localWifiSsid != wifiSettings.ssid && !localWifiSsid.isEmpty
     }

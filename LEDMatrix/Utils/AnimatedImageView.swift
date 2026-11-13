@@ -8,17 +8,102 @@
 import SwiftUI
 import UIKit
 
-struct AnimatedImageView: UIViewRepresentable {
+struct AnimatedImageView: View {
+    @ObservedObject var manager: MatrixManager
+    let item: DivoomFileItem
+    let image: UIImage?
+
+    @State private var isLiked: Bool
+    @State private var likeCount: Int
+
+    init(manager: MatrixManager, item: DivoomFileItem, image: UIImage?) {
+        self.manager = manager
+        self.item = item
+        self.image = image
+        _isLiked = State(initialValue: (item.IsLike ?? 0) == 1)
+        _likeCount = State(initialValue: item.LikeCnt ?? 0)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Как в галерее iOS: квадратная миниатюра 1:1, заполняющая всю ширину колонки
+            AnimatedImageRepresentable(image: image)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+                .background(Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            
+            // Нижняя плашка (как подпись/инфо в iOS Фото)
+            HStack(spacing: 0) {
+                Button(action: {
+                    toggleLike()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: isLiked ? "heart.fill" : "heart")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(isLiked ? .red : .gray)
+                        Text("\(likeCount)")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Spacer(minLength: 0)
+                
+                if let commentCnt = item.CommentCnt {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.right.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                        Text("\(commentCnt)")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 28)
+            .background(Color.black.opacity(0.85))
+        }
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func toggleLike() {
+        let newIsLiked = !isLiked
+        let oldIsLiked = isLiked
+        let oldLikeCount = likeCount
+
+        isLiked = newIsLiked
+        likeCount = newIsLiked ? oldLikeCount + 1 : max(0, oldLikeCount - 1)
+
+        guard let galleryId = item.GalleryId, !galleryId.isEmpty else { return }
+
+        Task {
+            do {
+                try await manager.toggleDivoomLike(galleryId: galleryId, isLike: newIsLiked ? 1 : 0)
+            } catch {
+                await MainActor.run {
+                    isLiked = oldIsLiked
+                    likeCount = oldLikeCount
+                }
+            }
+        }
+    }
+}
+
+struct AnimatedImageRepresentable: UIViewRepresentable {
     let image: UIImage?
 
     func makeUIView(context: Context) -> UIView {
-        // Создаем нейтральный контейнер-обертку без intrinsic size,
-        // чтобы он строго подчинялся ограничениям SwiftUI (.frame)
         let container = UIView()
         container.backgroundColor = .black
         container.clipsToBounds = true
         
         let imageView = UIImageView()
+        imageView.backgroundColor = .black
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         imageView.layer.magnificationFilter = .nearest
@@ -27,7 +112,6 @@ struct AnimatedImageView: UIViewRepresentable {
         
         container.addSubview(imageView)
         
-        // Тонкая темно-серая сетка поверх пикселей
         let gridOverlayView = PixelGridView()
         gridOverlayView.backgroundColor = .clear
         gridOverlayView.isUserInteractionEnabled = false
@@ -35,7 +119,6 @@ struct AnimatedImageView: UIViewRepresentable {
         
         container.addSubview(gridOverlayView)
         
-        // Жестко привязываем UIImageView и сетку к краям контейнера
         NSLayoutConstraint.activate([
             imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -48,18 +131,27 @@ struct AnimatedImageView: UIViewRepresentable {
             gridOverlayView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
         
+        updateImageView(imageView, with: image)
         return container
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        // Находим наш UIImageView внутри контейнера
         guard let imageView = uiView.subviews.first(where: { $0 is UIImageView }) as? UIImageView else { return }
-        
+        updateImageView(imageView, with: image)
+    }
+
+    private func updateImageView(_ imageView: UIImageView, with image: UIImage?) {
         imageView.image = image
         if let image = image, let frames = image.images {
-            imageView.animationImages = frames
-            imageView.animationDuration = image.duration
-            imageView.startAnimating()
+            let safeFrames = frames.compactMap { $0 }
+            if !safeFrames.isEmpty {
+                imageView.animationImages = safeFrames
+                imageView.animationDuration = image.duration
+                imageView.startAnimating()
+            } else {
+                imageView.stopAnimating()
+                imageView.animationImages = nil
+            }
         } else {
             imageView.stopAnimating()
             imageView.animationImages = nil
@@ -67,7 +159,6 @@ struct AnimatedImageView: UIViewRepresentable {
     }
 }
 
-/// Кастомный UIView для отрисовки тонкой темно-серой сетки 16x16 пикселей
 private class PixelGridView: UIView {
     override func draw(_ rect: CGRect) {
         guard rect.width > 0, rect.height > 0 else { return }
@@ -80,14 +171,12 @@ private class PixelGridView: UIView {
         let dx = rect.width / CGFloat(cols)
         let dy = rect.height / CGFloat(rows)
         
-        // Рисуем вертикальные линии сетки
         for i in 1..<cols {
             let x = CGFloat(i) * dx
             context?.move(to: CGPoint(x: x, y: 0))
             context?.addLine(to: CGPoint(x: x, y: rect.height))
         }
         
-        // Рисуем горизонтальные линии сетки
         for j in 1..<rows {
             let y = CGFloat(j) * dy
             context?.move(to: CGPoint(x: 0, y: y))

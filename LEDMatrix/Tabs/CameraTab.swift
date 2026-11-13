@@ -11,8 +11,10 @@ import SwiftUI
 
 struct CameraTab: View {
     @ObservedObject var manager: MatrixManager
-    @State private var cameraController = CameraStreamController(); @State private var showAlert = false
-    @State private var alertMessage = ""
+    @State private var cameraController = CameraStreamController()
+    @State private var isStreaming = false
+    @State private var toastMessage: String? = nil
+    @State private var flashOpacity: Double = 0.0 // Состояние прозрачности для эффекта вспышки
     
     @Environment(\.scenePhase) private var scenePhase
     
@@ -40,6 +42,13 @@ struct CameraTab: View {
                 }
                 .frame(width: size, height: size)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Накладываем белый экран поверх сетки с плавным затуханием
+                .overlay(
+                    Rectangle()
+                        .fill(Color.white)
+                        .cornerRadius(10)
+                        .opacity(flashOpacity)
+                )
             }
             .aspectRatio(1, contentMode: .fit)
             .padding(.horizontal, 10)
@@ -51,73 +60,124 @@ struct CameraTab: View {
             }
             .padding(.horizontal, 20)
             
-            // Панель кнопок: Сменить камеру / Сделать снимок
-            HStack(spacing: 16) {
+            // Панель кнопок управления трансляцией и снимками
+            VStack(spacing: 12) {
                 Button(action: {
-                    cameraController.switchCamera()
-                    manager.isUsingFrontCamera.toggle()
-                }) {
-                    Label("Переключить", systemImage: "camera.rotate.fill")
-                        .bold()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.bordered)
-                
-                Button(action: {
-                    // Генерируем картинку с учетом текущего состояния тумблера сетки
-                    if let finalImage = manager.generateCapturedImage(withGrid: manager.showCameraGrid) {
-                        UIImageWriteToSavedPhotosAlbum(finalImage, nil, nil, nil)
-                        alertMessage = manager.showCameraGrid ? "Снимок с сеткой сохранен в галерею!" : "Снимок без сетки сохранен в галерею!"
-                        // showAlert = true
+                    isStreaming.toggle()
+                    if isStreaming {
+                        manager.isCameraActive = true
+                        cameraController.onFrameCaptured = { image in
+                            manager.processCameraImage(image)
+                        }
+                        cameraController.startSession()
+                        Task {
+                            try? await manager.sendCommand(endpoint: "draw", params: ["enabled": true])
+                        }
+                    } else {
+                        manager.isCameraActive = false
+                        cameraController.stopSession()
+                        Task {
+                            await manager.stopDrawing()
+                        }
                     }
                 }) {
-                    Label("Снимок", systemImage: "camera.circle.fill")
+                    Label(isStreaming ? "Остановить трансляцию" : "Начать трансляцию", systemImage: isStreaming ? "stop.fill" : "play.fill")
                         .bold()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(isStreaming ? .red : .accentColor)
+                
+                HStack(spacing: 16) {
+                    Button(action: {
+                        cameraController.switchCamera()
+                        manager.isUsingFrontCamera.toggle()
+                    }) {
+                        Label("Переключить", systemImage: "camera.rotate.fill")
+                            .bold()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!isStreaming)
+                    
+                    Button(action: {
+                        guard isStreaming else { return }
+                        if let finalImage = manager.generateCapturedImage(withGrid: manager.showCameraGrid) {
+                            UIImageWriteToSavedPhotosAlbum(finalImage, nil, nil, nil)
+                            
+                            // Запуск эффекта вспышки белого экрана с плавным затуханием на 500 мс
+                            flashOpacity = 1.0
+                            withAnimation(.easeOut(duration: 0.5)) {
+                                flashOpacity = 0.0
+                            }
+                            
+                            showToast(message: "Сохранено в галерею")
+                        }
+                    }) {
+                        Label("Снимок", systemImage: "camera.circle.fill")
+                            .bold()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!isStreaming)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 120)
         }
         .background(Color(UIColor.systemGroupedBackground))
-        .alert("Галерея", isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(alertMessage)
-        }
-        .onAppear {
-            manager.isCameraActive = true
-            cameraController.onFrameCaptured = { image in
-                manager.processCameraImage(image)
-            }
-            cameraController.startSession()
-            Task {
-                try? await manager.sendCommand(endpoint: "draw", params: ["enabled": true])
+        .overlay(alignment: .bottom) {
+            if let message = toastMessage {
+                Text(message)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.85))
+                    .cornerRadius(20)
+                    .shadow(radius: 4)
+                    .padding(.bottom, 140)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut, value: toastMessage)
             }
         }
         .onDisappear {
-            manager.isCameraActive = false
-            cameraController.stopSession()
-            
-            Task {
-                await manager.stopDrawing()
+            if isStreaming {
+                isStreaming = false
+                manager.isCameraActive = false
+                cameraController.stopSession()
+                
+                Task {
+                    await manager.stopDrawing()
+                }
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
-            guard manager.isCameraActive else { return }
+            guard isStreaming else { return }
             if newPhase == .background {
                 cameraController.stopSession()
             } else if newPhase == .active {
-                // Возвращаемся из фонового режима: перезапускаем камеру и снова включаем режим рисования на плате
                 cameraController.onFrameCaptured = { image in
                     manager.processCameraImage(image)
                 }
                 cameraController.startSession()
                 Task {
                     try? await manager.sendCommand(endpoint: "draw", params: ["enabled": true])
+                }
+            }
+        }
+    }
+    
+    private func showToast(message: String) {
+        toastMessage = message
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run {
+                if toastMessage == message {
+                    toastMessage = nil
                 }
             }
         }

@@ -16,6 +16,7 @@ struct DivoomAlbumDetailView: View {
     
     var body: some View {
         DivoomUniversalGridView(
+            title: album.AlbumName,
             manager: manager,
             fetchItems: { start, end, sort in
                 let response = try await manager.fetchDivoomAlbumImages(
@@ -27,8 +28,8 @@ struct DivoomAlbumDetailView: View {
                 )
                 return (response.FileList ?? [], response.CurListNum ?? response.FileList?.count ?? 0)
             },
-            onPlayTapped: {
-                sendAlbumCommand()
+            onPlayTapped: { sort in
+               let _ = sendAlbumCommand(sort: sort)
             }
         )
         .navigationTitle(album.AlbumName)
@@ -41,12 +42,12 @@ struct DivoomAlbumDetailView: View {
         }
     }
     
-    private func sendAlbumCommand() {
+    private func sendAlbumCommand(sort: Int) {
         let albumIdInt = Int(album.AlbumId) ?? 0
         
         Task {
             do {
-                try await manager.updateAnimationType(.album(id: albumIdInt))
+                try await manager.updateAnimationType(.album(id: albumIdInt, sortOrder: sort))
                 
                 await MainActor.run {
                     self.alertMessage = "\(album.AlbumName) воспроизводится на устройстве"

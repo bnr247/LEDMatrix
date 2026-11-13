@@ -7,19 +7,25 @@
 
 import Foundation
 
-/// Для стабильной работы ForEach id должен быть привязан к уникальному IP,
-/// так как UUID() генерировался бы заново при каждом создании объекта.
-struct LEDMatrixDevice: Identifiable, Equatable {
-    var id: String {
-        ipAddress
-    }
-
+struct LEDMatrixDevice: Identifiable, Codable, Equatable {
+    let id: String
     var name: String
     var ipAddress: String
     var port: Int = 80
 
     var url: URL? {
         URL(string: "http://\(ipAddress):\(port)")
+    }
+
+    init(id: String = UUID().uuidString, name: String, ipAddress: String, port: Int = 80) {
+        self.id = id
+        self.name = name
+        self.ipAddress = ipAddress
+        self.port = port
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, ipAddress = "ip", port
     }
 }
 
@@ -46,14 +52,17 @@ struct MatrixSettings: Codable {
     var ipAddress: String = ""
     var hwVersion: String = ""
     var fwVersion: String = ""
-    var hoursColorHex: String = ""
-    var minutesColorHex: String = ""
+    var hoursColor1Hex: String = ""
+    var hoursColor2Hex: String = ""
+    var minutesColor1Hex: String = ""
+    var minutesColor2Hex: String = ""
     var colonColorHex: String = ""
     var bgColorHex: String = ""
     var clockDisplaySeconds: Int = 0
     var animationDisplaySeconds: Int = 0
-    var animationTypeString: String? = ""
+    var animationTypeInt: Int? = 0
     var animationTypeId: Int? = 0
+    var animationSortOrder: Int? = 0
     var uptime: Int = 0
 
     enum CodingKeys: String, CodingKey {
@@ -79,30 +88,36 @@ struct MatrixSettings: Codable {
         case ipAddress = "ip_address"
         case hwVersion = "hw_version"
         case fwVersion = "fw_version"
-        case hoursColorHex = "hours_color_hex"
-        case minutesColorHex = "minutes_color_hex"
+        case hoursColor1Hex = "hours_color_1_hex"
+        case hoursColor2Hex = "hours_color_2_hex"
+        case minutesColor1Hex = "minutes_color_1_hex"
+        case minutesColor2Hex = "minutes_color_2_hex"
         case colonColorHex = "colon_color_hex"
         case bgColorHex = "bg_color_hex"
         case clockDisplaySeconds = "clock_display_seconds"
         case animationDisplaySeconds = "animation_display_seconds"
-        case animationTypeString = "animation_type"
+        case animationTypeInt = "animation_type"
         case animationTypeId = "animation_id"
+        case animationSortOrder = "animation_sort_order"
         case uptime
     }
 
     var animationType: AnimationType? {
         get {
-            guard let type = animationTypeString else { return nil }
+            guard let type = animationTypeInt else { return nil }
             let id = animationTypeId ?? 0
+            let sortOrder = animationSortOrder ?? 0
             switch type {
-            case "category": return .category(id: id)
-            case "album": return .album(id: id)
-            case "standard": return .standard
+            case 0: return .standard(sortOrder: sortOrder)
+            case 1: return .category(id: id, sortOrder: sortOrder)
+            case 2: return .album(id: id, sortOrder: sortOrder)
+            case 3: return .playlist(id: id, sortOrder: sortOrder)
+            case 4: return .likes(sortOrder: sortOrder)
             default: return nil
             }
         }
         set {
-            animationTypeString = newValue?.typeKey
+            animationTypeInt = newValue?.typeKey
             animationTypeId = newValue?.id
         }
     }
@@ -123,7 +138,7 @@ struct MatrixSettings: Codable {
 
         var components: [String] = []
         if days > 0 {
-            components.append("\(days) дн.")
+            components.append("\(days) д.")
         }
         if days > 0 || hours > 0 {
             components.append("\(hours) ч")
@@ -135,14 +150,14 @@ struct MatrixSettings: Codable {
 
         return components.joined(separator: " ")
     }
-    
+
     var formattedBootTime: String {
-            guard uptime > 0 else { return "—" }
-            let date = Date(timeIntervalSince1970: TimeInterval(uptime))
-            let formatter = DateFormatter()
-            formatter.dateFormat = "dd.MM.yyyy HH:mm"
-            return formatter.string(from: date)
-        }
+        guard uptime > 0 else { return "—" }
+        let date = Date(timeIntervalSince1970: TimeInterval(uptime))
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd.MM.yyyy HH:mm"
+        return formatter.string(from: date)
+    }
 }
 
 struct MatrixWifiSettings: Codable {

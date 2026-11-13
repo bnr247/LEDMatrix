@@ -16,27 +16,85 @@ import UIKit
 class MatrixManager: NSObject, ObservableObject {
     @Published var discoveredDevices: [LEDMatrixDevice] = []
     @Published var savedDevices: [LEDMatrixDevice] = []
-    
+        
     @Published var selectedDevice: LEDMatrixDevice?
     @Published var settings = MatrixSettings()
     @Published var wifiSettings = MatrixWifiSettings()
     @Published var isScanning = false
     @Published var connectionStatus = "Не подключено"
-    
+        
     @Published var isSavingSettings = false
     @Published var isSaveSuccess = false
     @Published var saveErrorMessage: String? = nil
+        
+    // Новые состояния для проверки доступности перед входом
+    @Published var isConnectingToDevice = false
+    @Published var connectionErrorAlert: String? = nil
+        
+    /// Ассоциируем настройки исключительно с уникальным ID устройства
+    private var deviceKeyPrefix: String {
+        guard let deviceId = selectedDevice?.id else { return "matrix_default_" }
+        return "matrix_\(deviceId)_"
+    }
+    
+    // Словарь статусов доступности устройств [ID устройства: доступно ли в сети]
+        @Published var deviceReachabilityStatus: [String: Bool] = [:]
+        @Published var isCheckingReachability = false
+
+        /// Проверка доступности всех сохраненных устройств
+        func checkAllSavedDevicesReachability() async {
+            isCheckingReachability = true
+            
+            // Параллельно проверяем каждое сохраненное устройство
+            let statuses: [(String, Bool)] = await withTaskGroup(of: (String, Bool).self) { group in
+                for device in savedDevices {
+                    group.addTask {
+                        let isReachable = await self.isDeviceReachable(device)
+                        return (device.id, isReachable)
+                    }
+                }
+                
+                var results: [(String, Bool)] = []
+                for await result in group {
+                    results.append(result)
+                }
+                return results
+            }
+            
+            await MainActor.run {
+                for (id, status) in statuses {
+                    self.deviceReachabilityStatus[id] = status
+                }
+                self.isCheckingReachability = false
+            }
+        }
+
+        /// Единичная проверка доступности устройства
+        private func isDeviceReachable(_ device: LEDMatrixDevice) async -> Bool {
+            guard let url = URL(string: "http://\(device.ipAddress):\(device.port)/settings") else { return false }
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 2.0
+            addBasicAuthHeader(to: &request)
+            
+            do {
+                let config = URLSessionConfiguration.ephemeral
+                let session = URLSession(configuration: config)
+                let (_, response) = try await session.data(for: request)
+                if let httpResp = response as? HTTPURLResponse {
+                    return (200...299).contains(httpResp.statusCode) || httpResp.statusCode == 401
+                }
+                return false
+            } catch {
+                return false
+            }
+        }
     
     // MARK: - Состояния Вкладок Управления (с привязкой к выбранному устройству)
     
     /// Флаг, чтобы UserDefaults не перезаписывали значения во время программной загрузки
     private var isRestoringSettings = false
-    
-    private var deviceKeyPrefix: String {
-        guard let ip = selectedDevice?.ipAddress else { return "matrix_default_" }
-        return "matrix_\(ip)_"
-    }
-    
+
     @Published var textToSend: String = ""
     @Published var textColor: Color = .init(hex: "800080") {
         didSet {
@@ -178,45 +236,42 @@ class MatrixManager: NSObject, ObservableObject {
     // MARK: - Управление Сохранением и Переименованием
 
     func saveDevice(_ device: LEDMatrixDevice) {
-        // Проверяем, нет ли уже такого устройства в сохраненных
-        if !savedDevices.contains(where: { $0.ipAddress == device.ipAddress }) {
+        // Проверяем уникальность по id, а не по IP-адресу
+        if let index = savedDevices.firstIndex(where: { $0.id == device.id }) {
+            savedDevices[index].ipAddress = device.ipAddress // обновляем IP, если он изменился
+        } else if !savedDevices.contains(where: { $0.id == device.id }) {
             savedDevices.append(device)
-            persistSavedDevices()
         }
-        // Удаляем из списка найденных, так как оно теперь перешло в категорию сохраненных
-        discoveredDevices.removeAll { $0.ipAddress == device.ipAddress }
+        persistSavedDevices()
+        discoveredDevices.removeAll { $0.id == device.id }
     }
-    
-    func renameDevice(ipAddress: String, newName: String) {
-        // 1. Обновляем имя в списке сохраненных
-        if let index = savedDevices.firstIndex(where: { $0.ipAddress == ipAddress }) {
+        
+    func renameDevice(id: String, newName: String) {
+        if let index = savedDevices.firstIndex(where: { $0.id == id }) {
             savedDevices[index].name = newName
             persistSavedDevices()
         }
-        
-        // 2. Сохраняем маппинг "IP -> Кастомное имя", чтобы при повторном поиске имя подтягивалось
+            
         var customNames = UserDefaults.standard.dictionary(forKey: customNamesKey) as? [String: String] ?? [:]
-        customNames[ipAddress] = newName
+        customNames[id] = newName
         UserDefaults.standard.set(customNames, forKey: customNamesKey)
-        
-        // 3. Если устройство сейчас выбрано — обновляем его состояние
-        if selectedDevice?.ipAddress == ipAddress {
+            
+        if selectedDevice?.id == id {
             selectedDevice?.name = newName
         }
     }
-    
+        
     func removeDevice(at offsets: IndexSet) {
         for index in offsets {
             guard savedDevices.indices.contains(index) else { continue }
             let deviceToRemove = savedDevices[index]
-            
-            // 1. Очищаем кастомное имя из UserDefaults по IP-адресу
+                
             var customNames = UserDefaults.standard.dictionary(forKey: customNamesKey) as? [String: String] ?? [:]
-            customNames.removeValue(forKey: deviceToRemove.ipAddress)
+            customNames.removeValue(forKey: deviceToRemove.id)
             UserDefaults.standard.set(customNames, forKey: customNamesKey)
-            
-            // 2. НОВОЕ: Полностью удаляем все сохраненные настройки этой матрицы из UserDefaults
-            let prefix = "matrix_\(deviceToRemove.ipAddress)_"
+                
+            // Удаляем настройки, привязанные к уникальному ID устройства
+            let prefix = "matrix_\(deviceToRemove.id)_"
             UserDefaults.standard.removeObject(forKey: prefix + "saved_text_to_send")
             UserDefaults.standard.removeObject(forKey: prefix + "saved_text_color")
             UserDefaults.standard.removeObject(forKey: prefix + "saved_text_bgcolor")
@@ -224,24 +279,61 @@ class MatrixManager: NSObject, ObservableObject {
             UserDefaults.standard.removeObject(forKey: prefix + "saved_scroll_repeat")
             UserDefaults.standard.removeObject(forKey: prefix + "saved_show_grid")
         }
-        
-        // 3. Удаляем из списка и сохраняем актуальный массив
+            
         savedDevices.remove(atOffsets: offsets)
         persistSavedDevices()
     }
-    
-    private func persistSavedDevices() {
-        // Для сохранения структуры в UserDefaults превращаем ее в компактный массив словарей
-        let representation = savedDevices.map { ["name": $0.name, "ip": $0.ipAddress, "port": String($0.port)] }
+        
+    func persistSavedDevices() {
+        let representation = savedDevices.map { ["id": $0.id, "name": $0.name, "ip": $0.ipAddress, "port": String($0.port)] }
         UserDefaults.standard.set(representation, forKey: savedDevicesKey)
     }
-    
+        
     private func loadSavedDevices() {
         guard let rawList = UserDefaults.standard.array(forKey: savedDevicesKey) as? [[String: String]] else { return }
         savedDevices = rawList.compactMap { dict in
-            guard let name = dict["name"], let ip = dict["ip"], let portStr = dict["port"], let port = Int(portStr) else { return nil }
-            return LEDMatrixDevice(name: name, ipAddress: ip, port: port)
+            guard let id = dict["id"] ?? dict["ip"], // поддержка обратной совместимости со старыми записями
+                  let name = dict["name"], let ip = dict["ip"], let portStr = dict["port"], let port = Int(portStr) else { return nil }
+            return LEDMatrixDevice(id: id, name: name, ipAddress: ip, port: port)
         }
+    }
+        
+    /// Проверка доступности устройства в сети перед входом
+    func selectAndVerifyDevice(_ device: LEDMatrixDevice) async -> Bool {
+        isConnectingToDevice = true
+        connectionErrorAlert = nil
+            
+        guard let url = URL(string: "http://\(device.ipAddress):\(device.port)/settings") else {
+            isConnectingToDevice = false
+            connectionErrorAlert = "Некорректный адрес устройства."
+            return false
+        }
+            
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 3.0
+        addBasicAuthHeader(to: &request)
+            
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            let session = URLSession(configuration: config)
+            let (_, response) = try await session.data(for: request)
+                
+            if let httpResp = response as? HTTPURLResponse, (200 ... 299).contains(httpResp.statusCode) || httpResp.statusCode == 401 {
+                await MainActor.run {
+                    self.selectedDevice = device
+                    self.loadSettingsForCurrentDevice()
+                    self.isConnectingToDevice = false
+                }
+                return true
+            }
+        } catch {
+            print("❌ Устройство недоступно: \(error)")
+        }
+            
+        isConnectingToDevice = false
+        connectionErrorAlert = "Устройство «\(device.name)» добавлено, но недоступно в сети."
+        return false
     }
     
     // MARK: - OTA-Обновление

@@ -24,14 +24,24 @@ struct ClockSettingsTab: View {
             }
 
             Section(header: Text("Цветовая гамма часов")) {
-                ColorPicker("Цвет часов", selection: Binding(
-                    get: { Color(hex: manager.settings.hoursColorHex) },
-                    set: { newValue in Task { await manager.updateClockHoursColor(newValue) } }
+                ColorPicker("Час 1", selection: Binding(
+                    get: { Color(hex: manager.settings.hoursColor1Hex) },
+                    set: { newValue in Task { await manager.updateClockHoursColor1(newValue) } }
                 ), supportsOpacity: false)
 
-                ColorPicker("Цвет минут", selection: Binding(
-                    get: { Color(hex: manager.settings.minutesColorHex) },
-                    set: { newValue in Task { await manager.updateClockMinutesColor(newValue) } }
+                ColorPicker("Час 2", selection: Binding(
+                    get: { Color(hex: manager.settings.hoursColor2Hex) },
+                    set: { newValue in Task { await manager.updateClockHoursColor2(newValue) } }
+                ), supportsOpacity: false)
+
+                ColorPicker("Минута 1", selection: Binding(
+                    get: { Color(hex: manager.settings.minutesColor1Hex) },
+                    set: { newValue in Task { await manager.updateClockMinutesColor1(newValue) } }
+                ), supportsOpacity: false)
+
+                ColorPicker("Минута 2", selection: Binding(
+                    get: { Color(hex: manager.settings.minutesColor2Hex) },
+                    set: { newValue in Task { await manager.updateClockMinutesColor2(newValue) } }
                 ), supportsOpacity: false)
 
                 ColorPicker("Цвет разделителя", selection: Binding(

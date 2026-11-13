@@ -14,25 +14,63 @@ struct DeviceListView: View {
     @State private var itemIndicesToDelete: IndexSet? = nil
     @State private var isDeleteAlertPresented = false
     
+    // Отсортированный массив: доступные устройства первыми, недоступные — в конце
+        private var sortedSavedDevices: [LEDMatrixDevice] {
+            manager.savedDevices.sorted { device1, device2 in
+                let is1Reachable = manager.deviceReachabilityStatus[device1.id] ?? true // по умолчанию до проверки считаем доступным
+                let is2Reachable = manager.deviceReachabilityStatus[device2.id] ?? true
+                
+                if is1Reachable == is2Reachable {
+                    return device1.name < device2.name
+                }
+                return is1Reachable && !is2Reachable // true (доступные) идут раньше false (недоступных)
+            }
+        }
+    
     var body: some View {
         NavigationStack {
             List {
                 // СЕКЦИЯ 1: Добавленные пользователем устройства
                 if !manager.savedDevices.isEmpty {
-                    Section(header: Text("Мои устройства")) {
-                        ForEach(manager.savedDevices) { device in
-                            NavigationLink(destination: MatrixControlView(manager: manager, device: device)) {
-                                VStack(alignment: .leading) {
-                                    Text(device.name)
-                                        .font(.headline)
-                                    Text(device.ipAddress)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                    Section(header: HStack {
+                        Text("Мои устройства")
+                        if manager.isCheckingReachability {
+                            Spacer()
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                    }) {
+                        ForEach(sortedSavedDevices) { device in
+                            let isReachable = manager.deviceReachabilityStatus[device.id] ?? true
+                            
+                            Group {
+                                if isReachable {
+                                    // Доступное устройство — полноценный кликабельный переход
+                                    NavigationLink(destination: MatrixControlView(manager: manager, device: device)
+                                        .onAppear {
+                                            manager.selectedDevice = device
+                                            manager.loadSettingsForCurrentDevice()
+                                        }
+                                    ) {
+                                        deviceRowContent(device: device, isReachable: true)
+                                    }
+                                } else {
+                                    // Недоступное устройство — серое и заблокированное для клика
+                                    deviceRowContent(device: device, isReachable: false)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            // Опционально: можно показать подсказку, что устройство оффлайн
+                                        }
                                 }
                             }
                         }
                         .onDelete { indexSet in
-                            itemIndicesToDelete = indexSet
+                            // Пересчитываем индексы с учетом сортировки
+                            let devicesToDelete = indexSet.map { sortedSavedDevices[$0] }
+                            let originalIndices = IndexSet(devicesToDelete.compactMap { dev in
+                                manager.savedDevices.firstIndex(where: { $0.id == dev.id })
+                            })
+                            itemIndicesToDelete = originalIndices
                             isDeleteAlertPresented = true
                         }
                     }
@@ -67,6 +105,9 @@ struct DeviceListView: View {
                             
                             Button("Добавить") {
                                 manager.saveDevice(device)
+                                Task {
+                                    await manager.checkAllSavedDevicesReachability()
+                                }
                             }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
@@ -82,10 +123,17 @@ struct DeviceListView: View {
                 }
             }
             .navigationTitle("Список устройств")
+            .refreshable {
+                await manager.checkAllSavedDevicesReachability()
+                manager.startScanning()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         manager.startScanning()
+                        Task {
+                            await manager.checkAllSavedDevicesReachability()
+                        }
                     }) {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -93,8 +141,10 @@ struct DeviceListView: View {
             }
             .onAppear {
                 manager.startScanning()
+                Task {
+                    await manager.checkAllSavedDevicesReachability()
+                }
             }
-            // Диалог подтверждения удаления устройства с динамическим именем
             .alert("Удаление устройства", isPresented: $isDeleteAlertPresented) {
                 Button("Удалить", role: .destructive) {
                     if let indices = itemIndicesToDelete {
@@ -117,5 +167,25 @@ struct DeviceListView: View {
                 }
             }
         }
+    }
+    
+    @ViewBuilder
+    private func deviceRowContent(device: LEDMatrixDevice, isReachable: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.name)
+                    .font(.headline)
+                    .foregroundColor(isReachable ? .primary : .secondary)
+                Text(isReachable ? device.ipAddress : "\(device.ipAddress) (недоступно)")
+                    .font(.subheadline)
+                    .foregroundColor(isReachable ? .secondary : .gray.opacity(0.8))
+            }
+            Spacer()
+            if !isReachable {
+                Image(systemName: "wifi.slash")
+                    .foregroundColor(.gray)
+            }
+        }
+        .opacity(isReachable ? 1.0 : 0.5) // Визуально делаем полупрозрачным (серым)
     }
 }

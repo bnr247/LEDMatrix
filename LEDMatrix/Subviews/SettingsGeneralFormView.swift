@@ -36,9 +36,11 @@ struct SettingsGeneralFormView: View {
             
             Section(header: Text("Тип анимации")) {
                 Picker("Режим", selection: manager.animationTypeBinding) {
-                    Text("Стандартный").tag(AnimationType.standard)
-                    Text("Категории").tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0))
-                    Text("Альбом").tag(AnimationType.album(id: manager.settings.animationType?.id ?? 0))
+                    Text("Стандартный").tag(AnimationType.standard(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Категории").tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Альбом").tag(AnimationType.album(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Избранное").tag(AnimationType.likes(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Плейлист").tag(AnimationType.playlist(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
                 }
             }
             

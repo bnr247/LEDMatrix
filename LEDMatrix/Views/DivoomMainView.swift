@@ -10,8 +10,22 @@ import SwiftUI
 enum DivoomSection: String, CaseIterable, Identifiable {
     case categories = "Категории"
     case albums = "Альбомы"
+    case favorites = "Избранное"
+    case playlists = "Плейлисты"
+    case authors = "Авторы"
+
     var id: String {
         rawValue
+    }
+
+    var iconName: String {
+        switch self {
+        case .categories: return "square.grid.2x2"
+        case .albums: return "photo.stack"
+        case .playlists: return "list.bullet"
+        case .favorites: return "heart.fill"
+        case .authors: return "person.2"
+        }
     }
 }
 
@@ -20,25 +34,42 @@ struct DivoomMainView: View {
     @State private var selectedSection: DivoomSection = .categories
 
     var body: some View {
-        Group {
-            if selectedSection == .categories {
-                DivoomCategoriesView(manager: manager)
-            } else {
-                DivoomTab(manager: manager)
-            }
+        TabView(selection: $selectedSection) {
+            DivoomCategoriesView(manager: manager)
+                .tabItem {
+                    Label(DivoomSection.categories.rawValue, systemImage: DivoomSection.categories.iconName)
+                }
+                .tag(DivoomSection.categories)
+            
+            DivoomAlbumsView(manager: manager)
+                .tabItem {
+                    Label(DivoomSection.albums.rawValue, systemImage: DivoomSection.albums.iconName)
+                }
+                .tag(DivoomSection.albums)
+            
+            DivoomLikesView(manager: manager)
+                .tabItem {
+                    Label(DivoomSection.favorites.rawValue, systemImage: DivoomSection.favorites.iconName)
+                }
+                .tag(DivoomSection.favorites)
+            
+            DivoomPlaylistsView(manager: manager)
+                .tabItem {
+                    Label(DivoomSection.playlists.rawValue, systemImage: DivoomSection.playlists.iconName)
+                }
+                .tag(DivoomSection.playlists)
+            
+            Text("Авторы")
+                .font(.title2)
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .tabItem {
+                    Label(DivoomSection.authors.rawValue, systemImage: DivoomSection.authors.iconName)
+                }
+                .tag(DivoomSection.authors)
         }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            // Сегментированный переключатель в центре шапки
-            ToolbarItem(placement: .principal) {
-                Picker("Раздел", selection: $selectedSection) {
-                    ForEach(DivoomSection.allCases) { section in
-                        Text(section.rawValue).tag(section)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 200)
-            }
-        }
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 }

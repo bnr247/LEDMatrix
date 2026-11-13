@@ -54,6 +54,9 @@ extension MatrixManager: NetServiceBrowserDelegate, NetServiceDelegate {
         } else {
             connectionStatus = "Устройств доступно: \(totalCount)"
         }
+        Task {
+            await self.checkAllSavedDevicesReachability()
+        }
     }
     
     // MARK: - NetServiceBrowserDelegate
@@ -89,23 +92,32 @@ extension MatrixManager: NetServiceBrowserDelegate, NetServiceDelegate {
             addressStr = host.trimmingCharacters(in: CharacterSet(charactersIn: "."))
         }
         let cleanAddress = addressStr.components(separatedBy: "%").first ?? addressStr
-        
+            
+        // Формируем стабильный уникальный ID на основе имени хоста или сервиса
+        let deviceId = sender.hostName?.trimmingCharacters(in: CharacterSet(charactersIn: ".")) ?? name
+            
         Task { @MainActor in
             if !cleanAddress.isEmpty {
-                // 1. Проверяем, нет ли этого устройства уже в списке СОХРАНЕННЫХ
-                if self.savedDevices.contains(where: { $0.ipAddress == cleanAddress }) {
-                    return // Игнорируем появление в результатах поиска
+                // 1. Проверяем в сохраненных по id
+                if let index = self.savedDevices.firstIndex(where: { $0.id == deviceId }) {
+                    self.savedDevices[index].ipAddress = cleanAddress // обновляем IP при смене сети
+                    self.persistSavedDevices()
+                    return
                 }
-                
-                // 2. Проверяем словарь кастомных имен на случай, если его переименовывали ранее
+                    
+                // 2. Проверяем кастомные имена по id
                 let customNames = UserDefaults.standard.dictionary(forKey: self.customNamesKey) as? [String: String] ?? [:]
-                let finalName = customNames[cleanAddress] ?? name
-                let device = LEDMatrixDevice(name: finalName, ipAddress: cleanAddress)
-                // 3. Добавляем в список найденных, если его там еще нет
-                if !self.discoveredDevices.contains(where: { $0.ipAddress == cleanAddress }) {
+                let finalName = customNames[deviceId] ?? name
+                let device = LEDMatrixDevice(id: deviceId, name: finalName, ipAddress: cleanAddress)
+                    
+                // 3. Добавляем или обновляем в найденных по id
+                if let index = self.discoveredDevices.firstIndex(where: { $0.id == deviceId }) {
+                    self.discoveredDevices[index].ipAddress = cleanAddress
+                    self.discoveredDevices[index].name = finalName
+                } else {
                     self.discoveredDevices.append(device)
-                    self.connectionStatus = "Найдено устройств: (self.savedDevices.count + self.discoveredDevices.count)"
                 }
+                self.connectionStatus = "Устройств доступно: \(self.savedDevices.count + self.discoveredDevices.count)"
             }
         }
     }
