@@ -58,6 +58,10 @@ struct MatrixSettings: Codable {
     var minutesColor2Hex: String = ""
     var colonColorHex: String = ""
     var bgColorHex: String = ""
+    var showColon: Bool = true
+    var clockAnimationTypeInt: Int? = 0
+    var clockAnimationMs: Int = 1000
+    var clockRandomColor: Bool = false
     var clockDisplaySeconds: Int = 0
     var animationDisplaySeconds: Int = 0
     var animationTypeInt: Int? = 0
@@ -94,6 +98,10 @@ struct MatrixSettings: Codable {
         case minutesColor2Hex = "minutes_color_2_hex"
         case colonColorHex = "colon_color_hex"
         case bgColorHex = "bg_color_hex"
+        case showColon = "show_colon"
+        case clockAnimationTypeInt = "clock_animation_type"
+        case clockAnimationMs = "clock_animation_ms"
+        case clockRandomColor = "clock_random_color"
         case clockDisplaySeconds = "clock_display_seconds"
         case animationDisplaySeconds = "animation_display_seconds"
         case animationTypeInt = "animation_type"
@@ -119,6 +127,23 @@ struct MatrixSettings: Codable {
         set {
             animationTypeInt = newValue?.typeKey
             animationTypeId = newValue?.id
+        }
+    }
+    
+    var clockAnimationType: ClockAnimationType? {
+        get {
+            guard let type = clockAnimationTypeInt else { return nil }
+            
+            switch type {
+            case 0: return .fading
+            case 1: return .slideUp
+            case 2: return .flash
+            case 3: return .tvStatic
+            default: return nil
+            }
+        }
+        set {
+            clockAnimationTypeInt = newValue?.typeKey
         }
     }
 

@@ -208,6 +208,26 @@ extension MatrixManager {
         try? await self.sendCommand(endpoint: "cmd", params: ["bg_color_hex": hex])
     }
     
+    func toggleClockShowColon(_ showColon: Bool) async {
+        settings.showColon = showColon
+        try? await self.sendCommand(endpoint: "cmd", params: ["show_colon": showColon])
+    }
+    
+    func updateClockAnimationType(_ animType: ClockAnimationType) async {
+        settings.clockAnimationType = animType
+        try? await self.sendCommand(endpoint: "cmd", params: ["clock_animation_type": animType])
+    }
+    
+    func updateClockAnimationMs(_ animMs: Int) async {
+        settings.clockAnimationMs = animMs
+        try? await self.sendCommand(endpoint: "cmd", params: ["clock_animation_ms": animMs])
+    }
+    
+    func toggleClockRandomColor(_ isRandomColor: Bool) async {
+        settings.clockRandomColor = isRandomColor
+        try? await self.sendCommand(endpoint: "cmd", params: ["clock_random_color": isRandomColor])
+    }
+    
     func toggleShowTextUsername(_ showUsername: Bool) async {
         settings.showNameText = showUsername
         try? await self.sendCommand(endpoint: "cmd", params: ["show_name_text": showUsername])
