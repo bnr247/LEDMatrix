@@ -186,14 +186,25 @@ extension MatrixManager {
     }
     
     func sendCurrentText() async {
-        guard !textToSend.isEmpty else { return }
-        
+        let message = textToSend.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
+        await sendText(message)
+    }
+
+    /// Отправляет конкретную строку. Нужен для живого применения настроек:
+    /// меняя скорость или цвет, приложение обновляет уже показанный текст, а
+    /// не черновик, который пользователь ещё печатает.
+    func sendText(_ message: String) async {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
         let bgComp = UIColor(textBgColor).rgbComponents()
         let textComp = UIColor(textColor).rgbComponents()
-        
+
         // ИСПРАВЛЕНО: Строго проверяйте наличие всех \ перед скобками
-        let formattedText = "[\(bgComp.0),\(bgComp.1),\(bgComp.2)][\(textComp.0),\(textComp.1),\(textComp.2)]\(textToSend)"
-        
+        let formattedText = "[\(bgComp.0),\(bgComp.1),\(bgComp.2)][\(textComp.0),\(textComp.1),\(textComp.2)]\(trimmed)"
+
+        lastSentText = trimmed
         try? await self.sendCommand(endpoint: "cmd", params: [
             "text": formattedText,
             "text_speed_fps": Int(scrollSpeedFps),

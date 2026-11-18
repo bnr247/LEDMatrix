@@ -12,9 +12,9 @@ import SwiftUI
 struct TextControlView: View {
     @ObservedObject var manager: MatrixManager
 
-    /// Отложенная отправка текущего текста: изменения в поле, цветах и
-    /// ползунках применяются на устройстве почти сразу, но без запроса на
-    /// каждое движение пальца.
+    /// Отложенная отправка текущего текста: изменения цветов и ползунков
+    /// применяются на устройстве почти сразу, но без запроса на каждое
+    /// движение пальца.
     @State private var liveUpdateTask: Task<Void, Never>?
 
     var body: some View {
@@ -82,12 +82,12 @@ struct TextControlView: View {
             Task { await manager.sendCurrentText() }
             hideKeyboard()
         }
-        .onChange(of: manager.textToSend) { _, _ in scheduleLiveUpdate() }
+        // Сам текст отправляется только кнопкой «Отправить» или Return.
+        // На лету применяются лишь настройки уже показанной строки.
         .onChange(of: manager.textColor) { _, _ in scheduleLiveUpdate() }
         .onChange(of: manager.textBgColor) { _, _ in scheduleLiveUpdate() }
         .onChange(of: manager.scrollSpeedFps) { _, _ in scheduleLiveUpdate() }
         .onChange(of: manager.scrollRepeatCount) { _, _ in scheduleLiveUpdate() }
-        .onChange(of: manager.textFullScreen) { _, _ in scheduleLiveUpdate() }
         .onDisappear {
             liveUpdateTask?.cancel()
             liveUpdateTask = nil
@@ -97,13 +97,15 @@ struct TextControlView: View {
     private func scheduleLiveUpdate() {
         liveUpdateTask?.cancel()
 
-        let message = manager.textToSend.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Если на матрицу ещё ничего не отправляли, менять нечего: настройки
+        // уйдут вместе с первым нажатием «Отправить».
+        let message = manager.lastSentText
         guard !message.isEmpty else { return }
 
         liveUpdateTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
-            await manager.sendCurrentText()
+            await manager.sendText(message)
         }
     }
 }
