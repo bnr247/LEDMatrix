@@ -20,13 +20,38 @@ struct TextControlView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Введите сообщение...", text: $manager.textToSend)
-                    .foregroundColor(manager.appTextColor)
+                HStack(alignment: .bottom, spacing: 8) {
+                    TextField("Введите сообщение...", text: $manager.textToSend, axis: .vertical)
+                        .lineLimit(2, reservesSpace: true)
+                        .foregroundColor(manager.appTextColor)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(manager.fieldBackgroundColor)
+                        )
+
+                    Button(action: sendText) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(manager.accentColor)
+                            .frame(width: 38, height: 38)
+                            .background(
+                                Circle()
+                                    .fill(manager.accentColor.opacity(0.16))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isTextEmpty)
+                    .opacity(isTextEmpty ? 0.45 : 1)
+                    .accessibilityLabel("Отправить текст")
+                }
+                .padding(.vertical, 2)
             } header: {
                 Text("Сообщение")
                     .foregroundColor(manager.accentColor)
             } footer: {
-                Text("Текст появится на матрице после нажатия «Отправить» или Return.")
+                Text("Текст появится на матрице после нажатия кнопки отправки.")
                     .foregroundColor(manager.secondaryTextColor)
             }
             .listRowBackground(manager.cardBackgroundColor)
@@ -80,29 +105,11 @@ struct TextControlView: View {
                     .foregroundColor(manager.secondaryTextColor)
             }
             .listRowBackground(manager.cardBackgroundColor)
-            
-            Section {
-                Button(action: {
-                    Task { await manager.sendCurrentText() }
-                    hideKeyboard()
-                }) {
-                    Text("Отправить")
-                        .bold()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(manager.accentColor)
-                .listRowBackground(Color.clear)
-            }
         }
         .themedForm(manager)
         .onTapGesture { hideKeyboard() }
-        .onSubmit {
-            Task { await manager.sendCurrentText() }
-            hideKeyboard()
-        }
-        // Сам текст отправляется только кнопкой «Отправить» или Return.
+        .onSubmit { sendText() }
+        // Сам текст отправляется только кнопкой отправки или Return.
         // На лету применяются лишь настройки уже показанной строки.
         .onChange(of: manager.textColor) { _, _ in scheduleLiveUpdate() }
         .onChange(of: manager.textBgColor) { _, _ in scheduleLiveUpdate() }
@@ -111,6 +118,16 @@ struct TextControlView: View {
             liveUpdateTask?.cancel()
             liveUpdateTask = nil
         }
+    }
+
+    private var isTextEmpty: Bool {
+        manager.textToSend.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func sendText() {
+        guard !isTextEmpty else { return }
+        Task { await manager.sendCurrentText() }
+        hideKeyboard()
     }
 
     private func scheduleLiveUpdate() {
