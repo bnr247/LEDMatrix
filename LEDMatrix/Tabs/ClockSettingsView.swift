@@ -220,11 +220,20 @@ struct ClockSettingsView: View {
                         value: Binding(
                             get: { Double(manager.settings.clockEffectSpeed) },
                             set: { newValue in
-                                Task { await manager.updateClockEffectSpeed(Int(newValue)) }
+                                // Во время перетаскивания обновляем только UI,
+                                // а на устройство шлём после отпускания.
+                                manager.settings.clockEffectSpeed = Int(newValue)
                             }
                         ),
                         in: 1 ... 100,
-                        step: 5
+                        step: 5,
+                        onEditingChanged: { editing in
+                            if !editing {
+                                Task {
+                                    await manager.updateClockEffectSpeed(manager.settings.clockEffectSpeed)
+                                }
+                            }
+                        }
                     )
                     .tint(manager.accentColor)
                 }

@@ -34,8 +34,19 @@ struct TextControlView: View {
                             .foregroundColor(manager.accentColor)
                             .monospacedDigit()
                     }
-                    Slider(value: $manager.scrollSpeedFps, in: 10...100, step: 5)
-                        .tint(manager.accentColor)
+                    Slider(
+                        value: $manager.scrollSpeedFps,
+                        in: 10...100,
+                        step: 5,
+                        onEditingChanged: { editing in
+                            // Пока палец на ползунке, меняем только локальное
+                            // значение. На устройство отправляем после отпускания.
+                            if !editing {
+                                scheduleLiveUpdate()
+                            }
+                        }
+                    )
+                    .tint(manager.accentColor)
                 }
                 
                 Stepper("Повторов: \(manager.scrollRepeatCount)", value: $manager.scrollRepeatCount, in: 1...10)
@@ -86,7 +97,6 @@ struct TextControlView: View {
         // На лету применяются лишь настройки уже показанной строки.
         .onChange(of: manager.textColor) { _, _ in scheduleLiveUpdate() }
         .onChange(of: manager.textBgColor) { _, _ in scheduleLiveUpdate() }
-        .onChange(of: manager.scrollSpeedFps) { _, _ in scheduleLiveUpdate() }
         .onChange(of: manager.scrollRepeatCount) { _, _ in scheduleLiveUpdate() }
         .onDisappear {
             liveUpdateTask?.cancel()
