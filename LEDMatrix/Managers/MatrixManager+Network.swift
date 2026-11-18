@@ -197,7 +197,10 @@ extension MatrixManager {
         try? await self.sendCommand(endpoint: "cmd", params: [
             "text": formattedText,
             "text_speed_fps": Int(scrollSpeedFps),
-            "repeat_count": scrollRepeatCount
+            "repeat_count": scrollRepeatCount,
+            // true — непрозрачная полоса по центру, false — классический
+            // полноэкранный текст. Тумблер «на весь экран» инвертирует флаг.
+            "scroll_text_transparent": !textFullScreen
         ])
     }
     

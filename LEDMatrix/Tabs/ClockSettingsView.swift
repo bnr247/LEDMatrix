@@ -45,6 +45,7 @@ struct ClockSettingsView: View {
             appearanceSection
             separatorSection
         }
+        .themedForm(manager)
         .task {
             await loadClockData()
         }
@@ -82,13 +83,13 @@ struct ClockSettingsView: View {
                     Button(action: togglePreview) {
                         Image(systemName: isPreviewActive ? "eye.fill" : "eye")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(isPreviewActive ? manager.accentColor : .secondary)
+                            .foregroundColor(isPreviewActive ? manager.accentColor : manager.secondaryTextColor)
                             .frame(width: 34, height: 34)
                             .background(
                                 Circle().fill(
                                     isPreviewActive
                                         ? manager.accentColor.opacity(0.16)
-                                        : Color.secondary.opacity(0.10)
+                                        : manager.secondaryTextColor.opacity(0.10)
                                 )
                             )
                     }
@@ -102,6 +103,7 @@ struct ClockSettingsView: View {
                     .overlay {
                         if faces.isEmpty {
                             ProgressView()
+                                .tint(manager.accentColor)
                         } else {
                             TabView(selection: $selectedFaceIndex) {
                                 ForEach(Array(faces.enumerated()), id: \.element.id) { index, face in
@@ -111,6 +113,7 @@ struct ClockSettingsView: View {
                                         settings: manager.settings,
                                         selection: selection,
                                         accentColor: manager.accentColor,
+                                        panelColor: manager.matrixPanelColor,
                                         onSelect: { newSelection in
                                             withAnimation(.easeInOut(duration: 0.12)) {
                                                 selection = newSelection
@@ -124,6 +127,10 @@ struct ClockSettingsView: View {
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(manager.cardBorderColor, lineWidth: 1)
+                    )
 
                 if faces.count > 1 {
                     HStack(spacing: 5) {
@@ -131,7 +138,7 @@ struct ClockSettingsView: View {
                             Circle()
                                 .fill(index == selectedFaceIndex
                                       ? manager.accentColor
-                                      : Color.secondary.opacity(0.28))
+                                      : manager.secondaryTextColor.opacity(0.28))
                                 .frame(width: 5, height: 5)
                         }
                     }
@@ -153,17 +160,21 @@ struct ClockSettingsView: View {
                     .padding(.vertical, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(manager.cardBackgroundColor)
+                            .fill(manager.fieldBackgroundColor)
                     )
                 } else {
                     Text("Нажмите на цифру, разделитель или фон, чтобы изменить цвет")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.secondaryTextColor)
                         .multilineTextAlignment(.center)
                 }
             }
             .padding(.vertical, 6)
+        } header: {
+            Text("Предпросмотр")
+                .foregroundColor(manager.accentColor)
         }
+        .listRowBackground(manager.cardBackgroundColor)
     }
 
     // MARK: - Внешний вид
@@ -190,7 +201,7 @@ struct ClockSettingsView: View {
                     Text("Скорость эффекта")
                     Spacer()
                     Text("\(manager.settings.clockEffectSpeed)")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.secondaryTextColor)
                         .monospacedDigit()
                 }
                 Slider(
@@ -206,6 +217,7 @@ struct ClockSettingsView: View {
                 .tint(manager.accentColor)
             }
         }
+        .listRowBackground(manager.cardBackgroundColor)
     }
 
     private var separatorSection: some View {
@@ -216,6 +228,7 @@ struct ClockSettingsView: View {
             ))
             .tint(manager.accentColor)
         }
+        .listRowBackground(manager.cardBackgroundColor)
     }
 
     // MARK: - Данные
@@ -350,6 +363,7 @@ private struct ClockFacePreviewCanvas: View {
     let settings: MatrixSettings
     let selection: ClockPreviewSelection?
     let accentColor: Color
+    let panelColor: Color
     let onSelect: (ClockPreviewSelection) -> Void
 
     var body: some View {
@@ -400,7 +414,7 @@ private struct ClockFacePreviewCanvas: View {
             .frame(width: side, height: side)
             .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
-        .background(Color(hex: "202020"))
+        .background(panelColor)
     }
 
     private func renderPixels(at date: Date) -> [Color] {

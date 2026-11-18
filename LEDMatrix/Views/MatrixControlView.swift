@@ -92,9 +92,13 @@ struct MatrixControlView: View {
                                                 .fontWeight(.medium)
                                                 .padding(.horizontal, 14)
                                                 .padding(.vertical, 8)
-                                                .background(selectedTab == tab ? Color.accentColor : Color(UIColor.secondarySystemBackground))
-                                                .foregroundColor(selectedTab == tab ? .white : .primary)
+                                                .background(selectedTab == tab ? manager.accentColor : manager.fieldBackgroundColor)
+                                                .foregroundColor(selectedTab == tab ? manager.accentContrastColor : manager.appTextColor)
                                                 .clipShape(Capsule())
+                                                .overlay(
+                                                    Capsule()
+                                                        .stroke(selectedTab == tab ? manager.accentColor : manager.cardBorderColor, lineWidth: 1)
+                                                )
                                             }
                                             .id(tab)
                                         }
@@ -102,7 +106,7 @@ struct MatrixControlView: View {
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
                                 }
-                                .background(Color(UIColor.systemBackground))
+                                .background(manager.backgroundColor)
                                 .onChange(of: selectedTab) { _, newTab in
                                     withAnimation {
                                         proxy.scrollTo(newTab, anchor: .center)
@@ -110,7 +114,9 @@ struct MatrixControlView: View {
                                 }
                             }
                             
-                            Divider()
+                            Rectangle()
+                                .fill(manager.dividerColor)
+                                .frame(height: 0.5)
                             
                             // КОНТЕНТ АКТИВНОЙ ВКЛАДКИ УСТРОЙСТВА
                             Group {
@@ -137,6 +143,8 @@ struct MatrixControlView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .background(manager.backgroundColor)
+        .tint(manager.accentColor)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // Размещаем переключатель «Устройство / Divoom» по центру
@@ -166,7 +174,7 @@ struct MatrixControlView: View {
                     }) {
                         Image(systemName: isShowingSettingsTab ? "xmark.circle.fill" : "gearshape.fill")
                             .font(.body)
-                            .foregroundColor(isShowingSettingsTab ? .accentColor : .primary)
+                            .foregroundColor(isShowingSettingsTab ? manager.accentColor : manager.appTextColor)
                     }
                 }
             }

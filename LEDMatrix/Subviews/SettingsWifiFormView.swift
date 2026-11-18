@@ -15,7 +15,7 @@ struct SettingsWifiFormView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Данные для подключения")) {
+            Section(header: Text("Данные для подключения").foregroundColor(manager.accentColor)) {
                 HStack {
                     Text("SSID")
                     Spacer()
@@ -24,6 +24,7 @@ struct SettingsWifiFormView: View {
                         .autocorrectionDisabled(true)
                         // Поля заблокированы ТОЛЬКО непосредственно в момент самой отправки байт
                         .disabled(manager.isSavingSettings)
+                        .foregroundColor(manager.appTextColor)
                 }
                 HStack {
                     Text("Пароль")
@@ -33,8 +34,10 @@ struct SettingsWifiFormView: View {
                         .focused($isPasswordFocused)
                         // Поля заблокированы ТОЛЬКО непосредственно в момент самой отправки байт
                         .disabled(manager.isSavingSettings)
+                        .foregroundColor(manager.appTextColor)
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
             Section {
                 Button(action: {
                     isPasswordFocused = false
@@ -52,11 +55,13 @@ struct SettingsWifiFormView: View {
                     .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(manager.accentColor)
                 // КНОПКА ЗАБЛОКИРОВАНА: если данные не менялись, если идет отправка, ЛИБО если сохранение уже прошло успешно
                 .disabled(!manager.isWifiSsidChanged && !manager.isWifiPasswordChanged || manager.isSavingSettings || manager.isSaveSuccess)
             }
             .listRowBackground(Color.clear)
         }
+        .themedForm(manager)
         .navigationTitle("Настройки WiFi")
         // Принудительно сбрасываем статус успеха при изменении текста в полях, чтобы кнопка снова ожила
         .onChange(of: manager.localWifiSsid) { _, _ in manager.isSaveSuccess = false }

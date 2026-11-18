@@ -61,7 +61,7 @@ struct MainScreenView: View {
                     // СЕКЦИЯ ВЫБОРА УСТРОЙСТВА И НАСТРОЕК
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Устройство")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                         
                         HStack(spacing: 12) {
                             Menu {
@@ -78,12 +78,12 @@ struct MainScreenView: View {
                                 HStack {
                                     Text(manager.savedDevices.isEmpty ? "Нет устройств" : (manager.selectedDevice?.name ?? "Выберите устройство"))
                                         .fontWeight(.medium)
-                                        .foregroundColor(manager.selectedDevice != nil ? manager.accentColor : .secondary)
+                                        .foregroundColor(manager.selectedDevice != nil ? manager.accentColor : manager.secondaryTextColor)
                                     Spacer()
                                     if !manager.savedDevices.isEmpty {
                                         Image(systemName: "chevron.up.chevron.down")
                                             .font(.subheadline)
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(manager.secondaryTextColor)
                                     }
                                 }
                                 .padding(.horizontal, 16)
@@ -104,14 +104,14 @@ struct MainScreenView: View {
                             }) {
                                 Image(systemName: "gearshape.fill")
                                     .font(.title2)
-                                    .foregroundColor(isDeviceAvailable ? manager.accentColor : .gray)
+                                    .foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
                                     .padding(12)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
                                             .fill(manager.cardBackgroundColor)
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 12)
-                                                    .stroke(isDeviceAvailable ? manager.accentColor.opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
+                                                    .stroke(isDeviceAvailable ? manager.accentColor.opacity(0.5) : manager.secondaryTextColor.opacity(0.3), lineWidth: 1)
                                             )
                                     )
                             }
@@ -124,7 +124,7 @@ struct MainScreenView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Image(systemName: "sun.max.fill")
-                                .foregroundColor(isDeviceAvailable ? manager.accentColor : .secondary)
+                                .foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
                             Text("Яркость: \(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)")
                                 .foregroundColor(manager.appTextColor)
                             Spacer()
@@ -180,11 +180,11 @@ struct MainScreenView: View {
                                         .fill(manager.cardBackgroundColor)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 20)
-                                                .stroke(isDeviceAvailable ? manager.accentColor : Color.gray.opacity(0.4), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                                                .stroke(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor.opacity(0.35), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
                                         )
                                 )
-                                .foregroundColor(isDeviceAvailable ? manager.appTextColor : .gray)
-                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
+                                .foregroundColor(isDeviceAvailable ? manager.appTextColor : manager.secondaryTextColor)
+                                .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
                             }
                             .disabled(!isDeviceAvailable)
                         }
@@ -273,7 +273,7 @@ struct DeviceManagementSheet: View {
                 // Секция сохраненных устройств
                 if !manager.savedDevices.isEmpty {
                     Section(header: HStack {
-                        Text("Мои устройства")
+                        Text("Мои устройства").foregroundColor(manager.accentColor)
                         if manager.isCheckingReachability {
                             Spacer()
                             ProgressView().controlSize(.small)
@@ -285,12 +285,12 @@ struct DeviceManagementSheet: View {
                                     Text(device.name).font(.headline)
                                     Text(device.ipAddress)
                                         .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(manager.secondaryTextColor)
                                 }
                                 Spacer()
                                 if manager.selectedDevice?.id == device.id {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(manager.accentColor)
                                 }
                             }
                             .contentShape(Rectangle())
@@ -304,26 +304,27 @@ struct DeviceManagementSheet: View {
                             isDeleteAlertPresented = true
                         }
                     }
+                    .listRowBackground(manager.cardBackgroundColor)
                 }
                 
                 // Секция найденных устройств в сети
-                Section(header: Text("Устройства в сети")) {
+                Section(header: Text("Устройства в сети").foregroundColor(manager.accentColor)) {
                     if manager.isScanning {
                         HStack {
                             ProgressView().padding(.trailing, 8)
-                            Text("Поиск устройств...").foregroundColor(.secondary)
+                            Text("Поиск устройств...").foregroundColor(manager.secondaryTextColor)
                         }
                     }
                     
                     if manager.discoveredDevices.isEmpty && !manager.isScanning {
-                        Text("Новые устройства не найдены").foregroundColor(.secondary)
+                        Text("Новые устройства не найдены").foregroundColor(manager.secondaryTextColor)
                     }
                     
                     ForEach(manager.discoveredDevices) { device in
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(device.name).font(.headline)
-                                Text(device.ipAddress).font(.subheadline).foregroundColor(.secondary)
+                                Text(device.ipAddress).font(.subheadline).foregroundColor(manager.secondaryTextColor)
                             }
                             Spacer()
                             Button("Добавить") {
@@ -335,18 +336,23 @@ struct DeviceManagementSheet: View {
                                 dismiss()
                             }
                             .buttonStyle(.borderedProminent)
+                            .tint(manager.accentColor)
                             .controlSize(.small)
                         }
                     }
                 }
+                .listRowBackground(manager.cardBackgroundColor)
                 
                 // Ручное добавление по IP
                 Section {
                     NavigationLink(destination: ManualIPView(manager: manager)) {
                         Text("Добавить по IP вручную")
+                            .foregroundColor(manager.appTextColor)
                     }
                 }
+                .listRowBackground(manager.cardBackgroundColor)
             }
+            .themedForm(manager)
             .navigationTitle("Управление устройствами")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

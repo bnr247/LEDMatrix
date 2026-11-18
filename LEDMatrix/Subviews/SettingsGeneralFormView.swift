@@ -14,13 +14,13 @@ struct SettingsGeneralFormView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Время на экране")) {
+            Section(header: Text("Время на экране").foregroundColor(manager.accentColor)) {
                 Stepper(value: manager.clockDisplaySecondsBinding, in: 1...86400, step: 10) {
                     HStack {
                         Text("Часы (сек.)")
                         Spacer()
                         Text("\(manager.settings.clockDisplaySeconds)")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                     }
                 }
                 
@@ -29,12 +29,13 @@ struct SettingsGeneralFormView: View {
                         Text("Анимации (сек.)")
                         Spacer()
                         Text("\(manager.settings.animationDisplaySeconds)")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                     }
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Тип анимации")) {
+            Section(header: Text("Тип анимации").foregroundColor(manager.accentColor)) {
                 Picker("Режим", selection: manager.animationTypeBinding) {
                     Text("Стандартный").tag(AnimationType.standard(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
                     Text("Категории").tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
@@ -43,8 +44,9 @@ struct SettingsGeneralFormView: View {
                     Text("Плейлист").tag(AnimationType.playlist(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("День")) {
+            Section(header: Text("День").foregroundColor(manager.accentColor)) {
                 DatePicker(
                     "Начало",
                     selection: manager.dayStartTimeBinding,
@@ -68,10 +70,12 @@ struct SettingsGeneralFormView: View {
                         in: 0...100, step: 5
                     )
                 }
+                .tint(manager.accentColor)
                 .padding(.top, 4)
             }
+            .listRowBackground(manager.cardBackgroundColor)
                 
-            Section(header: Text("Ночь")) {
+            Section(header: Text("Ночь").foregroundColor(manager.accentColor)) {
                 DatePicker(
                     "Начало",
                     selection: manager.nightStartTimeBinding,
@@ -95,16 +99,21 @@ struct SettingsGeneralFormView: View {
                         in: 0...100, step: 5
                     )
                 }
+                .tint(manager.accentColor)
                 .padding(.top, 4)
             }
+            .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Бегущая строка")) {
+            Section(header: Text("Бегущая строка").foregroundColor(manager.accentColor)) {
                 Toggle("Отображать имя из Telegram", isOn: Binding(
                     get: { manager.settings.showNameText },
                     set: { newValue in Task { await manager.toggleShowTextUsername(newValue) } }
                 ))
+                .tint(manager.accentColor)
             }
+            .listRowBackground(manager.cardBackgroundColor)
         }
+        .themedForm(manager)
         .navigationTitle("Общие настройки")
     }
 }

@@ -32,7 +32,9 @@ struct DivoomPlaylistDetailView: View {
             }
         )
         .navigationTitle(playlist.Name)
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
                 .alert("Плейлисты", isPresented: $isShowingAlert) {
                     Button("OK", role: .cancel) {}
                 } message: {

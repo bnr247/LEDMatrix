@@ -35,20 +35,22 @@ struct DivoomPlaylistsView: View {
                     ProgressView()
                     Text("Загрузка плейлистов...")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.secondaryTextColor)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error = errorMessage, playlists.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.largeTitle)
-                        .foregroundColor(.orange)
+                        .foregroundColor(manager.warningColor)
                     Text(error)
                         .multilineTextAlignment(.center)
+                        .foregroundColor(manager.appTextColor)
                     Button("Повторить") {
                         Task { await loadInitialPlaylists() }
                     }
                     .buttonStyle(.bordered)
+                    .tint(manager.accentColor)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -56,10 +58,10 @@ struct DivoomPlaylistsView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "list.bullet.rectangle")
                         .font(.system(size: 40))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.secondaryTextColor)
                     Text("Нет плейлистов")
                         .font(.headline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.secondaryTextColor)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -72,14 +74,15 @@ struct DivoomPlaylistsView: View {
                                 if let desc = playlist.Describe, !desc.isEmpty {
                                     Text(desc)
                                         .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(manager.secondaryTextColor)
                                 }
                                 Text("Элементов: \(playlist.Count ?? 0)")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(manager.secondaryTextColor)
                             }
                             .padding(.vertical, 4)
                         }
+                        .listRowBackground(manager.cardBackgroundColor)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
                                 playlistToDelete = playlist
@@ -104,11 +107,15 @@ struct DivoomPlaylistsView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(manager.backgroundColor.ignoresSafeArea())
                 .refreshable {
                     await refreshPlaylists()
                 }
             }
         }
+        .tint(manager.accentColor)
+        .background(manager.backgroundColor.ignoresSafeArea())
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {

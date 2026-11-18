@@ -30,9 +30,13 @@ struct ScreenCastingView: View {
                         }
                     }
                     .padding(16)
-                    .background(Color(hex: "202020"))
-                    .cornerRadius(10)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                    .background(manager.matrixPanelColor)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(manager.cardBorderColor, lineWidth: 1)
+                    )
+                    .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                 }
                 .frame(width: size, height: size)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -45,6 +49,7 @@ struct ScreenCastingView: View {
             VStack(spacing: 8) {
                 // Привязываем тумблер сетки к менеджеру (сохраняется в UserDefaults)
                 Toggle("Сетка", isOn: $manager.showGrid)
+                    .tint(manager.accentColor)
                 
                 // Тумблер Live-режима
                 Toggle("Live-режим", isOn: Binding(
@@ -57,14 +62,18 @@ struct ScreenCastingView: View {
                         }
                     }
                 ))
+                .tint(manager.accentColor)
             }
+            .foregroundColor(manager.appTextColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .themedCard(manager, cornerRadius: 12)
             .padding(.horizontal, 20)
-            .padding(.vertical, 10)
             
             if let errorMsg = manager.screenErrorMessage {
                 Text(errorMsg)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundColor(manager.dangerColor)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
@@ -77,7 +86,7 @@ struct ScreenCastingView: View {
                 HStack {
                     if manager.isScreenLoading {
                         ProgressView()
-                            .tint(manager.accentColor)
+                            .tint(manager.accentContrastColor)
                             .padding(.trailing, 8)
                     } else {
                         Image(systemName: "arrow.clockwise")
@@ -89,11 +98,13 @@ struct ScreenCastingView: View {
                 .padding(.vertical, 10)
             }
             .buttonStyle(.borderedProminent)
+            .tint(manager.accentColor)
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
             .padding(.bottom, 140)
         }
-        .background(Color(UIColor.systemGroupedBackground))
+        .background(manager.backgroundColor.ignoresSafeArea())
+        .tint(manager.accentColor)
         .onAppear {
             Task {
                 await manager.fetchScreen()

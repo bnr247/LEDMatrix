@@ -59,15 +59,25 @@ struct DivoomMainView: View {
                 }
                 .tag(DivoomSection.playlists)
             
-            Text("Авторы")
-                .font(.title2)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 10) {
+                Image(systemName: DivoomSection.authors.iconName)
+                    .font(.system(size: 34))
+                    .foregroundColor(manager.accentColor)
+                Text("Авторы")
+                    .font(.title2)
+                    .foregroundColor(manager.appTextColor)
+                Text("Раздел в разработке")
+                    .font(.subheadline)
+                    .foregroundColor(manager.secondaryTextColor)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(manager.backgroundColor)
                 .tabItem {
                     Label(DivoomSection.authors.rawValue, systemImage: DivoomSection.authors.iconName)
                 }
                 .tag(DivoomSection.authors)
         }
+        .background(manager.backgroundColor)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(manager.cardBackgroundColor)
         .toolbarBackground(.visible, for: .navigationBar)

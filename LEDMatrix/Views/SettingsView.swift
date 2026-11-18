@@ -92,7 +92,7 @@ struct SettingsView: View {
                         
                         Text("\(Int(manager.otaProgress * 100))%")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                     }
                     .padding(.vertical, 4)
                 } else {
@@ -106,8 +106,7 @@ struct SettingsView: View {
             }
             .listRowBackground(manager.cardBackgroundColor)
         }
-        .scrollContentBackground(.hidden) // Скрываем стандартный системный фон формы
-        .background(manager.backgroundColor.ignoresSafeArea()) // Красим в цвет темы менеджера
+        .themedForm(manager)
         .id(manager.currentTheme) // Принудительно пересоздаем вью при смене темы для мгновенного применения
         
         // Диалоговое окно переименования устройства
@@ -129,7 +128,7 @@ struct SettingsView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.black.opacity(0.85))
+                    .background(manager.toastBackgroundColor)
                     .cornerRadius(20)
                     .padding(.bottom, 20)
                     .onAppear {

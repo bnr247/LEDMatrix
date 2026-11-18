@@ -211,7 +211,7 @@ struct DivoomFeedItemView: View {
                 }) {
                     Text(isFollowing ? "Following" : "Follow")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(isFollowing ? .gray : .yellow)
+                        .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.warningColor)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
                         .background(Color.white.opacity(0.1))
@@ -244,7 +244,7 @@ struct DivoomFeedItemView: View {
                     HStack(spacing: 6) {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(isLiked ? .red : .white)
+                            .foregroundColor(isLiked ? manager.dangerColor : .white)
                         Text("\(likeCount)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
@@ -285,7 +285,7 @@ struct DivoomFeedItemView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.black.opacity(0.85))
+                    .background(manager.toastBackgroundColor)
                     .cornerRadius(20)
                     .shadow(radius: 4)
                     .padding(.bottom, 24)
@@ -301,7 +301,7 @@ struct DivoomFeedItemView: View {
                             .tint(manager.accentColor)
                     } else if playlists.isEmpty {
                         Text("Нет плейлистов")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                     } else {
                         List(playlists) { playlist in
                             Button(action: {
@@ -310,19 +310,21 @@ struct DivoomFeedItemView: View {
                                 HStack {
                                     Text(playlist.Name)
                                         .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(manager.appTextColor)
                                     Spacer()
                                     if let count = playlist.Count {
                                         Text("\(count)")
                                             .font(.system(size: 14))
-                                            .foregroundColor(.secondary)
+                                            .foregroundColor(manager.secondaryTextColor)
                                     }
                                 }
                                 .padding(.vertical, 4)
                             }
+                            .listRowBackground(manager.cardBackgroundColor)
                         }
                     }
                 }
+                .themedForm(manager)
                 .navigationTitle("Выберите плейлист")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

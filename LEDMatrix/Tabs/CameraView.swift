@@ -36,9 +36,13 @@ struct CameraView: View {
                         }
                     }
                     .padding(16)
-                    .background(Color(hex: "202020"))
-                    .cornerRadius(10)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                    .background(manager.matrixPanelColor)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(manager.cardBorderColor, lineWidth: 1)
+                    )
+                    .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                 }
                 .frame(width: size, height: size)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,7 +61,12 @@ struct CameraView: View {
             // Тумблеры управления
             VStack(spacing: 8) {
                 Toggle("Сетка", isOn: $manager.showCameraGrid)
+                    .tint(manager.accentColor)
             }
+            .foregroundColor(manager.appTextColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .themedCard(manager, cornerRadius: 12)
             .padding(.horizontal, 20)
             
             // Панель кнопок управления трансляцией и снимками
@@ -87,7 +96,7 @@ struct CameraView: View {
                         .padding(.vertical, 12)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(isStreaming ? .red : .accentColor)
+                .tint(isStreaming ? manager.dangerColor : manager.accentColor)
                 
                 HStack(spacing: 16) {
                     Button(action: {
@@ -100,6 +109,7 @@ struct CameraView: View {
                             .padding(.vertical, 12)
                     }
                     .buttonStyle(.bordered)
+                    .tint(manager.accentColor)
                     .disabled(!isStreaming)
                     
                     Button(action: {
@@ -122,13 +132,15 @@ struct CameraView: View {
                             .padding(.vertical, 12)
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(manager.accentColor)
                     .disabled(!isStreaming)
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 120)
         }
-        .background(manager.backgroundColor)
+        .background(manager.backgroundColor.ignoresSafeArea())
+        .tint(manager.accentColor)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {
                 Text(message)
@@ -136,7 +148,7 @@ struct CameraView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.black.opacity(0.85))
+                    .background(manager.toastBackgroundColor)
                     .cornerRadius(20)
                     .shadow(radius: 4)
                     .padding(.bottom, 140)

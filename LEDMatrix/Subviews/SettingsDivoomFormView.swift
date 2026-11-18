@@ -15,7 +15,7 @@ struct SettingsDivoomFormView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Учетные данные Divoom")) {
+            Section(header: Text("Учетные данные Divoom").foregroundColor(manager.accentColor)) {
                 HStack {
                     Text("Email")
                     Spacer()
@@ -23,6 +23,7 @@ struct SettingsDivoomFormView: View {
                         .multilineTextAlignment(.trailing)
                         .autocorrectionDisabled(true)
                         .disabled(manager.isSavingSettings)
+                        .foregroundColor(manager.appTextColor)
                 }
                 HStack {
                     Text("Пароль")
@@ -31,8 +32,10 @@ struct SettingsDivoomFormView: View {
                         .multilineTextAlignment(.trailing)
                         .focused($isPasswordFocused)
                         .disabled(manager.isSavingSettings)
+                        .foregroundColor(manager.appTextColor)
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
             Section {
                 Button(action: {
                     isPasswordFocused = false
@@ -50,10 +53,12 @@ struct SettingsDivoomFormView: View {
                     .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(manager.accentColor)
                 .disabled(!manager.isDivoomEmailChanged && !manager.isDivoomPasswordChanged || manager.isSavingSettings || manager.isSaveSuccess)
             }
             .listRowBackground(Color.clear)
         }
+        .themedForm(manager)
         .navigationTitle("Настройки Divoom")
         .onChange(of: manager.localDivoomEmail) { _, _ in manager.isSaveSuccess = false }
         .onChange(of: manager.localDivoomPassword) { _, _ in manager.isSaveSuccess = false }

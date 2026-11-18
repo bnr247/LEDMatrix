@@ -14,30 +14,64 @@ struct TextControlView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Бегущая строка")) {
+            Section {
                 TextField("Введите сообщение...", text: $manager.textToSend)
+                    .foregroundColor(manager.appTextColor)
+                
                 ColorPicker("Цвет текста", selection: $manager.textColor, supportsOpacity: false)
                 ColorPicker("Цвет фона", selection: $manager.textBgColor, supportsOpacity: false)
                 
-                VStack(alignment: .leading) {
-                    Text("Скорость: \(Int(manager.scrollSpeedFps))")
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Скорость")
+                        Spacer()
+                        Text("\(Int(manager.scrollSpeedFps))")
+                            .foregroundColor(manager.accentColor)
+                            .monospacedDigit()
+                    }
                     Slider(value: $manager.scrollSpeedFps, in: 10...100, step: 5)
+                        .tint(manager.accentColor)
                 }
+                
                 Stepper("Повторов: \(manager.scrollRepeatCount)", value: $manager.scrollRepeatCount, in: 1...10)
+                    .tint(manager.accentColor)
+            } header: {
+                Text("Бегущая строка")
+                    .foregroundColor(manager.accentColor)
             }
+            .listRowBackground(manager.cardBackgroundColor)
             
-            Button(action: {
-                Task { await manager.sendCurrentText() }
-                hideKeyboard()
-            }) {
-                Text("Отправить")
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+            Section {
+                Toggle("Отображать на весь экран", isOn: $manager.textFullScreen)
+                    .tint(manager.accentColor)
+                    .foregroundColor(manager.appTextColor)
+            } header: {
+                Text("Отображение")
+                    .foregroundColor(manager.accentColor)
+            } footer: {
+                Text(manager.textFullScreen
+                     ? "Классическая бегущая строка на всю матрицу."
+                     : "Текст идёт по непрозрачной полосе в центре матрицы, а вокруг виден фон часов или анимации.")
+                    .foregroundColor(manager.secondaryTextColor)
             }
-            .buttonStyle(.borderedProminent)
-            .listRowBackground(Color.clear)
+            .listRowBackground(manager.cardBackgroundColor)
+            
+            Section {
+                Button(action: {
+                    Task { await manager.sendCurrentText() }
+                    hideKeyboard()
+                }) {
+                    Text("Отправить")
+                        .bold()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(manager.accentColor)
+                .listRowBackground(Color.clear)
+            }
         }
+        .themedForm(manager)
         .onTapGesture { hideKeyboard() }
         .onSubmit {
             Task { await manager.sendCurrentText() }

@@ -57,7 +57,7 @@ struct DrawingView: View {
                     if let errorMsg = manager.drawErrorMessage {
                         Text(errorMsg)
                             .font(.caption)
-                            .foregroundColor(.red)
+                            .foregroundColor(manager.dangerColor)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
                     }
@@ -67,21 +67,21 @@ struct DrawingView: View {
                 // ВЕРХНЯЯ ПАНЕЛЬ ИНСТРУМЕНТОВ
                 VStack(spacing: 10) {
                     HStack(spacing: 10) {
-                        ToolButton(icon: "paintbrush.fill", title: "Кисть", isSelected: selectedTool == .brush) {
+                        ToolButton(manager: manager, icon: "paintbrush.fill", title: "Кисть", isSelected: selectedTool == .brush) {
                             selectedTool = .brush
                         }
                         
-                        ToolButton(icon: "eraser.fill", title: "Ластик", isSelected: selectedTool == .eraser) {
+                        ToolButton(manager: manager, icon: "eraser.fill", title: "Ластик", isSelected: selectedTool == .eraser) {
                             selectedTool = .eraser
                         }
                         
-                        ToolButton(icon: "paint.bucket.classic", title: "Заливка", isSelected: selectedTool == .fill) {
+                        ToolButton(manager: manager, icon: "paint.bucket.classic", title: "Заливка", isSelected: selectedTool == .fill) {
                             selectedTool = .fill
                         }
                         
                         Spacer()
                         
-                        EraseButton {
+                        EraseButton(manager: manager) {
                             // Очистка — это отдельное действие, сохраняем состояние для отмены
                             manager.saveStateForUndo()
                             manager.drawPixels = Array(repeating: .black, count: 256)
@@ -96,12 +96,12 @@ struct DrawingView: View {
                                     .labelsHidden()
                                 Text(selectedTool == .brush ? "Цвет кисти" : "Цвет заливки")
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(manager.secondaryTextColor)
                             }
                         } else {
                             Text("Стирает нарисованное")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(manager.secondaryTextColor)
                         }
                         Spacer()
                     }
@@ -123,9 +123,13 @@ struct DrawingView: View {
                             }
                         }
                         .padding(5)
-                        .background(Color(hex: "202020"))
+                        .background(manager.matrixPanelColor)
                         .cornerRadius(0)
-                        .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 0)
+                                .stroke(manager.cardBorderColor, lineWidth: 1)
+                        )
+                        .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { value in
@@ -174,7 +178,8 @@ struct DrawingView: View {
                         Image(systemName: "arrow.uturn.backward")
                             .font(.system(size: 18, weight: .semibold))
                             .frame(width: 44, height: 36)
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .foregroundColor(manager.appTextColor)
+                            .background(manager.fieldBackgroundColor)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .disabled(!manager.canUndo)
@@ -186,7 +191,8 @@ struct DrawingView: View {
                         Image(systemName: "arrow.uturn.forward")
                             .font(.system(size: 18, weight: .semibold))
                             .frame(width: 44, height: 36)
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .foregroundColor(manager.appTextColor)
+                            .background(manager.fieldBackgroundColor)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .disabled(!manager.canRedo)
@@ -210,12 +216,13 @@ struct DrawingView: View {
                         .padding(.vertical, 12)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .tint(manager.dangerColor)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
         }
-        .background(Color(UIColor.systemGroupedBackground))
+        .background(manager.backgroundColor.ignoresSafeArea())
+        .tint(manager.accentColor)
         // Возвращаем стандартный iOS NavigationBar
         .navigationTitle("Рисование")
         .navigationBarTitleDisplayMode(.inline)

@@ -31,13 +31,15 @@ struct DivoomAlbumsView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "wifi.exclamationmark")
                         .font(.largeTitle)
-                        .foregroundColor(.red)
+                        .foregroundColor(manager.dangerColor)
                     Text(error)
                         .multilineTextAlignment(.center)
+                        .foregroundColor(manager.appTextColor)
                     Button("Повторить попытку") {
                         Task { await loadAlbums() }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(manager.accentColor)
                     
                 }
                 .padding()
@@ -53,8 +55,11 @@ struct DivoomAlbumsView: View {
                                             .aspectRatio(contentMode: .fill)
                                     } placeholder: {
                                         Rectangle()
-                                            .fill(Color.gray.opacity(0.2))
-                                            .overlay(ProgressView())
+                                            .fill(manager.fieldBackgroundColor)
+                                            .overlay(
+                                                ProgressView()
+                                                    .tint(manager.accentColor)
+                                            )
                                     }
                                     .frame(height: 140)
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -67,17 +72,16 @@ struct DivoomAlbumsView: View {
                                         .padding(.horizontal, 4)
                                 }
                                 .padding(8)
-                                .background(Color(UIColor.secondarySystemGroupedBackground))
-                                .cornerRadius(16)
-                                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                .themedCard(manager, cornerRadius: 16)
                             }
                         }
                     }
                     .padding(16)
                 }
-                .background(Color(UIColor.systemGroupedBackground))
+                .background(manager.backgroundColor.ignoresSafeArea())
             }
         }
+        .background(manager.backgroundColor.ignoresSafeArea())
         .refreshable {
             await loadAlbums()
         }

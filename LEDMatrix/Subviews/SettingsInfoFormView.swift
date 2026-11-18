@@ -26,36 +26,39 @@ struct SettingsInfoFormView: View {
                 row(title: "Время работы", value: manager.settings.formattedUptime)
                 row(title: "Перезапущено", value: "\(manager.settings.resetReason) (\(manager.settings.resetReasonName))")
             }
+            .listRowBackground(manager.cardBackgroundColor)
             Section {
                 Button(action: {
                     activeAction = .restart
                 }) {
                     Label("Перезагрузить", systemImage: "arrow.clockwise")
                 }
-                .foregroundStyle(.blue)
+                .foregroundStyle(manager.accentColor)
 
                 Button(action: {
                     activeAction = .resetSettings
                 }) {
                     Label("Сброс настроек", systemImage: "slider.horizontal.2.arrow.trianglehead.counterclockwise")
                 }
-                .foregroundStyle(.orange)
+                .foregroundStyle(manager.warningColor)
 
                 Button(action: {
                     activeAction = .resetWifi
                 }) {
                     Label("Сброс WiFi", systemImage: "wifi")
                 }
-                .foregroundStyle(.orange)
+                .foregroundStyle(manager.warningColor)
 
                 Button(action: {
                     activeAction = .factoryReset
                 }) {
                     Label("Полный сброс", systemImage: "exclamationmark.triangle.fill")
                 }
-                .foregroundStyle(.red)
+                .foregroundStyle(manager.dangerColor)
             }
+            .listRowBackground(manager.cardBackgroundColor)
         }
+        .themedForm(manager)
         .refreshable {
             // Запрашиваем актуальные настройки по текущему выбранному устройству
             if let device = manager.selectedDevice {
@@ -86,7 +89,7 @@ struct SettingsInfoFormView: View {
         HStack {
             Text(title) // Теперь Text сразу понимает, что это ключ локализации
             Spacer()
-            Text(value).foregroundColor(.secondary)
+            Text(value).foregroundColor(manager.secondaryTextColor)
         }
     }
 }

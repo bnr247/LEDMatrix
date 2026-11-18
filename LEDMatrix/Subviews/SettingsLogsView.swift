@@ -21,7 +21,7 @@ struct SettingsLogsView: View {
                             .tint(manager.accentColor)
                             .padding(.trailing, 8)
                         Text("Загрузка вывода...")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                     }
                     .padding(16)
                     .rotationEffect(.radians(.pi)) // Переворачиваем индикатор загрузки
@@ -29,7 +29,7 @@ struct SettingsLogsView: View {
                 } else {
                     Text(manager.deviceLogs)
                         .font(.system(.callout, design: .monospaced))
-                        .foregroundColor(Color(red: 0.17, green: 1, blue: 0)) // Зеленый #b7f7b7
+                        .foregroundColor(manager.successColor) // Терминальный зелёный из палитры темы
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
                         // Переворачиваем сам текст обратно, чтобы он читался нормально
@@ -43,11 +43,13 @@ struct SettingsLogsView: View {
         .rotationEffect(.radians(.pi))
         .scaleEffect(x: -1, y: 1, anchor: .center)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
+        .background(manager.matrixPanelColor.ignoresSafeArea())
         .navigationTitle("Вывод устройства")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(manager.matrixPanelColor, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        .tint(manager.accentColor)
         .onAppear {
             manager.startLogStreaming()
         }

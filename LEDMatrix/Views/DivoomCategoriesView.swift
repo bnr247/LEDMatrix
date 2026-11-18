@@ -54,9 +54,22 @@ struct DivoomCategoriesView: View {
                                 .font(selectedCategoryId == category.id ? .subheadline.bold() : .subheadline)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(selectedCategoryId == category.id ? manager.cardBackgroundColor : manager.backgroundColor)
-                                .foregroundColor(manager.accentColor)
+                                .background(
+                                    selectedCategoryId == category.id
+                                        ? manager.accentColor.opacity(0.18)
+                                        : manager.cardBackgroundColor
+                                )
+                                .foregroundColor(selectedCategoryId == category.id ? manager.accentColor : manager.appTextColor)
                                 .cornerRadius(16)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(
+                                            selectedCategoryId == category.id
+                                                ? manager.accentColor
+                                                : manager.cardBorderColor,
+                                            lineWidth: 1
+                                        )
+                                )
                         }
                     }
                 }
@@ -65,7 +78,9 @@ struct DivoomCategoriesView: View {
             }
             .background(manager.backgroundColor)
                 
-            Divider()
+            Rectangle()
+                .fill(manager.dividerColor)
+                .frame(height: 0.5)
             
             // Жестко растягиваем универсальную галерею на все доступное пространство
             let currentCategory = categories.first(where: { $0.id == selectedCategoryId })

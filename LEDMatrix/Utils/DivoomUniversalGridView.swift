@@ -46,9 +46,13 @@ struct DivoomUniversalGridView: View {
                     .font(.system(size: 12, weight: .medium))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Color.secondary.opacity(0.15))
-                    .foregroundColor(.primary)
+                    .background(manager.fieldBackgroundColor)
+                    .foregroundColor(manager.appTextColor)
                     .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(manager.cardBorderColor, lineWidth: 1)
+                    )
                 }
                 
                 Spacer()
@@ -67,42 +71,50 @@ struct DivoomUniversalGridView: View {
                         .background(manager.cardBackgroundColor)
                         .foregroundColor(manager.accentColor)
                         .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                        )
                     }
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color.black)
+            .background(manager.backgroundColor)
             
-            Divider()
-                .background(Color.secondary.opacity(0.3))
+            Rectangle()
+                .fill(manager.dividerColor)
+                .frame(height: 0.5)
 
             Group {
                 if isLoading && items.isEmpty {
                     VStack(spacing: 12) {
                         ProgressView()
+                            .tint(manager.accentColor)
                         Text("Загрузка галереи...")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.secondaryTextColor)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error = errorMessage, items.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.largeTitle)
-                            .foregroundColor(.orange)
+                            .foregroundColor(manager.warningColor)
                         Text(error)
                             .multilineTextAlignment(.center)
+                            .foregroundColor(manager.appTextColor)
                         Button("Повторить") {
                             Task { await loadInitialItems() }
                         }
                         .buttonStyle(.bordered)
+                        .tint(manager.accentColor)
                     }
                     .padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if items.isEmpty {
                     Text("Нет элементов")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.secondaryTextColor)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollViewReader { _ in
@@ -149,7 +161,7 @@ struct DivoomUniversalGridView: View {
                         .safeAreaPadding(.bottom, 80) // Системный отступ под таббар/индикатор
                         .scrollPosition(id: $scrollPositionId)
                     }
-                    .background(.black)
+                    .background(manager.backgroundColor)
                     .refreshable {
                         await refreshItems()
                     }
@@ -157,11 +169,12 @@ struct DivoomUniversalGridView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color.black)
+        .background(manager.backgroundColor)
         // .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $isShowingSettingsSheet) {
             gallerySettingsSheet
                 .presentationDetents([.height(260)])
+                .presentationBackground(manager.backgroundColor)
         }
         .task(id: fileSortOption) {
             if items.isEmpty {
@@ -173,17 +186,19 @@ struct DivoomUniversalGridView: View {
     private var gallerySettingsSheet: some View {
         VStack(spacing: 20) {
             RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color.secondary.opacity(0.4))
+                .fill(manager.secondaryTextColor.opacity(0.4))
                 .frame(width: 36, height: 5)
                 .padding(.top, 8)
             
             Text("Настройки галереи")
                 .font(.headline)
+                .foregroundColor(manager.appTextColor)
             
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Text("Элементов в ряду:")
                         .font(.subheadline)
+                        .foregroundColor(manager.appTextColor)
                     Spacer()
                     Picker("Колонки", selection: $gridColumnsCount) {
                         Text("2").tag(2)
@@ -196,6 +211,7 @@ struct DivoomUniversalGridView: View {
                 HStack {
                     Text("Сортировка:")
                         .font(.subheadline)
+                        .foregroundColor(manager.appTextColor)
                     Spacer()
                     Picker("Сортировка", selection: $fileSortOption) {
                         Text("Популярные").tag(1)
@@ -209,6 +225,7 @@ struct DivoomUniversalGridView: View {
             
             Spacer()
         }
+        .tint(manager.accentColor)
         .presentationCornerRadius(24)
     }
     

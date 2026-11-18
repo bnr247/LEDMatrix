@@ -216,6 +216,19 @@ class MatrixManager: NSObject, ObservableObject {
         }
     }
     
+    /// Тумблер «Отображать на весь экран» на вкладке Текст.
+    /// По умолчанию выключен: прошивка рисует текст на непрозрачной полосе
+    /// в центре матрицы. Включённый тумблер возвращает классический
+    /// полноэкранный текст (scroll_text_transparent = false).
+    @Published var textFullScreen: Bool = false {
+        didSet {
+            guard !isRestoringSettings else { return }
+            if selectedDevice != nil {
+                UserDefaults.standard.set(textFullScreen, forKey: deviceKeyPrefix + "saved_text_fullscreen")
+            }
+        }
+    }
+    
     /// Состояние тумблера «Сетка» на вкладке Экран
     @Published var showGrid: Bool = true {
         didSet {
@@ -297,6 +310,13 @@ class MatrixManager: NSObject, ObservableObject {
             scrollRepeatCount = UserDefaults.standard.integer(forKey: deviceKeyPrefix + "saved_scroll_repeat")
         } else {
             scrollRepeatCount = 3
+        }
+        
+        // Загружаем режим отображения текста (полоса / весь экран)
+        if UserDefaults.standard.object(forKey: deviceKeyPrefix + "saved_text_fullscreen") != nil {
+            textFullScreen = UserDefaults.standard.bool(forKey: deviceKeyPrefix + "saved_text_fullscreen")
+        } else {
+            textFullScreen = false
         }
         
         // Загружаем видимость сетки
@@ -515,5 +535,165 @@ extension MatrixManager {
         case .neon:
             return Color(hex: "00F0FF").opacity(0.8) // Циановая неоновая граница
         }
+    }
+
+    // MARK: - Расширенная палитра темы
+
+    /// Второстепенный текст: подписи, значения, подсказки.
+    var secondaryTextColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.secondaryLabel)
+        case .dark:
+            return Color.white.opacity(0.62)
+        case .neon:
+            return Color(hex: "8FA6C4")
+        }
+    }
+
+    /// Фон полей ввода и небольших вложенных контролов.
+    var fieldBackgroundColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.tertiarySystemBackground)
+        case .dark:
+            return Color(hex: "242424")
+        case .neon:
+            return Color(hex: "0B1524")
+        }
+    }
+
+    /// Линии-разделители внутри карточек и списков.
+    var dividerColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.separator)
+        case .dark:
+            return Color.white.opacity(0.12)
+        case .neon:
+            return Color(hex: "00F0FF").opacity(0.16)
+        }
+    }
+
+    /// Обводка карточек. В неоновой теме чуть заметнее, чем фон.
+    var cardBorderColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.separator).opacity(0.7)
+        case .dark:
+            return Color.green.opacity(0.32)
+        case .neon:
+            return Color(hex: "00F0FF").opacity(0.45)
+        }
+    }
+
+    /// Подложка вокруг LED-сетки 16×16. Всегда почти чёрная, чтобы
+    /// светодиоды читались одинаково хорошо в любой теме.
+    var matrixPanelColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(hex: "171717")
+        case .dark:
+            return Color(hex: "0E0E0E")
+        case .neon:
+            return Color(hex: "05080F")
+        }
+    }
+
+    /// Цвет тени карточек (в неоне — лёгкое циановое свечение).
+    var shadowColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color.black.opacity(0.12)
+        case .dark:
+            return Color.black.opacity(0.45)
+        case .neon:
+            return Color(hex: "00F0FF").opacity(0.16)
+        }
+    }
+
+    /// Цвет текста/иконок поверх акцентной заливки.
+    var accentContrastColor: Color {
+        switch currentTheme {
+        case .system:
+            return .white
+        case .dark:
+            return .black
+        case .neon:
+            return Color(hex: "031018")
+        }
+    }
+
+    var successColor: Color {
+        switch currentTheme {
+        case .system:
+            return .green
+        case .dark:
+            return Color(hex: "4ADE80")
+        case .neon:
+            return Color(hex: "2DFFB2")
+        }
+    }
+
+    var warningColor: Color {
+        switch currentTheme {
+        case .system:
+            return .orange
+        case .dark:
+            return Color(hex: "FBBF24")
+        case .neon:
+            return Color(hex: "FFC857")
+        }
+    }
+
+    var dangerColor: Color {
+        switch currentTheme {
+        case .system:
+            return .red
+        case .dark:
+            return Color(hex: "FF6B6B")
+        case .neon:
+            return Color(hex: "FF4D8D")
+        }
+    }
+
+    /// Фон всплывающих подсказок (тостов).
+    var toastBackgroundColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color.black.opacity(0.82)
+        case .dark:
+            return Color(hex: "242424").opacity(0.96)
+        case .neon:
+            return Color(hex: "0B1524").opacity(0.96)
+        }
+    }
+}
+
+// MARK: - Общие тематические модификаторы
+
+extension View {
+    /// Применяет фон, акцент и прозрачный системный фон к Form/List.
+    @MainActor
+    func themedForm(_ manager: MatrixManager) -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .background(manager.backgroundColor.ignoresSafeArea())
+            .tint(manager.accentColor)
+    }
+
+    /// Карточка в стиле главного экрана: заливка, обводка и мягкая тень.
+    @MainActor
+    func themedCard(_ manager: MatrixManager, cornerRadius: CGFloat = 16) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(manager.cardBackgroundColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(manager.cardBorderColor, lineWidth: manager.currentTheme == .neon ? 1.2 : 1)
+            )
+            .shadow(color: manager.shadowColor, radius: 6, x: 0, y: 3)
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 
 /// Вспомогательный компонент красивой кнопки инструмента с иконкой
 struct ToolButton: View {
+    @ObservedObject var manager: MatrixManager
     let icon: String
     let title: String
     let isSelected: Bool
@@ -23,14 +24,19 @@ struct ToolButton: View {
                     .font(.caption2)
             }
             .frame(width: 70, height: 42)
-            .background(isSelected ? Color.accentColor : Color(UIColor.secondarySystemBackground))
-            .foregroundColor(isSelected ? .white : .primary)
+            .background(isSelected ? manager.accentColor : manager.fieldBackgroundColor)
+            .foregroundColor(isSelected ? manager.accentContrastColor : manager.appTextColor)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? manager.accentColor : manager.cardBorderColor, lineWidth: 1)
+            )
         }
     }
 }
 
 struct EraseButton: View {
+    @ObservedObject var manager: MatrixManager
     let action: () -> Void
 
     var body: some View {
@@ -42,9 +48,13 @@ struct EraseButton: View {
                     .font(.caption2)
             }
             .frame(width: 70, height: 42)
-            .background(Color(UIColor.secondarySystemBackground))
-            .foregroundColor(.red)
+            .background(manager.fieldBackgroundColor)
+            .foregroundColor(manager.dangerColor)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(manager.dangerColor.opacity(0.35), lineWidth: 1)
+            )
         }
     }
 }
