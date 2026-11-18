@@ -224,6 +224,7 @@ extension MatrixManager {
     /// сразу отправляется текущий циферблат, чтобы на матрице было ровно то,
     /// что видно в приложении.
     func setClockPreview(_ active: Bool) async {
+        settings.clockPreviewActive = active
         var params: [String: Any] = ["clock_preview": active]
         if active {
             params["clock_font"] = settings.currentClockFontId

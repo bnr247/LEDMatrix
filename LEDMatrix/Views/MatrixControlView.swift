@@ -198,6 +198,22 @@ struct MatrixControlView: View {
                 Task {
                     manager.emergencyStopDrawing()
                 }
+            } else if newPhase == .active {
+                // Настройки могли измениться с другого телефона или по API,
+                // пока приложение было свёрнуто. Без обновления пикеры
+                // показывали устаревший режим экрана.
+                Task {
+                    await manager.fetchSettings(for: device)
+                }
+            }
+        }
+        .onChange(of: isShowingSettingsTab) { _, showing in
+            if showing {
+                // Открытие настроек всегда подтягивает актуальное состояние
+                // устройства, чтобы не показывать устаревший режим экрана.
+                Task {
+                    await manager.fetchSettings(for: device)
+                }
             }
         }
     }

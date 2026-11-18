@@ -51,6 +51,7 @@ struct ClockSettingsView: View {
         }
         .onAppear {
             syncSelectedFace()
+            isPreviewActive = manager.settings.clockPreviewActive
         }
         .onDisappear {
             disablePreview()
@@ -59,6 +60,11 @@ struct ClockSettingsView: View {
             if newPhase != .active {
                 disablePreview()
             }
+        }
+        .onChange(of: manager.settings.clockPreviewActive) { _, active in
+            // Устройство могло выйти из превью само (например, при смене
+            // режима экрана) — глаз должен показывать реальное состояние.
+            isPreviewActive = active
         }
         .onChange(of: selectedFaceIndex) { oldIndex, newIndex in
             handleFaceChange(from: oldIndex, to: newIndex)

@@ -65,6 +65,7 @@ struct MatrixSettings: Codable {
     var clockEffectSpeed: Int = 20
     var clockDisplaySeconds: Int = 0
     var animationDisplaySeconds: Int = 0
+    var clockPreviewActive: Bool = false
     var animationTypeInt: Int? = 0
     var animationTypeId: Int? = 0
     var animationSortOrder: Int? = 0
@@ -108,6 +109,7 @@ struct MatrixSettings: Codable {
         case clockEffectSpeed = "clock_effect_speed"
         case clockDisplaySeconds = "clock_display_seconds"
         case animationDisplaySeconds = "animation_display_seconds"
+        case clockPreviewActive = "clock_preview_active"
         case animationTypeInt = "animation_type"
         case animationTypeId = "animation_id"
         case animationSortOrder = "animation_sort_order"
