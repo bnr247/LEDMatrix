@@ -20,7 +20,7 @@ struct TextControlView: View {
     var body: some View {
         Form {
             Section {
-                HStack(alignment: .bottom, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
                     TextField("Введите сообщение...", text: $manager.textToSend, axis: .vertical)
                         .lineLimit(2, reservesSpace: true)
                         .foregroundColor(manager.appTextColor)
