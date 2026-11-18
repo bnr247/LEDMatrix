@@ -204,14 +204,26 @@ extension MatrixManager {
         // ИСПРАВЛЕНО: Строго проверяйте наличие всех \ перед скобками
         let formattedText = "[\(bgComp.0),\(bgComp.1),\(bgComp.2)][\(textComp.0),\(textComp.1),\(textComp.2)]\(trimmed)"
 
-        lastSentText = trimmed
         try? await self.sendCommand(endpoint: "cmd", params: [
             "text": formattedText,
             "text_speed_fps": Int(scrollSpeedFps),
             "repeat_count": scrollRepeatCount,
+            "text_color_hex": UIColor(textColor).toHex() ?? "FFFFFF",
+            "text_bg_color_hex": UIColor(textBgColor).toHex() ?? "000000",
             // true — непрозрачная полоса по центру, false — классический
             // полноэкранный текст. Тумблер «на весь экран» инвертирует флаг.
             "scroll_text_transparent": !textFullScreen
+        ])
+    }
+
+    /// Обновляет только параметры уже показанной бегущей строки. Текст не
+    /// передаётся, поэтому прошивка не начинает прокрутку заново.
+    func updateTextSettings() async {
+        try? await self.sendCommand(endpoint: "cmd", params: [
+            "text_speed_fps": Int(scrollSpeedFps),
+            "repeat_count": scrollRepeatCount,
+            "text_color_hex": UIColor(textColor).toHex() ?? "FFFFFF",
+            "text_bg_color_hex": UIColor(textBgColor).toHex() ?? "000000"
         ])
     }
     

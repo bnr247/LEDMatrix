@@ -178,9 +178,6 @@ class MatrixManager: NSObject, ObservableObject {
     private var isRestoringSettings = false
 
     @Published var textToSend: String = ""
-    /// Последняя реально отправленная на матрицу строка. Живые настройки
-    /// (скорость, цвета, повторы) применяются именно к ней, а не к черновику.
-    var lastSentText: String = ""
     @Published var textColor: Color = .init(hex: "800080") {
         didSet {
             guard !isRestoringSettings else { return }
@@ -282,9 +279,6 @@ class MatrixManager: NSObject, ObservableObject {
     /// Метод для загрузки настроек конкретного устройства из UserDefaults
     func loadSettingsForCurrentDevice() {
         guard selectedDevice != nil else { return }
-        
-        // У другого устройства своя строка на матрице — старую не переиспользуем.
-        lastSentText = ""
         
         // Включаем флаг блокировки didSet, чтобы при присвоении значений
         // они случайно не затерли память пустыми дефолтами

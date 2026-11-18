@@ -97,15 +97,10 @@ struct TextControlView: View {
     private func scheduleLiveUpdate() {
         liveUpdateTask?.cancel()
 
-        // Если на матрицу ещё ничего не отправляли, менять нечего: настройки
-        // уйдут вместе с первым нажатием «Отправить».
-        let message = manager.lastSentText
-        guard !message.isEmpty else { return }
-
         liveUpdateTask = Task {
-            try? await Task.sleep(for: .milliseconds(350))
+            try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
-            await manager.sendText(message)
+            await manager.updateTextSettings()
         }
     }
 }
