@@ -22,10 +22,19 @@ struct TextControlView: View {
             Section {
                 TextField("Введите сообщение...", text: $manager.textToSend)
                     .foregroundColor(manager.appTextColor)
-                
+            } header: {
+                Text("Сообщение")
+                    .foregroundColor(manager.accentColor)
+            } footer: {
+                Text("Текст появится на матрице после нажатия «Отправить» или Return.")
+                    .foregroundColor(manager.secondaryTextColor)
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+
+            Section {
                 ColorPicker("Цвет текста", selection: $manager.textColor, supportsOpacity: false)
                 ColorPicker("Цвет фона", selection: $manager.textBgColor, supportsOpacity: false)
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("Скорость")
@@ -48,11 +57,11 @@ struct TextControlView: View {
                     )
                     .tint(manager.accentColor)
                 }
-                
+
                 Stepper("Повторов: \(manager.scrollRepeatCount)", value: $manager.scrollRepeatCount, in: 1...10)
                     .tint(manager.accentColor)
             } header: {
-                Text("Бегущая строка")
+                Text("Параметры")
                     .foregroundColor(manager.accentColor)
             }
             .listRowBackground(manager.cardBackgroundColor)
