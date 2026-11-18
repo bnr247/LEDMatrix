@@ -11,7 +11,12 @@ import SwiftUI
 
 struct TextControlView: View {
     @ObservedObject var manager: MatrixManager
-    
+
+    /// Отложенная отправка текущего текста: изменения в поле, цветах и
+    /// ползунках применяются на устройстве почти сразу, но без запроса на
+    /// каждое движение пальца.
+    @State private var liveUpdateTask: Task<Void, Never>?
+
     var body: some View {
         Form {
             Section {
@@ -76,6 +81,29 @@ struct TextControlView: View {
         .onSubmit {
             Task { await manager.sendCurrentText() }
             hideKeyboard()
+        }
+        .onChange(of: manager.textToSend) { _, _ in scheduleLiveUpdate() }
+        .onChange(of: manager.textColor) { _, _ in scheduleLiveUpdate() }
+        .onChange(of: manager.textBgColor) { _, _ in scheduleLiveUpdate() }
+        .onChange(of: manager.scrollSpeedFps) { _, _ in scheduleLiveUpdate() }
+        .onChange(of: manager.scrollRepeatCount) { _, _ in scheduleLiveUpdate() }
+        .onChange(of: manager.textFullScreen) { _, _ in scheduleLiveUpdate() }
+        .onDisappear {
+            liveUpdateTask?.cancel()
+            liveUpdateTask = nil
+        }
+    }
+
+    private func scheduleLiveUpdate() {
+        liveUpdateTask?.cancel()
+
+        let message = manager.textToSend.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
+
+        liveUpdateTask = Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            await manager.sendCurrentText()
         }
     }
 }

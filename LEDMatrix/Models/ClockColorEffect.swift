@@ -28,4 +28,14 @@ enum ClockColorEffect: Hashable {
         var params: [String: Any] = ["clock_color_effect": typeKey]
         return params
     }
+
+    /// Скорость управляет только непрерывными эффектами: спектром и радугой.
+    /// Обмен цветом и случайный цвет срабатывают при смене цифры, а «Нет»
+    /// вообще не анимирует цвет — для них слайдер не нужен.
+    var usesSpeed: Bool {
+        switch self {
+        case .spectrum, .rainbow: return true
+        case .off, .swap, .randomColor: return false
+        }
+    }
 }

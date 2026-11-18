@@ -10,7 +10,9 @@ struct ClockSettingsView: View {
     /// Индекс текущего лица в карусели. Прошивка хранит ID шрифта, а порядок
     /// массива /clockfaces стабилен, поэтому индекс и ID синхронизируются.
     @State private var selectedFaceIndex: Int = 0
-    @State private var selection: ClockPreviewSelection? = nil
+    /// Цвет всегда редактирует один выбранный элемент. По умолчанию это фон,
+    /// чтобы пикер был доступен сразу после открытия вкладки.
+    @State private var selection: ClockPreviewSelection = .background
     @State private var isPreviewActive = false
 
     private var faces: [ClockFace] { manager.clockFaces }
@@ -150,30 +152,33 @@ struct ClockSettingsView: View {
                     }
                 }
 
-                if let selection, let face = currentFace {
-                    HStack {
-                        Text(selection.title)
-                            .foregroundColor(manager.appTextColor)
-                        Spacer()
+                HStack {
+                    Text("Цвет: \(selection.title)")
+                        .foregroundColor(manager.appTextColor)
+                    Spacer()
+                    if let face = currentFace {
                         ColorPicker(
                             "",
                             selection: colorBinding(for: selection, face: face),
                             supportsOpacity: false
                         )
                         .labelsHidden()
+                    } else {
+                        ProgressView()
+                            .controlSize(.small)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(manager.fieldBackgroundColor)
-                    )
-                } else {
-                    Text("Нажмите на цифру, разделитель или фон, чтобы изменить цвет")
-                        .font(.caption2)
-                        .foregroundColor(manager.secondaryTextColor)
-                        .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(manager.fieldBackgroundColor)
+                )
+
+                Text("Нажмите на цифру, разделитель или фон, чтобы выбрать элемент для изменения цвета")
+                    .font(.caption2)
+                    .foregroundColor(manager.secondaryTextColor)
+                    .multilineTextAlignment(.center)
             }
             .padding(.vertical, 6)
         } header: {
@@ -202,25 +207,27 @@ struct ClockSettingsView: View {
                 Text("Случайный цвет").tag(ClockColorEffect.randomColor)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Скорость эффекта")
-                    Spacer()
-                    Text("\(manager.settings.clockEffectSpeed)")
-                        .foregroundColor(manager.secondaryTextColor)
-                        .monospacedDigit()
+            if manager.settings.clockColorEffect?.usesSpeed == true {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Скорость эффекта")
+                        Spacer()
+                        Text("\(manager.settings.clockEffectSpeed)")
+                            .foregroundColor(manager.secondaryTextColor)
+                            .monospacedDigit()
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { Double(manager.settings.clockEffectSpeed) },
+                            set: { newValue in
+                                Task { await manager.updateClockEffectSpeed(Int(newValue)) }
+                            }
+                        ),
+                        in: 1 ... 100,
+                        step: 5
+                    )
+                    .tint(manager.accentColor)
                 }
-                Slider(
-                    value: Binding(
-                        get: { Double(manager.settings.clockEffectSpeed) },
-                        set: { newValue in
-                            Task { await manager.updateClockEffectSpeed(Int(newValue)) }
-                        }
-                    ),
-                    in: 1 ... 100,
-                    step: 5
-                )
-                .tint(manager.accentColor)
             }
         }
         .listRowBackground(manager.cardBackgroundColor)
@@ -270,7 +277,6 @@ struct ClockSettingsView: View {
         guard face.id != manager.settings.currentClockFontId else { return }
 
         let direction = newIndex >= oldIndex ? 1 : -1
-        selection = nil
         Task {
             await manager.selectClockFace(face.id, direction: isPreviewActive ? direction : 0)
         }
@@ -282,9 +288,6 @@ struct ClockSettingsView: View {
             set: { newColor in
                 Task {
                     await manager.updateClockColor(for: selection, color: newColor)
-                }
-                withAnimation(.easeInOut(duration: 0.12)) {
-                    self.selection = nil
                 }
             }
         )
@@ -367,7 +370,7 @@ private struct ClockFacePreviewCanvas: View {
     let face: ClockFace
     let styles: [Int: ClockFontStyle]
     let settings: MatrixSettings
-    let selection: ClockPreviewSelection?
+    let selection: ClockPreviewSelection
     let accentColor: Color
     let panelColor: Color
     let onSelect: (ClockPreviewSelection) -> Void
@@ -394,8 +397,7 @@ private struct ClockFacePreviewCanvas: View {
                         }
                     }
 
-                    if let selection,
-                       let rect = selectionRect(for: selection),
+                    if let rect = selectionRect(for: selection),
                        let cellRect = highlightRect(rect, cell: cell) {
                         let outlined = cellRect.insetBy(dx: -cell * 0.10, dy: -cell * 0.10)
                         canvas.stroke(
