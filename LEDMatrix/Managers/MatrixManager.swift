@@ -60,6 +60,8 @@ class MatrixManager: NSObject, ObservableObject {
 
     @Published var settings = MatrixSettings()
     @Published var wifiSettings = MatrixWifiSettings()
+    @Published var clockFaces: [ClockFace] = []
+    @Published var clockFonts: [ClockFont] = []
     @Published var isScanning = false
     @Published var connectionStatus = "Не подключено"
         

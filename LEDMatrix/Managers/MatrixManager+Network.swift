@@ -31,6 +31,14 @@ extension MatrixManager {
                 self.settings = decoded
                 // ИСПРАВЛЕНО: Полностью убран деструктивный код затирания локальных буферов Divoom
                 self.connectionStatus = "Подключено к \(device.name)"
+
+                // Циферблаты и шрифты загружаются вместе с настройками: без них
+                // редактор часов не сможет построить превью.
+                async let faces = fetchClockFaces()
+                async let fonts = fetchClockFonts()
+                let (loadedFaces, loadedFonts) = await (faces, fonts)
+                self.clockFaces = loadedFaces
+                self.clockFonts = loadedFonts
             }
         } catch {
             print("❌ Ошибка при запросе /settings: \(error)")
@@ -59,7 +67,7 @@ extension MatrixManager {
     
     func fetchClockFonts() async -> [ClockFont] {
         guard let device = selectedDevice,
-              let url = URL(string: "http://\(device.ipAddress)/clock/fonts") else { return [] }
+              let url = URL(string: "http://\(device.ipAddress)/clockfonts") else { return [] }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("close", forHTTPHeaderField: "Connection")
@@ -71,10 +79,36 @@ extension MatrixManager {
             let session = URLSession(configuration: config)
             let (data, response) = try await session.data(for: request)
             if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
-                return try JSONDecoder().decode([ClockFont].self, from: data)
+                let decoded = try JSONDecoder().decode([ClockFont].self, from: data)
+                self.clockFonts = decoded
+                return decoded
             }
         } catch {
-            print("❌ Ошибка при запросе /clock/fonts: \(error)")
+            print("❌ Ошибка при запросе /clockfonts: \(error)")
+        }
+        return []
+    }
+
+    func fetchClockFaces() async -> [ClockFace] {
+        guard let device = selectedDevice,
+              let url = URL(string: "http://\(device.ipAddress)/clockfaces") else { return [] }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("close", forHTTPHeaderField: "Connection")
+        request.timeoutInterval = 3.0
+        addBasicAuthHeader(to: &request)
+
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
+            if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
+                let decoded = try JSONDecoder().decode([ClockFace].self, from: data)
+                self.clockFaces = decoded
+                return decoded
+            }
+        } catch {
+            print("❌ Ошибка при запросе /clockfaces: \(error)")
         }
         return []
     }
@@ -171,6 +205,28 @@ extension MatrixManager {
         settings.currentClockFontId = font
         try? await self.sendCommand(endpoint: "cmd", params: ["clock_font": font])
     }
+
+    /// Выбирает циферблат и, если превью активно, просит устройство проиграть
+    /// слайд в ту же сторону, что и свайп в приложении.
+    func selectClockFace(_ faceId: Int, direction: Int) async {
+        settings.currentClockFontId = faceId
+        var params: [String: Any] = ["clock_font": faceId]
+        if direction != 0 {
+            params["clock_slide"] = direction
+        }
+        try? await self.sendCommand(endpoint: "cmd", params: params)
+    }
+
+    /// Включает или выключает живой предпросмотр на устройстве. При включении
+    /// сразу отправляется текущий циферблат, чтобы на матрице было ровно то,
+    /// что видно в приложении.
+    func setClockPreview(_ active: Bool) async {
+        var params: [String: Any] = ["clock_preview": active]
+        if active {
+            params["clock_font"] = settings.currentClockFontId
+        }
+        try? await self.sendCommand(endpoint: "cmd", params: params)
+    }
     
     func updateClockHoursColor1(_ color: Color) async {
         let hex = UIColor(color).toHex() ?? "0064FF"
@@ -206,6 +262,25 @@ extension MatrixManager {
         let hex = UIColor(color).toHex() ?? "000000"
         settings.bgColorHex = hex
         try? await self.sendCommand(endpoint: "cmd", params: ["bg_color_hex": hex])
+    }
+
+    /// Сохраняет цвет выбранного в превью элемента. Каждый слот циферблата
+    /// отображается на свою глобальную настройку цвета устройства.
+    func updateClockColor(for selection: ClockPreviewSelection, color: Color) async {
+        switch selection {
+        case .digit(let type):
+            switch type {
+            case "h1": await updateClockHoursColor1(color)
+            case "h2": await updateClockHoursColor2(color)
+            case "m1": await updateClockMinutesColor1(color)
+            case "m2": await updateClockMinutesColor2(color)
+            default: break
+            }
+        case .separator:
+            await updateClockColonColor(color)
+        case .background:
+            await updateClockBgColor(color)
+        }
     }
     
     func toggleClockShowColon(_ showColon: Bool) async {
