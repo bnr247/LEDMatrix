@@ -156,14 +156,38 @@ struct ClockFace: Codable, Identifiable, Equatable {
 
     /// Элемент, который находится под пальцем. Разделитель проверяется раньше
     /// цифр: в Super Bold его точки лежат внутри знакоместа, и выбрать их иначе
-    /// было бы невозможно.
-    func hitTest(x: Int, y: Int) -> ClockPreviewSelection {
+    /// было бы невозможно. Цифра выбирается только по реально зажжённому
+    /// пикселю, а не по всему прямоугольнику знакоместа: иначе на плотных
+    /// циферблатах нельзя было бы добраться до фона.
+    func hitTest(x: Int, y: Int, styles: [Int: ClockFontStyle],
+                 hour: Int, minute: Int) -> ClockPreviewSelection {
         for (index, part) in separatorParts.enumerated() where part.contains(x: x, y: y) {
             return .separator(index)
         }
-        for digit in digits where digit.contains(x: x, y: y) {
-            return .digit(digit.type)
+
+        let digitValues: [String: Int] = [
+            "h1": hour / 10,
+            "h2": hour % 10,
+            "m1": minute / 10,
+            "m2": minute % 10
+        ]
+
+        // Последняя цифра рисуется поверх предыдущих — её и проверяем первой.
+        for digit in digits.reversed() where digit.contains(x: x, y: y) {
+            guard let value = digitValues[digit.type],
+                  let style = styles[digit.fontStyle] else { continue }
+
+            let col = x - digit.x
+            let row = y - digit.y
+            let width = min(style.width, digit.width)
+            let height = min(style.height, digit.height)
+            guard col >= 0, row >= 0, col < width, row < height else { continue }
+
+            if style.pixel(digit: value, col: col, row: row) {
+                return .digit(digit.type)
+            }
         }
+
         return .background
     }
 

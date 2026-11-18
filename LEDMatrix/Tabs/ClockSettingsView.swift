@@ -424,7 +424,14 @@ private struct ClockFacePreviewCanvas: View {
                             guard cell > 0 else { return }
                             let x = Int(floor(max(0, min(side - 0.001, event.location.x)) / cell))
                             let y = Int(floor(max(0, min(side - 0.001, event.location.y)) / cell))
-                            onSelect(face.hitTest(x: x, y: y))
+                            let components = Calendar.current.dateComponents([.hour, .minute], from: context.date)
+                            onSelect(face.hitTest(
+                                x: x,
+                                y: y,
+                                styles: styles,
+                                hour: components.hour ?? 0,
+                                minute: components.minute ?? 0
+                            ))
                         }
                 )
             }
