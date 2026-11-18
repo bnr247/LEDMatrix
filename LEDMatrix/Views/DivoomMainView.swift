@@ -69,7 +69,8 @@ struct DivoomMainView: View {
                 .tag(DivoomSection.authors)
         }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(manager.cardBackgroundColor)
         .toolbarBackground(.visible, for: .navigationBar)
+        .tint(manager.accentColor)
     }
 }

@@ -12,12 +12,52 @@ import Network
 import SwiftUI
 import UIKit
 
+
+enum AppTheme: String, CaseIterable, Identifiable {
+    case system = "Системная"
+    case dark = "Тёмная (OLED)"
+    case neon = "Неоновая"
+    
+    var id: String { rawValue }
+    
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .dark: return .dark
+        case .neon: return .dark // Неоновая также использует темную базу с яркими акцентами
+        }
+    }
+}
+
 @MainActor
 class MatrixManager: NSObject, ObservableObject {
+    @Published var currentTheme: AppTheme = MatrixManager.loadInitialTheme() {
+        didSet {
+            UserDefaults.standard.set(currentTheme.rawValue, forKey: "selected_app_theme")
+        }
+    }
+    
+    private static func loadInitialTheme() -> AppTheme {
+        if let raw = UserDefaults.standard.string(forKey: "selected_app_theme"),
+           let theme = AppTheme(rawValue: raw) {
+            return theme
+        }
+        return .dark // По умолчанию темная тема
+    }
+    
     @Published var discoveredDevices: [LEDMatrixDevice] = []
     @Published var savedDevices: [LEDMatrixDevice] = []
         
-    @Published var selectedDevice: LEDMatrixDevice?
+    @Published var selectedDevice: LEDMatrixDevice? {
+        didSet {
+            if let device = selectedDevice {
+                UserDefaults.standard.set(device.id, forKey: "led_matrix_last_selected_device_id")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "led_matrix_last_selected_device_id")
+            }
+        }
+    }
+
     @Published var settings = MatrixSettings()
     @Published var wifiSettings = MatrixWifiSettings()
     @Published var isScanning = false
@@ -26,6 +66,46 @@ class MatrixManager: NSObject, ObservableObject {
     @Published var isSavingSettings = false
     @Published var isSaveSuccess = false
     @Published var saveErrorMessage: String? = nil
+    
+    let lastSelectedDeviceIdKey = "led_matrix_last_selected_device_id"
+
+    /// В init() добавьте автоматический выбор последнего устройства:
+    override init() {
+        super.init()
+        loadSavedDevices()
+        restoreLastSelectedDevice()
+    }
+    
+    /// Единый метод для смены устройства: загружает локальный кэш и подтягивает сеть
+    func selectDevice(_ device: LEDMatrixDevice) {
+        guard selectedDevice?.id != device.id else { return }
+        selectedDevice = device
+        loadSettingsForCurrentDevice()
+            
+        Task {
+            await fetchSettings(for: device)
+            await fetchWifiSettings(for: device)
+        }
+    }
+
+    func restoreLastSelectedDevice() {
+        let lastId = UserDefaults.standard.string(forKey: lastSelectedDeviceIdKey)
+        if let found = savedDevices.first(where: { $0.id == lastId }) {
+            selectedDevice = found
+            loadSettingsForCurrentDevice()
+            Task {
+                await fetchSettings(for: found)
+                await fetchWifiSettings(for: found)
+            }
+        } else if let first = savedDevices.first {
+            selectedDevice = first
+            loadSettingsForCurrentDevice()
+            Task {
+                await fetchSettings(for: first)
+                await fetchWifiSettings(for: first)
+            }
+        }
+    }
         
     // Новые состояния для проверки доступности перед входом
     @Published var isConnectingToDevice = false
@@ -38,57 +118,57 @@ class MatrixManager: NSObject, ObservableObject {
     }
     
     // Словарь статусов доступности устройств [ID устройства: доступно ли в сети]
-        @Published var deviceReachabilityStatus: [String: Bool] = [:]
-        @Published var isCheckingReachability = false
+    @Published var deviceReachabilityStatus: [String: Bool] = [:]
+    @Published var isCheckingReachability = false
 
-        /// Проверка доступности всех сохраненных устройств
-        func checkAllSavedDevicesReachability() async {
-            isCheckingReachability = true
+    /// Проверка доступности всех сохраненных устройств
+    func checkAllSavedDevicesReachability() async {
+        isCheckingReachability = true
             
-            // Параллельно проверяем каждое сохраненное устройство
-            let statuses: [(String, Bool)] = await withTaskGroup(of: (String, Bool).self) { group in
-                for device in savedDevices {
-                    group.addTask {
-                        let isReachable = await self.isDeviceReachable(device)
-                        return (device.id, isReachable)
-                    }
+        // Параллельно проверяем каждое сохраненное устройство
+        let statuses: [(String, Bool)] = await withTaskGroup(of: (String, Bool).self) { group in
+            for device in savedDevices {
+                group.addTask {
+                    let isReachable = await self.isDeviceReachable(device)
+                    return (device.id, isReachable)
                 }
+            }
                 
-                var results: [(String, Bool)] = []
-                for await result in group {
-                    results.append(result)
-                }
-                return results
+            var results: [(String, Bool)] = []
+            for await result in group {
+                results.append(result)
             }
-            
-            await MainActor.run {
-                for (id, status) in statuses {
-                    self.deviceReachabilityStatus[id] = status
-                }
-                self.isCheckingReachability = false
-            }
+            return results
         }
+            
+        await MainActor.run {
+            for (id, status) in statuses {
+                self.deviceReachabilityStatus[id] = status
+            }
+            self.isCheckingReachability = false
+        }
+    }
 
-        /// Единичная проверка доступности устройства
-        private func isDeviceReachable(_ device: LEDMatrixDevice) async -> Bool {
-            guard let url = URL(string: "http://\(device.ipAddress):\(device.port)/settings") else { return false }
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 2.0
-            addBasicAuthHeader(to: &request)
+    /// Единичная проверка доступности устройства
+    private func isDeviceReachable(_ device: LEDMatrixDevice) async -> Bool {
+        guard let url = URL(string: "http://\(device.ipAddress):\(device.port)/settings") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 2.0
+        addBasicAuthHeader(to: &request)
             
-            do {
-                let config = URLSessionConfiguration.ephemeral
-                let session = URLSession(configuration: config)
-                let (_, response) = try await session.data(for: request)
-                if let httpResp = response as? HTTPURLResponse {
-                    return (200...299).contains(httpResp.statusCode) || httpResp.statusCode == 401
-                }
-                return false
-            } catch {
-                return false
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            let session = URLSession(configuration: config)
+            let (_, response) = try await session.data(for: request)
+            if let httpResp = response as? HTTPURLResponse {
+                return (200 ... 299).contains(httpResp.statusCode) || httpResp.statusCode == 401
             }
+            return false
+        } catch {
+            return false
         }
+    }
     
     // MARK: - Состояния Вкладок Управления (с привязкой к выбранному устройству)
     
@@ -173,11 +253,6 @@ class MatrixManager: NSObject, ObservableObject {
     let drawQueue = DispatchQueue(label: "com.matrix.drawQueue", qos: .userInitiated)
     var isDrawingFrameInFlight = false
     var pendingDrawFrameData: Data?
-    
-    override init() {
-        super.init()
-        loadSavedDevices()
-    }
     
     func addBasicAuthHeader(to request: inout URLRequest) {
         let loginString = "\(authUsername):\(authPassword)"
@@ -377,4 +452,66 @@ class MatrixManager: NSObject, ObservableObject {
     @Published var isUsingFrontCamera = false
     @Published var showCameraGrid = true
     @Published var lastCapturedImage: UIImage? = nil
+}
+
+extension MatrixManager {
+    // Цвет основного фона
+    var backgroundColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.systemBackground)
+        case .dark:
+            return Color.black // Чистый OLED черный
+        case .neon:
+            return Color(hex: "080C14") // Глубокий киберпанк-оттенок (ночной сине-угольный)
+        }
+    }
+
+    // Цвет карточек / контейнеров
+    var cardBackgroundColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.secondarySystemBackground)
+        case .dark:
+            return Color(hex: "1A1A1A") // Темный графит для OLED
+        case .neon:
+            return Color(hex: "111827") // Насыщенный темно-синий киберпанк-графит
+        }
+    }
+
+    // Основной цвет текста интерфейса
+    var appTextColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.label)
+        case .dark:
+            return Color.white
+        case .neon:
+            return Color(hex: "E2E8F0") // Светлый технологичный оттенок
+        }
+    }
+
+    // Акцентный цвет
+    var accentColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color.accentColor
+        case .dark:
+            return Color.green
+        case .neon:
+            return Color(hex: "00F0FF") // Яркий неоновый циан (электрик) для контраста
+        }
+    }
+
+    // Цвет обводки (рамок) кнопок и карточек
+    var borderColor: Color {
+        switch currentTheme {
+        case .system:
+            return Color(UIColor.separator)
+        case .dark:
+            return Color.green.opacity(0.5)
+        case .neon:
+            return Color(hex: "00F0FF").opacity(0.8) // Циановая неоновая граница
+        }
+    }
 }

@@ -9,33 +9,11 @@
 
 import SwiftUI
 
-struct TextControlTab: View {
+struct TextControlView: View {
     @ObservedObject var manager: MatrixManager
     
     var body: some View {
         Form {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "sun.max.fill")
-                            .foregroundColor(.secondary)
-                        Text("Яркость: \(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)")
-                            .font(.body)
-                        Spacer()
-                    }
-                    
-                    Slider(
-                        value: Binding(
-                            get: { Double(manager.settings.brightnessPercent) },
-                            set: { newValue in Task { await manager.updateSingleBrightness(Int(newValue)) } }
-                        ),
-                        in: 0...100, step: 5
-                    )
-                    .tint(.yellow)
-                }
-                .padding(.vertical, 4)
-            }
-            
             Section(header: Text("Бегущая строка")) {
                 TextField("Введите сообщение...", text: $manager.textToSend)
                 ColorPicker("Цвет текста", selection: $manager.textColor, supportsOpacity: false)

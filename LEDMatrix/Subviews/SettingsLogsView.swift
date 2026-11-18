@@ -18,7 +18,7 @@ struct SettingsLogsView: View {
                 if manager.isLogLoading && manager.deviceLogs.isEmpty {
                     HStack {
                         ProgressView()
-                            .tint(.gray)
+                            .tint(manager.accentColor)
                             .padding(.trailing, 8)
                         Text("Загрузка вывода...")
                             .foregroundColor(.secondary)

@@ -1,0 +1,388 @@
+//
+//  DeviceListView.swift
+//  LEDMatrix
+//
+//  Created by Stanislav Leonov on 29.10.2026.
+//
+
+import SwiftUI
+
+/// Перечисление доступных функций устройства для сетки
+enum AppFeature: Identifiable, CaseIterable, Hashable {
+    case divoom, clock, text, drawing, screen, camera
+    
+    var id: Self {
+        self
+    }
+    
+    var title: String {
+        switch self {
+        case .divoom: return "Divoom"
+        case .clock: return "Часы"
+        case .text: return "Текст"
+        case .drawing: return "Рисование"
+        case .screen: return "Экран"
+        case .camera: return "Камера"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .divoom: return "square.grid.2x2.fill"
+        case .clock: return "clock.fill"
+        case .text: return "text.bubble.fill"
+        case .drawing: return "paintpalette.fill"
+        case .screen: return "tv.fill"
+        case .camera: return "camera.fill"
+        }
+    }
+}
+
+struct MainScreenView: View {
+    @ObservedObject var manager: MatrixManager
+    
+    @State private var isShowingAddDevice = false
+    @State private var isShowingSettings = false
+    @State private var selectedFeature: AppFeature? = nil
+    
+    private var isDeviceAvailable: Bool {
+        guard let device = manager.selectedDevice else { return false }
+        return manager.deviceReachabilityStatus[device.id] ?? true
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                // Динамический фон в зависимости от темы
+                manager.backgroundColor
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    // СЕКЦИЯ ВЫБОРА УСТРОЙСТВА И НАСТРОЕК
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Устройство")
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 12) {
+                            Menu {
+                                if manager.savedDevices.isEmpty {
+                                    Text("Нет устройств")
+                                } else {
+                                    ForEach(manager.savedDevices) { device in
+                                        Button(device.name) {
+                                            manager.selectDevice(device)
+                                        }
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(manager.savedDevices.isEmpty ? "Нет устройств" : (manager.selectedDevice?.name ?? "Выберите устройство"))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(manager.selectedDevice != nil ? manager.accentColor : .secondary)
+                                    Spacer()
+                                    if !manager.savedDevices.isEmpty {
+                                        Image(systemName: "chevron.up.chevron.down")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(manager.cardBackgroundColor)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                                        )
+                                )
+                            }
+                            .disabled(manager.savedDevices.isEmpty)
+                            
+                            Button(action: {
+                                isShowingSettings = true
+                            }) {
+                                Image(systemName: "gearshape.fill")
+                                    .font(.title2)
+                                    .foregroundColor(isDeviceAvailable ? manager.accentColor : .gray)
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(manager.cardBackgroundColor)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(isDeviceAvailable ? manager.accentColor.opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
+                                            )
+                                    )
+                            }
+                            .disabled(!isDeviceAvailable)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // СЕКЦИЯ УПРАВЛЕНИЯ ЯРКОСТЬЮ
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "sun.max.fill")
+                                .foregroundColor(isDeviceAvailable ? manager.accentColor : .secondary)
+                            Text("Яркость: \(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)")
+                                .foregroundColor(manager.appTextColor)
+                            Spacer()
+                        }
+                                            
+                        Slider(
+                            value: Binding(
+                                get: { Double(manager.settings.brightnessPercent) },
+                                set: { newValue in
+                                    Task { await manager.updateSingleBrightness(Int(newValue)) }
+                                }
+                            ),
+                            in: 0 ... 100,
+                            step: 5
+                        )
+                        .tint(manager.accentColor)
+                        .disabled(!isDeviceAvailable)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(manager.cardBackgroundColor)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                            )
+                    )
+                    .padding(.horizontal, 20)
+                    .opacity(isDeviceAvailable ? 1.0 : 0.6)
+                                        
+                    // СЕТКА КНОПОК ФУНКЦИЙ (2x3)
+                    let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
+
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(AppFeature.allCases) { feature in
+                            Button(action: {
+                                if isDeviceAvailable {
+                                    selectedFeature = feature
+                                }
+                            }) {
+                                VStack(spacing: 12) {
+                                    Image(systemName: feature.icon)
+                                        .font(.system(size: 28))
+                                    Text(feature.title)
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 110)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(manager.cardBackgroundColor)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .stroke(isDeviceAvailable ? manager.accentColor : Color.gray.opacity(0.4), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                                        )
+                                )
+                                .foregroundColor(isDeviceAvailable ? manager.appTextColor : .gray)
+                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
+                            }
+                            .disabled(!isDeviceAvailable)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    Spacer()
+                }
+            }
+            .navigationTitle("LED Matrix")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        isShowingAddDevice = true
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(manager.accentColor)
+                    }
+                }
+            }
+            // Идентификатор id(manager.currentTheme) заставляет SwiftUI полностью пересоздать стэк при смене темы
+            .id(manager.currentTheme)
+            .navigationDestination(item: $selectedFeature) { feature in
+                Group {
+                    switch feature {
+                    case .divoom:
+                        DivoomMainView(manager: manager)
+                    case .clock:
+                        ClockSettingsView(manager: manager)
+                    case .text:
+                        TextControlView(manager: manager)
+                    case .drawing:
+                        DrawingView(manager: manager)
+                    case .screen:
+                        ScreenCastingView(manager: manager)
+                    case .camera:
+                        CameraView(manager: manager)
+                    }
+                }
+                .navigationTitle(feature.title)
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                NavigationStack {
+                    SettingsView(manager: manager)
+                        .navigationTitle("Настройки")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Готово") {
+                                    isShowingSettings = false
+                                }
+                            }
+                        }
+                }
+            }
+            .sheet(isPresented: $isShowingAddDevice) {
+                DeviceManagementSheet(manager: manager)
+            }
+            .onAppear {
+                manager.startScanning()
+                Task {
+                    await manager.checkAllSavedDevicesReachability()
+                    if manager.selectedDevice == nil, let firstDevice = manager.savedDevices.first {
+                        manager.selectDevice(firstDevice)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Отдельное представление для модального окна добавления/управления устройствами (+)
+struct DeviceManagementSheet: View {
+    @ObservedObject var manager: MatrixManager
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var itemIndicesToDelete: IndexSet? = nil
+    @State private var isDeleteAlertPresented = false
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                // Секция сохраненных устройств
+                if !manager.savedDevices.isEmpty {
+                    Section(header: HStack {
+                        Text("Мои устройства")
+                        if manager.isCheckingReachability {
+                            Spacer()
+                            ProgressView().controlSize(.small)
+                        }
+                    }) {
+                        ForEach(manager.savedDevices) { device in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(device.name).font(.headline)
+                                    Text(device.ipAddress)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if manager.selectedDevice?.id == device.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                manager.selectDevice(device)
+                                dismiss()
+                            }
+                        }
+                        .onDelete { indexSet in
+                            itemIndicesToDelete = indexSet
+                            isDeleteAlertPresented = true
+                        }
+                    }
+                }
+                
+                // Секция найденных устройств в сети
+                Section(header: Text("Устройства в сети")) {
+                    if manager.isScanning {
+                        HStack {
+                            ProgressView().padding(.trailing, 8)
+                            Text("Поиск устройств...").foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    if manager.discoveredDevices.isEmpty && !manager.isScanning {
+                        Text("Новые устройства не найдены").foregroundColor(.secondary)
+                    }
+                    
+                    ForEach(manager.discoveredDevices) { device in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(device.name).font(.headline)
+                                Text(device.ipAddress).font(.subheadline).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Button("Добавить") {
+                                manager.saveDevice(device)
+                                manager.selectedDevice = device
+                                Task {
+                                    await manager.checkAllSavedDevicesReachability()
+                                }
+                                dismiss()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                
+                // Ручное добавление по IP
+                Section {
+                    NavigationLink(destination: ManualIPView(manager: manager)) {
+                        Text("Добавить по IP вручную")
+                    }
+                }
+            }
+            .navigationTitle("Управление устройствами")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        manager.startScanning()
+                        Task { await manager.checkAllSavedDevicesReachability() }
+                    }) {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+            }
+            .alert("Удаление устройства", isPresented: $isDeleteAlertPresented) {
+                Button("Удалить", role: .destructive) {
+                    if let indices = itemIndicesToDelete {
+                        manager.removeDevice(at: indices)
+                    }
+                    itemIndicesToDelete = nil
+                }
+                Button("Отмена", role: .cancel) {
+                    itemIndicesToDelete = nil
+                }
+            } message: {
+                Text("Вы действительно хотите удалить это устройство?")
+            }
+            .onAppear {
+                manager.startScanning()
+                Task {
+                    await manager.checkAllSavedDevicesReachability()
+                }
+            }
+        }
+    }
+}

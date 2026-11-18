@@ -23,10 +23,10 @@ struct SettingsView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Устройство")) {
+            Section(header: Text("Устройство").foregroundColor(manager.accentColor)) {
                 HStack {
                     Text(manager.selectedDevice?.name ?? "Неизвестно")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.appTextColor)
                     Spacer()
                     Button("Переименовать") {
                         if let currentDevice = manager.selectedDevice {
@@ -34,38 +34,61 @@ struct SettingsView: View {
                             isRenameAlertPresented = true
                         }
                     }
+                    .foregroundColor(manager.accentColor)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Настройки устройства")) {
+            Section(header: Text("Внешний вид").foregroundColor(manager.accentColor)) {
+                Picker("Тема оформления", selection: Binding(
+                    get: { manager.currentTheme },
+                    set: { manager.currentTheme = $0 }
+                )) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Text(theme.rawValue).tag(theme)
+                    }
+                }
+                .pickerStyle(.menu)
+                .foregroundColor(manager.appTextColor)
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+            
+            Section(header: Text("Настройки устройства").foregroundColor(manager.accentColor)) {
                 NavigationLink(destination: SettingsGeneralFormView(manager: manager)) {
                     Label("Общие", systemImage: "sparkles.tv")
+                        .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsWifiFormView(manager: manager)) {
                     Label("Настройки Wifi", systemImage: "wifi")
+                        .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsDivoomFormView(manager: manager)) {
                     Label("Настройки Divoom", systemImage: "globe")
+                        .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsInfoFormView(manager: manager)) {
                     Label("Об устройстве", systemImage: "info.circle")
+                        .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsLogsView(manager: manager)) {
                     Label("Просмотр лога", systemImage: "terminal")
+                        .foregroundColor(manager.appTextColor)
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Обновление ПО")) {
+            Section(header: Text("Обновление ПО").foregroundColor(manager.accentColor)) {
                 if manager.isOtaUpdating {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(manager.otaStatusMessage)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(manager.appTextColor)
                         
                         ProgressView(value: manager.otaProgress, total: 1.0)
                             .progressViewStyle(.linear)
+                            .tint(manager.accentColor)
                         
                         Text("\(Int(manager.otaProgress * 100))%")
                             .font(.caption)
@@ -77,10 +100,16 @@ struct SettingsView: View {
                         isFilePickerPresented = true
                     }) {
                         Label("Установить прошивку (.bin)", systemImage: "arrow.clockwise.icloud")
+                            .foregroundColor(manager.accentColor)
                     }
                 }
             }
+            .listRowBackground(manager.cardBackgroundColor)
         }
+        .scrollContentBackground(.hidden) // Скрываем стандартный системный фон формы
+        .background(manager.backgroundColor.ignoresSafeArea()) // Красим в цвет темы менеджера
+        .id(manager.currentTheme) // Принудительно пересоздаем вью при смене темы для мгновенного применения
+        
         // Диалоговое окно переименования устройства
         .alert("Переименовать устройство", isPresented: $isRenameAlertPresented) {
             TextField("Новое название", text: $newDeviceName)
@@ -150,15 +179,4 @@ struct SettingsView: View {
             Text("Вы действительно хотите установить выбранный файл прошивки?\n\nФайл: \(selectedFileName)")
         }
     }
-}
-
-func actionButton(title: LocalizedStringKey, color: Color, action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-        Text(title)
-            .bold()
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-    }
-    .buttonStyle(.borderedProminent)
-    .tint(color)
 }

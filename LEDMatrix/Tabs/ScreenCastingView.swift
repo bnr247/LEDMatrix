@@ -9,7 +9,7 @@
 
 import SwiftUI
 
-struct ScreenTab: View {
+struct ScreenCastingView: View {
     @ObservedObject var manager: MatrixManager
     
     var body: some View {
@@ -77,7 +77,7 @@ struct ScreenTab: View {
                 HStack {
                     if manager.isScreenLoading {
                         ProgressView()
-                            .tint(.white)
+                            .tint(manager.accentColor)
                             .padding(.trailing, 8)
                     } else {
                         Image(systemName: "arrow.clockwise")

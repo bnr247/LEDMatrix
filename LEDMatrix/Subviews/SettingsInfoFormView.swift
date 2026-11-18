@@ -24,6 +24,7 @@ struct SettingsInfoFormView: View {
                 row(title: "Запусков", value: "\(manager.settings.bootCount)")
                 row(title: "Последний старт", value: manager.settings.formattedBootTime)
                 row(title: "Время работы", value: manager.settings.formattedUptime)
+                row(title: "Перезапущено", value: "\(manager.settings.resetReason) (\(manager.settings.resetReasonName))")
             }
             Section {
                 Button(action: {
@@ -50,14 +51,9 @@ struct SettingsInfoFormView: View {
                 Button(action: {
                     activeAction = .factoryReset
                 }) {
-                    Label("Factory reset", systemImage: "exclamationmark.triangle.fill")
+                    Label("Полный сброс", systemImage: "exclamationmark.triangle.fill")
                 }
                 .foregroundStyle(.red)
-
-//                    actionButton(title: "Перезагрузить", color: .blue) { activeAction = .restart }
-//                    actionButton(title: "Сброс настроек", color: .orange) { activeAction = .resetSettings }
-//                    actionButton(title: "Сброс WiFi", color: .orange) { activeAction = .resetWifi }
-//                    actionButton(title: "Factory reset", color: .red) { activeAction = .factoryReset }
             }
         }
         .refreshable {

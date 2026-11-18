@@ -9,7 +9,7 @@
 
 import SwiftUI
 
-struct CameraTab: View {
+struct CameraView: View {
     @ObservedObject var manager: MatrixManager
     @State private var cameraController = CameraStreamController()
     @State private var isStreaming = false
@@ -128,7 +128,7 @@ struct CameraTab: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 120)
         }
-        .background(Color(UIColor.systemGroupedBackground))
+        .background(manager.backgroundColor)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {
                 Text(message)

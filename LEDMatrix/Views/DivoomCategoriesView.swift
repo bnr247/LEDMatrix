@@ -54,8 +54,8 @@ struct DivoomCategoriesView: View {
                                 .font(selectedCategoryId == category.id ? .subheadline.bold() : .subheadline)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(selectedCategoryId == category.id ? Color.accentColor : Color.secondary.opacity(0.15))
-                                .foregroundColor(selectedCategoryId == category.id ? .white : .primary)
+                                .background(selectedCategoryId == category.id ? manager.cardBackgroundColor : manager.backgroundColor)
+                                .foregroundColor(manager.accentColor)
                                 .cornerRadius(16)
                         }
                     }
@@ -63,7 +63,7 @@ struct DivoomCategoriesView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             }
-            .background(.ultraThinMaterial)
+            .background(manager.backgroundColor)
                 
             Divider()
             

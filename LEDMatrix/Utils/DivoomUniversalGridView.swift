@@ -64,8 +64,8 @@ struct DivoomUniversalGridView: View {
                         .font(.system(size: 12, weight: .medium))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
+                        .background(manager.cardBackgroundColor)
+                        .foregroundColor(manager.accentColor)
                         .cornerRadius(12)
                     }
                 }
@@ -141,7 +141,7 @@ struct DivoomUniversalGridView: View {
                                         
                             if isLoadingMore {
                                 ProgressView()
-                                    .tint(.white)
+                                    .tint(manager.accentColor)
                                     .padding(.vertical, 20)
                                     .frame(maxWidth: .infinity)
                             }

@@ -61,12 +61,15 @@ struct MatrixSettings: Codable {
     var showColon: Bool = true
     var clockAnimationTypeInt: Int? = 0
     var clockAnimationMs: Int = 1000
-    var clockRandomColor: Bool = false
+    var clockColorEffectInt: Int? = 0
+    var clockEffectSpeed: Int = 20
     var clockDisplaySeconds: Int = 0
     var animationDisplaySeconds: Int = 0
     var animationTypeInt: Int? = 0
     var animationTypeId: Int? = 0
     var animationSortOrder: Int? = 0
+    var resetReason: Int = -1
+    var resetReasonName: String = ""
     var uptime: Int = 0
 
     enum CodingKeys: String, CodingKey {
@@ -101,12 +104,15 @@ struct MatrixSettings: Codable {
         case showColon = "show_colon"
         case clockAnimationTypeInt = "clock_animation_type"
         case clockAnimationMs = "clock_animation_ms"
-        case clockRandomColor = "clock_random_color"
+        case clockColorEffectInt = "clock_color_effect"
+        case clockEffectSpeed = "clock_effect_speed"
         case clockDisplaySeconds = "clock_display_seconds"
         case animationDisplaySeconds = "animation_display_seconds"
         case animationTypeInt = "animation_type"
         case animationTypeId = "animation_id"
         case animationSortOrder = "animation_sort_order"
+        case resetReason = "reset_reason"
+        case resetReasonName = "reset_reason_name"
         case uptime
     }
 
@@ -129,11 +135,11 @@ struct MatrixSettings: Codable {
             animationTypeId = newValue?.id
         }
     }
-    
+
     var clockAnimationType: ClockAnimationType? {
         get {
             guard let type = clockAnimationTypeInt else { return nil }
-            
+
             switch type {
             case 0: return .fading
             case 1: return .slideUp
@@ -144,6 +150,24 @@ struct MatrixSettings: Codable {
         }
         set {
             clockAnimationTypeInt = newValue?.typeKey
+        }
+    }
+
+    var clockColorEffect: ClockColorEffect? {
+        get {
+            guard let type = clockColorEffectInt else { return nil }
+
+            switch type {
+            case 0: return .off
+            case 1: return .swap
+            case 2: return .spectrum
+            case 3: return .rainbow
+            case 4: return .randomColor
+            default: return nil
+            }
+        }
+        set {
+            clockColorEffectInt = newValue?.typeKey
         }
     }
 

@@ -67,7 +67,7 @@ struct DivoomFeedView: View {
                     
                     if isLoadingMore {
                         ProgressView()
-                            .tint(.white)
+                            .tint(manager.accentColor)
                             .padding()
                     }
                 }
@@ -231,7 +231,7 @@ struct DivoomFeedItemView: View {
                     Rectangle()
                         .fill(Color.gray.opacity(0.15))
                         .aspectRatio(1, contentMode: .fit)
-                        .overlay(ProgressView().tint(.white))
+                        .overlay(ProgressView().tint(manager.accentColor))
                 }
             }
             .frame(maxWidth: .infinity)
@@ -298,7 +298,7 @@ struct DivoomFeedItemView: View {
                 Group {
                     if isLoadingPlaylists {
                         ProgressView()
-                            .tint(.white)
+                            .tint(manager.accentColor)
                     } else if playlists.isEmpty {
                         Text("Нет плейлистов")
                             .foregroundColor(.secondary)

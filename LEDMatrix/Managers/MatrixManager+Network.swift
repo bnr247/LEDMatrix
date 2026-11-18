@@ -215,7 +215,17 @@ extension MatrixManager {
     
     func updateClockAnimationType(_ animType: ClockAnimationType) async {
         settings.clockAnimationType = animType
-        try? await self.sendCommand(endpoint: "cmd", params: ["clock_animation_type": animType])
+        try? await self.sendCommand(endpoint: "cmd", params: animType.parameters)
+    }
+    
+    func updateClockColorEffect(_ colorEffect: ClockColorEffect) async {
+        settings.clockColorEffect = colorEffect
+        try? await self.sendCommand(endpoint: "cmd", params: colorEffect.parameters)
+    }
+    
+    func updateClockEffectSpeed(_ speed: Int) async {
+        settings.clockEffectSpeed = speed
+        try? await self.sendCommand(endpoint: "cmd", params: ["clock_effect_speed": speed])
     }
     
     func updateClockAnimationMs(_ animMs: Int) async {
@@ -223,10 +233,15 @@ extension MatrixManager {
         try? await self.sendCommand(endpoint: "cmd", params: ["clock_animation_ms": animMs])
     }
     
-    func toggleClockRandomColor(_ isRandomColor: Bool) async {
-        settings.clockRandomColor = isRandomColor
-        try? await self.sendCommand(endpoint: "cmd", params: ["clock_random_color": isRandomColor])
-    }
+//    func toggleClockRandomColor(_ isRandomColor: Bool) async {
+//        settings.clockRandomColor = isRandomColor
+//        try? await self.sendCommand(endpoint: "cmd", params: ["clock_random_color": isRandomColor])
+//    }
+//    
+//    func toggleClockSwapColors(_ swapColors: Bool) async {
+//        settings.clockSwapColors = swapColors
+//        try? await self.sendCommand(endpoint: "cmd", params: ["clock_swap_colors": swapColors])
+//    }
     
     func toggleShowTextUsername(_ showUsername: Bool) async {
         settings.showNameText = showUsername
@@ -330,6 +345,28 @@ extension MatrixManager {
             set: { newType in
                 Task {
                     try? await self.updateAnimationType(newType)
+                }
+            }
+        )
+    }
+    
+    var clockAnimationTypeBinding: Binding<ClockAnimationType> {
+        Binding(
+            get: { self.settings.clockAnimationType ?? .fading },
+            set: { newType in
+                Task {
+                    try? await self.updateClockAnimationType(newType)
+                }
+            }
+        )
+    }
+    
+    var clockColorEffectBinding: Binding<ClockColorEffect> {
+        Binding(
+            get: { self.settings.clockColorEffect ?? .off },
+            set: { newType in
+                Task {
+                    try? await self.updateClockColorEffect(newType)
                 }
             }
         )

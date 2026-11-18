@@ -25,7 +25,7 @@ struct DivoomAlbumsView: View {
                     ProgressView()
                     Text("Загрузка альбомов...")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(manager.accentColor)
                 }
             } else if let error = errorMessage {
                 VStack(spacing: 16) {
@@ -38,6 +38,7 @@ struct DivoomAlbumsView: View {
                         Task { await loadAlbums() }
                     }
                     .buttonStyle(.borderedProminent)
+                    
                 }
                 .padding()
             } else {
@@ -61,7 +62,7 @@ struct DivoomAlbumsView: View {
                                     Text(album.AlbumName)
                                         .font(.subheadline)
                                         .fontWeight(.medium)
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(manager.accentColor)
                                         .lineLimit(1)
                                         .padding(.horizontal, 4)
                                 }

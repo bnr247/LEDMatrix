@@ -116,15 +116,15 @@ struct MatrixControlView: View {
                             Group {
                                 switch selectedTab {
                                 case .text:
-                                    TextControlTab(manager: manager)
+                                    TextControlView(manager: manager)
                                 case .clock:
-                                    ClockSettingsTab(manager: manager)
+                                    ClockSettingsView(manager: manager)
                                 case .drawing:
-                                    DrawingTab(manager: manager)
+                                    DrawingView(manager: manager)
                                 case .screen:
-                                    ScreenTab(manager: manager)
+                                    ScreenCastingView(manager: manager)
                                 case .camera:
-                                    CameraTab(manager: manager)
+                                    CameraView(manager: manager)
                                 }
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)

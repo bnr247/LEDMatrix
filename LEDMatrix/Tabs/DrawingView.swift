@@ -2,15 +2,16 @@
 //  DrawingTab.swift
 //  LEDMatrix
 //
-//  Created by Stanislav Leonov  on 29.10.2026.
+//  Created by Stanislav Leonov on 29.10.2026.
 //
 
 // MARK: - ВКЛАДКА: РИСОВАНИЕ
 
 import SwiftUI
 
-struct DrawingTab: View {
+struct DrawingView: View {
     @ObservedObject var manager: MatrixManager
+    @Environment(\.dismiss) private var dismiss
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 16)
     
     enum DrawingTool {
@@ -24,32 +25,42 @@ struct DrawingTab: View {
     @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             if !manager.isDrawingActive {
                 Spacer()
-                Button(action: {
-                    Task {
-                        await manager.startDrawing()
-                        manager.resetUndoRedoHistory()
-                    }
-                }) {
-                    HStack {
-                        if manager.isDrawingLoading {
-                            ProgressView().tint(.white).padding(.trailing, 8)
-                        } else {
-                            Image(systemName: "play.fill")
+                VStack(spacing: 16) {
+                    Button(action: {
+                        Task {
+                            // Принудительно завершаем предыдущую сессию перед стартом новой
+                            await manager.stopDrawing()
+                            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 сек паузы
+                            
+                            await manager.startDrawing()
+                            manager.resetUndoRedoHistory()
                         }
-                        Text("Начать")
-                            .bold()
+                    }) {
+                        HStack {
+                            if manager.isDrawingLoading {
+                                ProgressView().tint(manager.accentColor).padding(.trailing, 8)
+                            } else {
+                                Image(systemName: "play.fill")
+                            }
+                            Text("Начать")
+                                .bold()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal, 40)
-                
-                if let errorMsg = manager.drawErrorMessage {
-                    Text(errorMsg).font(.caption).foregroundColor(.red).padding(.top)
+                    .buttonStyle(.borderedProminent)
+                    .padding(.horizontal, 40)
+                    
+                    if let errorMsg = manager.drawErrorMessage {
+                        Text(errorMsg)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                    }
                 }
                 Spacer()
             } else {
@@ -97,7 +108,7 @@ struct DrawingTab: View {
                     .frame(height: 32)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.top, 12)
                 
                 // СЕТКА 16x16
                 GeometryReader { geometry in
@@ -139,7 +150,6 @@ struct DrawingTab: View {
                                 .onEnded { _ in
                                     // Палец оторван: штрих завершен. Если были изменения, коммитим в историю Undo
                                     if let prevState = canvasStateBeforeStroke,
-                                       // Проверяем, действительно ли что-то изменилось за время штриха
                                        prevState != manager.drawPixels
                                     {
                                         manager.pushCustomStateToUndo(prevState)
@@ -206,14 +216,22 @@ struct DrawingTab: View {
             }
         }
         .background(Color(UIColor.systemGroupedBackground))
+        // Возвращаем стандартный iOS NavigationBar
+        .navigationTitle("Рисование")
+        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                if manager.isDrawingActive {
-                    Button("Назад") {
-                        Task {
-                            await manager.stopDrawing()
-                        }
+                Button(action: {
+                    Task {
+                        await manager.stopDrawing()
+                        dismiss()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .fontWeight(.medium)
+                        Text("Назад")
                     }
                 }
             }
@@ -230,10 +248,8 @@ struct DrawingTab: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard manager.isDrawingActive else { return }
             if newPhase == .background {
-                // При сворачивании приложения экстренно гасим режим рисования на плате
                 manager.emergencyStopDrawing()
             } else if newPhase == .active {
-                // При возвращении в приложение снова активируем режим рисования и отправляем текущий холст
                 Task {
                     await manager.startDrawing()
                     manager.sendDrawFrame()
