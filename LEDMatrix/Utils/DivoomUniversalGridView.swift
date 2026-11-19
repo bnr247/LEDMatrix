@@ -239,9 +239,10 @@ struct DivoomUniversalGridView: View {
         let endNum = currentStart + pageSize - 1
         do {
             let result = try await fetchItems(currentStart, endNum, fileSortOption)
-            // Сначала грузим кадры, чтобы pageSize ячеек не появлялись пустыми.
-            let loaded = await loadAnimations(for: result.items)
-            applyLoadedAnimations(loaded)
+            // Сначала грузим только первые кадры — это быстро и не даёт
+            // появиться целому ряду пустых плейсхолдеров.
+            let loaded = await loadFirstFrames(for: result.items)
+            applyFirstFrames(loaded)
 
             items = result.items
             isLoading = false
@@ -250,6 +251,7 @@ struct DivoomUniversalGridView: View {
                 hasMorePages = false
             } else {
                 currentStart = items.count + 1
+                upgradeToAnimations(for: result.items)
             }
         } catch {
             errorMessage = "Ошибка загрузки: \(error.localizedDescription)"
@@ -271,10 +273,12 @@ struct DivoomUniversalGridView: View {
                 let uniqueNewItems = result.items.filter { !existingIds.contains($0.id) }
                 
                 if !uniqueNewItems.isEmpty {
-                    // Добавляем страницу в сетку только с уже загруженными кадрами.
-                    let loaded = await loadAnimations(for: uniqueNewItems)
-                    applyLoadedAnimations(loaded)
+                    // Показываем страницу с первыми кадрами, полную анимацию
+                    // догружаем в фоне и подменяем уже видимые ячейки.
+                    let loaded = await loadFirstFrames(for: uniqueNewItems)
+                    applyFirstFrames(loaded)
                     items.append(contentsOf: uniqueNewItems)
+                    upgradeToAnimations(for: uniqueNewItems)
                 }
                 
                 if result.items.isEmpty {
@@ -297,8 +301,8 @@ struct DivoomUniversalGridView: View {
         
         do {
             let result = try await fetchItems(currentStart, endNum, fileSortOption)
-            let loaded = await loadAnimations(for: result.items)
-            applyLoadedAnimations(loaded)
+            let loaded = await loadFirstFrames(for: result.items)
+            applyFirstFrames(loaded)
 
             items = result.items
             
@@ -306,39 +310,44 @@ struct DivoomUniversalGridView: View {
                 hasMorePages = false
             } else {
                 currentStart = items.count + 1
+                upgradeToAnimations(for: result.items)
             }
         } catch {}
     }
     
-    /// Грузит кадры страницы до того, как она появится в сетке.
-    /// Параллельность ограничена, чтобы не держать в памяти сразу слишком
-    /// много animated UIImage за раз. Порядок элементов в сетке при этом стабильный.
-    private func loadAnimations(for list: [DivoomFileItem]) async -> [String: DivoomAnimationResult] {
-        let targets = list.compactMap { item -> (key: String, fileId: String)? in
+    /// Быстрая загрузка первых кадров: по одному 16x16 изображению на анимацию.
+    private func loadFirstFrames(for list: [DivoomFileItem]) async -> [String: UIImage] {
+        let targets = list.compactMap { item -> String? in
             guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { return nil }
-            return (fileId, fileId)
+            return fileId
         }
         guard !targets.isEmpty else { return [:] }
 
-        var loaded: [String: DivoomAnimationResult] = [:]
-        let batchSize = 8
+        var loaded: [String: UIImage] = [:]
+        let batchSize = 12
         var index = 0
 
         while index < targets.count {
             let end = min(index + batchSize, targets.count)
             let batch = targets[index..<end]
 
-            await withTaskGroup(of: (String, DivoomAnimationResult?).self) { group in
-                for target in batch {
+            let batchLoaded = await withTaskGroup(
+                of: (String, UIImage?).self,
+                returning: [String: UIImage].self
+            ) { group in
+                for fileId in batch {
                     group.addTask {
-                        let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: target.fileId)
-                        return (target.key, result)
+                        let image = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
+                        return (fileId, image)
                     }
                 }
-                for await (key, result) in group {
-                    if let result { loaded[key] = result }
+                var result: [String: UIImage] = [:]
+                for await (fileId, image) in group {
+                    if let image { result[fileId] = image }
                 }
+                return result
             }
+            loaded.merge(batchLoaded) { _, new in new }
 
             index = end
         }
@@ -346,11 +355,56 @@ struct DivoomUniversalGridView: View {
         return loaded
     }
 
-    private func applyLoadedAnimations(_ loaded: [String: DivoomAnimationResult]) {
-        for (key, result) in loaded {
-            loadedAnimations[key] = result.image
-            firstBytes[key] = result.firstByte
-            rawSpeeds[key] = result.rawSpeed
+    private func applyFirstFrames(_ images: [String: UIImage]) {
+        loadedAnimations.merge(images) { _, new in new }
+    }
+
+    /// Полные анимации догружаются в фоне и подменяют уже показанные первые кадры.
+    private func upgradeToAnimations(for list: [DivoomFileItem]) {
+        let targets = list.compactMap { item -> String? in
+            guard let fileId = item.FileId, !fileId.isEmpty, firstBytes[fileId] == nil else { return nil }
+            return fileId
+        }
+        guard !targets.isEmpty else { return }
+
+        Task.detached(priority: .utility) {
+            var loaded: [String: DivoomAnimationResult] = [:]
+            let batchSize = 8
+            var index = 0
+
+            while index < targets.count {
+                let end = min(index + batchSize, targets.count)
+                let batch = targets[index..<end]
+
+                let batchLoaded = await withTaskGroup(
+                    of: (String, DivoomAnimationResult?).self,
+                    returning: [String: DivoomAnimationResult].self
+                ) { group in
+                    for fileId in batch {
+                        group.addTask {
+                            let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId)
+                            return (fileId, result)
+                        }
+                    }
+                    var result: [String: DivoomAnimationResult] = [:]
+                    for await (fileId, item) in group {
+                        if let item { result[fileId] = item }
+                    }
+                    return result
+                }
+                loaded.merge(batchLoaded) { _, new in new }
+
+                index = end
+            }
+
+            let finalLoaded = loaded
+            await MainActor.run {
+                for (key, result) in finalLoaded {
+                    self.loadedAnimations[key] = result.image
+                    self.firstBytes[key] = result.firstByte
+                    self.rawSpeeds[key] = result.rawSpeed
+                }
+            }
         }
     }
 }
