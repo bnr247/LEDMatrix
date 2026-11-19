@@ -158,7 +158,10 @@ struct MainScreenView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .if(manager.currentTheme.usesSystemAppearance) { content in
-                        content.background(manager.cardBackgroundColor)
+                        content.background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(manager.cardBackgroundColor)
+                        )
                     }
                     .if(!manager.currentTheme.usesSystemAppearance) { content in
                         content.background(
@@ -186,12 +189,26 @@ struct MainScreenView: View {
                                 VStack(spacing: 12) {
                                     Image(systemName: feature.icon)
                                         .font(.system(size: 28))
+                                        .if(manager.currentTheme.usesSystemAppearance) { content in
+                                            content.foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
+                                        }
                                     Text(feature.title)
                                         .font(.headline)
                                         .fontWeight(.semibold)
+                                        .if(manager.currentTheme.usesSystemAppearance) { content in
+                                            content.foregroundColor(isDeviceAvailable ? manager.appTextColor : manager.secondaryTextColor)
+                                        }
                                 }
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 110)
+                                .if(manager.currentTheme.usesSystemAppearance) { content in
+                                    content
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(manager.cardBackgroundColor)
+                                        )
+                                        .opacity(isDeviceAvailable ? 1 : 0.5)
+                                }
                                 .if(!manager.currentTheme.usesSystemAppearance) { content in
                                     content
                                         .background(
@@ -206,7 +223,7 @@ struct MainScreenView: View {
                                         .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
                                 }
                             }
-                            .themedButtonStyle(manager, .bordered)
+                            .themedButtonStyle(manager, .plain)
                             .disabled(!isDeviceAvailable)
                         }
                     }
