@@ -20,7 +20,7 @@ struct SettingsGeneralFormView: View {
                         Text("Часы (сек.)")
                         Spacer()
                         Text("\(manager.settings.clockDisplaySeconds)")
-                            .foregroundColor(manager.secondaryTextColor)
+                            .foregroundColor(manager.valueTextColor)
                     }
                 }
                 
@@ -29,7 +29,7 @@ struct SettingsGeneralFormView: View {
                         Text("Анимации (сек.)")
                         Spacer()
                         Text("\(manager.settings.animationDisplaySeconds)")
-                            .foregroundColor(manager.secondaryTextColor)
+                            .foregroundColor(manager.valueTextColor)
                     }
                 }
             }

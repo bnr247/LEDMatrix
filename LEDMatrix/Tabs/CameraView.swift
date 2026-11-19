@@ -145,7 +145,7 @@ struct CameraView: View {
             if let message = toastMessage {
                 Text(message)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
+                    .themedLightText(manager)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(manager.toastBackgroundColor)

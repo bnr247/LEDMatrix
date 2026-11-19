@@ -541,12 +541,32 @@ extension MatrixManager {
         switch currentTheme {
         case .system:
             return .primary
+        case .dark, .neon, .amber:
+            return lightAccentColor
+        }
+    }
+
+    /// Светлый оттенок акцента — заменяет чистый белый в декоративных темах.
+    var lightAccentColor: Color {
+        switch currentTheme {
+        case .system:
+            return .primary
         case .dark:
-            return Color.white
+            return Color(hex: "D9FFD9") // Светло-зелёный OLED
         case .neon:
-            return Color(hex: "E2E8F0") // Светлый технологичный оттенок
+            return Color(hex: "D6FBFF") // Светло-циановый неон
         case .amber:
             return Color(hex: "FFD9A0") // Разогретый янтарь
+        }
+    }
+
+    /// Цвет значений — совпадает с цветом названия темы, то есть с акцентом.
+    var valueTextColor: Color {
+        switch currentTheme {
+        case .system:
+            return .secondary
+        case .dark, .neon, .amber:
+            return accentColor
         }
     }
 
@@ -586,9 +606,9 @@ extension MatrixManager {
         case .system:
             return .secondary
         case .dark:
-            return Color.white.opacity(0.62)
+            return Color(hex: "9BD49B")
         case .neon:
-            return Color(hex: "8FA6C4")
+            return Color(hex: "8FD8E6")
         case .amber:
             return Color(hex: "C99A55")
         }
@@ -614,7 +634,7 @@ extension MatrixManager {
         case .system:
             return .clear // Нативные разделители списков рисует система
         case .dark:
-            return Color.white.opacity(0.12)
+            return Color(hex: "7EE37E").opacity(0.12)
         case .neon:
             return Color(hex: "00F0FF").opacity(0.16)
         case .amber:
@@ -775,6 +795,17 @@ extension View {
         }
     }
 
+    /// Белый текст на тёмных плашках: в декоративных темах — светлый акцент,
+    /// в системной остаётся нативным белым.
+    @ViewBuilder
+    func themedLightText(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self.foregroundColor(.white)
+        } else {
+            self.foregroundColor(manager.lightAccentColor)
+        }
+    }
+
     /// Системная тема вообще не вмешивается в оформление Form/List:
     /// ни фон, ни tint — всё берётся из дефолтов iOS.
     @MainActor
@@ -786,6 +817,7 @@ extension View {
             self
                 .scrollContentBackground(.hidden)
                 .background(manager.backgroundColor.ignoresSafeArea())
+                .foregroundColor(manager.appTextColor)
                 .tint(manager.accentColor)
         }
     }

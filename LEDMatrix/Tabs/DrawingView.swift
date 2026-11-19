@@ -212,6 +212,9 @@ struct DrawingView: View {
                     Text("Выйти")
                         .bold()
                         .foregroundColor(.white)
+                        .if(!manager.currentTheme.usesSystemAppearance) { content in
+                            content.foregroundColor(manager.accentContrastColor)
+                        }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                 }

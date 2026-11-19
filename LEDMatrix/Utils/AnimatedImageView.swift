@@ -44,7 +44,7 @@ struct AnimatedImageView: View {
                             .foregroundColor(manager.accentColor)
                         Text("\(likeCount)")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
+                            .themedLightText(manager)
                     }
                     .contentShape(Rectangle())
                 }
@@ -59,7 +59,7 @@ struct AnimatedImageView: View {
                             .foregroundColor(manager.accentColor)
                         Text("\(commentCnt)")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
+                            .themedLightText(manager)
                     }
                 }
             }
