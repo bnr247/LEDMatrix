@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ThemedDropdownItem: Identifiable {
     let id: Int
@@ -26,16 +27,42 @@ private struct DropdownAnchorKey: PreferenceKey {
     }
 }
 
+// MARK: - Показ панели прямо в окне приложения
+
+@MainActor
+private enum DropdownOverlay {
+    static var host: UIHostingController<AnyView>?
+
+    static func present<Content: View>(@ViewBuilder content: () -> Content) {
+        guard host == nil,
+              let scene = UIApplication.shared.connectedScenes
+                  .compactMap({ $0 as? UIWindowScene })
+                  .first(where: { $0.activationState == .foregroundActive }),
+              let window = scene.windows.first(where: { $0.isKeyWindow }) else { return }
+
+        let controller = UIHostingController(rootView: AnyView(content()))
+        controller.view.frame = window.bounds
+        controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        controller.view.backgroundColor = .clear
+        window.addSubview(controller.view)
+        host = controller
+    }
+
+    static func dismiss() {
+        host?.view.removeFromSuperview()
+        host = nil
+    }
+}
+
 // MARK: - Тематическая панель списка
 
 private struct ThemedDropdownPanel: View {
-    @Environment(\.dismiss) private var dismiss
-
     @ObservedObject var manager: MatrixManager
     let title: String
     let items: [ThemedDropdownItem]
     let selectedIndex: Int?
     let onSelect: (Int) -> Void
+    let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,7 +71,7 @@ private struct ThemedDropdownPanel: View {
                     .font(.headline)
                     .foregroundColor(manager.lightAccentColor)
                 Spacer()
-                Button { dismiss() } label: {
+                Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
                         .foregroundColor(manager.secondaryTextColor)
@@ -61,10 +88,7 @@ private struct ThemedDropdownPanel: View {
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(items) { item in
-                        Button {
-                            onSelect(item.id)
-                            dismiss()
-                        } label: {
+                        Button { onSelect(item.id) } label: {
                             HStack {
                                 Text(item.title)
                                     .foregroundColor(
@@ -102,18 +126,13 @@ private struct ThemedDropdownPanel: View {
                         .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
                 )
         )
-        // Отступ от границ: скругление и обводка панели не обрезаются.
         .padding(8)
-        .presentationBackground(.clear)
-        .presentationCompactAdaptation(.popover)
     }
 }
 
-// MARK: - Оверлей без системного баббла со стрелкой
+// MARK: - Оверлей с привязкой к месту нажатия
 
 private struct ThemedDropdownOverlay: View {
-    @Environment(\.dismiss) private var dismiss
-
     @ObservedObject var manager: MatrixManager
     let anchor: CGRect
     let title: String
@@ -123,32 +142,36 @@ private struct ThemedDropdownOverlay: View {
 
     var body: some View {
         GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
+            ZStack {
                 Color.clear
                     .contentShape(Rectangle())
-                    .onTapGesture { dismiss() }
+                    .onTapGesture { DropdownOverlay.dismiss() }
 
                 let panelWidth: CGFloat = 296
                 let panelHeight = CGFloat(45 * items.count + 62)
-                let maxY = max(8, geo.size.height - panelHeight - 8)
-                let preferredY = anchor.maxY + 8 + panelHeight <= geo.size.height - 8
-                    ? anchor.maxY + 8
-                    : anchor.minY - panelHeight - 8
-                let y = min(max(8, preferredY), maxY)
-                let x = min(max(anchor.minX, 8), max(8, geo.size.width - panelWidth - 8))
+                let centerX = min(max(anchor.midX, panelWidth / 2 + 8), geo.size.width - panelWidth / 2 - 8)
+                let belowCenter = anchor.maxY + 8 + panelHeight / 2
+                let aboveCenter = anchor.minY - 8 - panelHeight / 2
+                let preferredY = belowCenter + panelHeight / 2 <= geo.size.height - 8
+                    ? belowCenter
+                    : aboveCenter
+                let centerY = min(max(preferredY, panelHeight / 2 + 8), geo.size.height - panelHeight / 2 - 8)
 
                 ThemedDropdownPanel(
                     manager: manager,
                     title: title,
                     items: items,
                     selectedIndex: selectedIndex,
-                    onSelect: onSelect
+                    onSelect: { index in
+                        onSelect(index)
+                        DropdownOverlay.dismiss()
+                    },
+                    onDismiss: { DropdownOverlay.dismiss() }
                 )
                 .frame(width: panelWidth, height: panelHeight)
-                .offset(x: x, y: y)
+                .position(x: centerX, y: centerY)
             }
         }
-        .presentationBackground(.clear)
     }
 }
 
@@ -160,7 +183,6 @@ struct ThemedMenuPicker<Value: Hashable>: View {
     let options: [ThemedDropdownOption<Value>]
     @Binding var selection: Value
 
-    @State private var isPresented = false
     @State private var anchor: CGRect = .zero
 
     private var selectedOption: ThemedDropdownOption<Value>? {
@@ -176,7 +198,19 @@ struct ThemedMenuPicker<Value: Hashable>: View {
             }
             .pickerStyle(.menu)
         } else {
-            Button { isPresented = true } label: {
+            Button {
+                DropdownOverlay.present {
+                    ThemedDropdownOverlay(
+                        manager: manager,
+                        anchor: anchor,
+                        title: title,
+                        items: options.map { ThemedDropdownItem(id: $0.id, title: $0.title) },
+                        selectedIndex: selectedOption?.id
+                    ) { index in
+                        selection = options[index].value
+                    }
+                }
+            } label: {
                 HStack {
                     Text(title)
                         .foregroundColor(manager.appTextColor)
@@ -196,17 +230,6 @@ struct ThemedMenuPicker<Value: Hashable>: View {
                 }
             )
             .onPreferenceChange(DropdownAnchorKey.self) { anchor = $0 }
-            .fullScreenCover(isPresented: $isPresented) {
-                ThemedDropdownOverlay(
-                    manager: manager,
-                    anchor: anchor,
-                    title: title,
-                    items: options.map { ThemedDropdownItem(id: $0.id, title: $0.title) },
-                    selectedIndex: selectedOption?.id
-                ) { index in
-                    selection = options[index].value
-                }
-            }
         }
     }
 }
@@ -221,7 +244,6 @@ struct ThemedActionMenu<Label: View>: View {
     let onSelect: (Int) -> Void
     @ViewBuilder let label: Label
 
-    @State private var isPresented = false
     @State private var anchor: CGRect = .zero
 
     var body: some View {
@@ -236,7 +258,18 @@ struct ThemedActionMenu<Label: View>: View {
                 label
             }
         } else {
-            Button { isPresented = true } label: {
+            Button {
+                DropdownOverlay.present {
+                    ThemedDropdownOverlay(
+                        manager: manager,
+                        anchor: anchor,
+                        title: title,
+                        items: items,
+                        selectedIndex: selectedIndex,
+                        onSelect: onSelect
+                    )
+                }
+            } label: {
                 label
             }
             .buttonStyle(.plain)
@@ -246,16 +279,6 @@ struct ThemedActionMenu<Label: View>: View {
                 }
             )
             .onPreferenceChange(DropdownAnchorKey.self) { anchor = $0 }
-            .fullScreenCover(isPresented: $isPresented) {
-                ThemedDropdownOverlay(
-                    manager: manager,
-                    anchor: anchor,
-                    title: title,
-                    items: items,
-                    selectedIndex: selectedIndex,
-                    onSelect: onSelect
-                )
-            }
         }
     }
 }
