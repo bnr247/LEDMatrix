@@ -346,7 +346,11 @@ enum DivoomAnimationLoader {
             for y in 0..<height {
                 for x in 0..<width {
                     let srcX = x
-                    let srcY = 15 - y
+                    // Раньше здесь был srcY = 15 - y: ручной флип компенсировал
+                    // неявный переворот UIGraphicsImageRenderer. Теперь кадр
+                    // создаётся напрямую через UIImage(cgImage:), поэтому флип
+                    // убран — иначе анимация отображается вверх ногами.
+                    let srcY = y
                     
                     let pixelIndex = srcY * width + srcX
                     let byteOffset = pixelIndex * 3
