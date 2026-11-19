@@ -17,17 +17,39 @@ struct DivoomAnimationResult {
     let firstByte: UInt8
 }
 
+private final class DivoomAnimationCacheEntry {
+    let result: DivoomAnimationResult
+    init(_ result: DivoomAnimationResult) { self.result = result }
+}
+
 enum DivoomAnimationLoader {
+    // Сетка и фид часто показывают одни и те же анимации. Кэш с ограниченным
+    // числом записей убирает повторную загрузку и дублирование кадров в памяти.
+    private static let cache: NSCache<NSString, DivoomAnimationCacheEntry> = {
+        let cache = NSCache<NSString, DivoomAnimationCacheEntry>()
+        cache.countLimit = 200
+        return cache
+    }()
+
     static func loadAndCreateAnimation(from fileId: String) async -> DivoomAnimationResult? {
         let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanId.isEmpty, let url = URL(string: "https://fin.divoom-gz.com/" + cleanId) else { return nil }
-        
+        guard !cleanId.isEmpty else { return nil }
+
+        let key = cleanId as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached.result
+        }
+
+        guard let url = URL(string: "https://fin.divoom-gz.com/" + cleanId) else { return nil }
+
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200, !data.isEmpty else {
                 return nil
             }
-            return parseAnimationData(data)
+            guard let result = parseAnimationData(data) else { return nil }
+            cache.setObject(DivoomAnimationCacheEntry(result), forKey: key)
+            return result
         } catch {
             return nil
         }
@@ -145,12 +167,13 @@ enum DivoomAnimationLoader {
         guard !framesData.isEmpty else { return nil }
         
         var images: [UIImage] = []
-        images.reserveCapacity(framesData.count)
-        
-        let targetSize = CGSize(width: 256, height: 256)
-        
-        for frameBytes in framesData {
-            if let frameImage = createImage(from: frameBytes, targetSize: targetSize) {
+        // Анимация 16x16 — это пиксель-арт. Кадры хранятся в родном размере:
+        // UIView увеличит их nearest-neighbor фильтрацией, а 256x256 рендер
+        // на каждый кадр съедал десятки МБ и приводил к NSMallocException.
+        images.reserveCapacity(min(framesData.count, 600))
+
+        for frameBytes in framesData.prefix(600) {
+            if let frameImage = createImage(from: frameBytes) {
                 images.append(frameImage)
             }
         }
@@ -310,7 +333,7 @@ enum DivoomAnimationLoader {
             return decryptedData
         }
     
-    private static func createImage(from frameData: Data, targetSize: CGSize) -> UIImage? {
+    private static func createImage(from frameData: Data) -> UIImage? {
         let width = 16
         let height = 16
         
@@ -355,15 +378,11 @@ enum DivoomAnimationLoader {
             space: colorSpace,
             bitmapInfo: bitmapInfo.rawValue
         ), let cgImage = context.makeImage() else { return nil }
-        
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1.0
-        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-        
-        return renderer.image { ctx in
-            ctx.cgContext.interpolationQuality = .none
-            ctx.cgContext.draw(cgImage, in: CGRect(origin: .zero, size: targetSize))
-        }
+
+        // Родной размер 16x16 экономит память в 256 раз по сравнению с
+        // рендером 256x256. AnimatedImageRepresentable масштабирует кадры
+        // фильтром .nearest, поэтому картинка выглядит так же.
+        return UIImage(cgImage: cgImage, scale: 1, orientation: .up)
     }
     
     private static func hexToData(_ hex: String) -> Data? {
