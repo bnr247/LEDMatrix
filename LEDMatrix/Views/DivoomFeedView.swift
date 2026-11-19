@@ -387,7 +387,7 @@ struct DivoomFeedItemView: View {
                         }) {
                             Image(systemName: "plus")
                         }
-                        .accessibilityLabel("Создать плейлист")
+                        .accessibilityLabel("Новый плейлист")
                     }
                 }
                 .divoomCreatePlaylistAlert(manager: manager, isPresented: $isShowingCreatePlaylist) {

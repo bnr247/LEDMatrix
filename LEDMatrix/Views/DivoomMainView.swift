@@ -77,7 +77,7 @@ struct DivoomMainView: View {
                             .font(.body)
                             .foregroundColor(manager.appTextColor)
                     }
-                    .accessibilityLabel("Создать плейлист")
+                    .accessibilityLabel("Новый плейлист")
                 } else {
                     Button(action: toggleSearch) {
                         Image(systemName: "magnifyingglass")
