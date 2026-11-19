@@ -174,6 +174,7 @@ struct DivoomUniversalGridView: View {
         .sheet(isPresented: $isShowingSettingsSheet) {
             gallerySettingsSheet
                 .presentationDetents([.height(260)])
+                .presentationBackground(manager.backgroundColor)
         }
         .task(id: fileSortOption) {
             if items.isEmpty {

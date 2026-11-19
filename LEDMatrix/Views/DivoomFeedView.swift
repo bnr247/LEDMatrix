@@ -341,7 +341,7 @@ struct DivoomFeedItemView: View {
             }
         }
         .sheet(isPresented: $isShowingPlaylists) {
-            NavigationStack {
+            NavigationView {
                 Group {
                     if isLoadingPlaylists {
                         ProgressView()
@@ -369,7 +369,6 @@ struct DivoomFeedItemView: View {
                             }
                             .listRowBackground(manager.cardBackgroundColor)
                         }
-                        .listStyle(.plain)
                     }
                 }
                 .themedForm(manager)
@@ -394,7 +393,7 @@ struct DivoomFeedItemView: View {
                     Task { await reloadPlaylists() }
                 }
             }
-            .presentationDetents([.large])
+            .presentationDetents([.medium, .large])
         }
     }
 
