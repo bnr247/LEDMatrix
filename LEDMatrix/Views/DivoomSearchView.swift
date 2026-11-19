@@ -76,6 +76,9 @@ private struct DivoomTagSearchResults: View {
     @State private var hasMore = true
     @State private var errorMessage: String? = nil
 
+    // Позиция сохраняется при уходе в галерею тэга и возврате.
+    @State private var scrollPositionId: String? = nil
+
     private let pageSize = 30
 
     var body: some View {
@@ -123,6 +126,7 @@ private struct DivoomTagSearchResults: View {
                                 tag: tag,
                                 previewImages: previewImages
                             )
+                            .id(tag.TagName)
                             .onAppear {
                                 guard tag.id == tags.last?.id else { return }
                                 Task { await loadMore() }
@@ -135,9 +139,11 @@ private struct DivoomTagSearchResults: View {
                                 .padding()
                         }
                     }
+                    .scrollTargetLayout()
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
                 }
+                .scrollPosition(id: $scrollPositionId)
                 .refreshable {
                     await reload()
                 }
@@ -206,7 +212,7 @@ private struct DivoomTagSearchResults: View {
 
     private func preloadPreviews(for list: [DivoomTag]) {
         for tag in list {
-            for item in (tag.GalleryList ?? []).prefix(3) {
+            for item in (tag.GalleryList ?? []).filter({ $0.FileSize == 1 }).prefix(3) {
                 guard let fileId = item.FileId, !fileId.isEmpty,
                       previewImages[fileId] == nil else { continue }
 
@@ -287,7 +293,8 @@ private struct DivoomTagCard: View {
     }
 
     private var previewItems: [DivoomFileItem] {
-        Array((tag.GalleryList ?? []).prefix(3))
+        // В превью только анимации 16x16 (FileSize = 1).
+        Array((tag.GalleryList ?? []).filter { $0.FileSize == 1 }.prefix(3))
     }
 
     var body: some View {
