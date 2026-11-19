@@ -554,9 +554,9 @@ extension MatrixManager {
         case .system:
             return .primary
         case .dark:
-            return Color(hex: "D9FFD9") // Светло-зелёный OLED
+            return Color(hex: "A6E6A6") // Насыщенный светло-зелёный OLED
         case .neon:
-            return Color(hex: "D6FBFF") // Светло-циановый неон
+            return Color(hex: "A8E6F2") // Насыщенный светло-циановый неон
         case .amber:
             return Color(hex: "FFD9A0") // Разогретый янтарь
         }
