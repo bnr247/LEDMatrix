@@ -134,6 +134,10 @@ struct ClockSettingsView: View {
                             .tabViewStyle(.page(indexDisplayMode: .never))
                         }
                     }
+                    .overlay(
+                        Rectangle()
+                            .stroke(manager.cardBorderColor, lineWidth: 1)
+                    )
 
                 if faces.count > 1 {
                     HStack(spacing: 5) {
@@ -403,11 +407,18 @@ private struct ClockFacePreviewCanvas: View {
 
                     if let rect = selectionRect(for: selection),
                        let cellRect = highlightRect(rect, cell: cell) {
-                        let outlined = cellRect.insetBy(dx: -cell * 0.10, dy: -cell * 0.10)
+                        let lineWidth = max(1.5, cell * 0.14)
+                        // Вдавливаем рамку внутрь выделенной области. Раньше она
+                        // расширялась наружу и обрезалась у края превью, поэтому
+                        // у элементов, прижатых к границе, не было трёх сторон.
+                        let outlined = cellRect.insetBy(
+                            dx: lineWidth / 2,
+                            dy: lineWidth / 2
+                        )
                         canvas.stroke(
                             Path(roundedRect: outlined, cornerRadius: max(2, cell * 0.16)),
                             with: .color(accentColor),
-                            lineWidth: max(1.5, cell * 0.14)
+                            lineWidth: lineWidth
                         )
                     }
                 }
