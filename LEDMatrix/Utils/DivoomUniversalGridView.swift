@@ -37,6 +37,9 @@ struct DivoomUniversalGridView: View {
     
     @State private var isShowingSettingsSheet = false
     @State private var scrollPositionId: String? = nil
+    // Позиция последней показанной ячейки: нужна, чтобы вставить уже
+    // подготовленную страницу, даже если пользователь остановился у края.
+    @State private var lastVisibleIndex = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -151,6 +154,7 @@ struct DivoomUniversalGridView: View {
                                     .id(item.id)
                                     .onAppear {
                                         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+                                        lastVisibleIndex = index
                                         // Половина страницы — начинаем грузить следующую заранее.
                                         if index >= items.count / 2 {
                                             Task { await prefetchNextPage() }
@@ -283,19 +287,20 @@ struct DivoomUniversalGridView: View {
         let gen = generation ?? prefetchGeneration
         guard !isPrefetching, hasMorePages, prefetchedItems.isEmpty else { return }
         isPrefetching = true
-        defer { isPrefetching = false }
 
         let start = currentStart
         let result: (items: [DivoomFileItem], curListNum: Int)
         do {
             result = try await fetchItems(start, start + pageSize - 1, fileSortOption)
         } catch {
+            if gen == prefetchGeneration { isPrefetching = false }
             return
         }
         guard gen == prefetchGeneration else { return }
 
         if result.items.isEmpty {
             hasMorePages = false
+            isPrefetching = false
             return
         }
 
@@ -307,6 +312,13 @@ struct DivoomUniversalGridView: View {
         prefetchedItems = unique
         prefetchedImages = images
         prefetchedNextStart = start + result.items.count
+        isPrefetching = false
+
+        // Если пользователь уже доскроллил до края, а предзагрузка только что
+        // закончилась — вставляем страницу сразу, без дополнительного дерганья.
+        if lastVisibleIndex >= items.count - 10 {
+            _ = appendPrefetchedPage()
+        }
     }
 
     /// Если следующая страница уже подготовлена — вставляем её без ожидания.
@@ -331,7 +343,7 @@ struct DivoomUniversalGridView: View {
     private func ensureNextPage() async {
         if appendPrefetchedPage() { return }
         // Предзагрузка уже идёт — не дёргаем тот же URL второй раз.
-        // Следующая ячейка вызовет ensureNextPage снова, когда данные будут готовы.
+        // Когда она закончится, страница вставится сама (см. prefetchNextPage).
         if isPrefetching { return }
         await loadMoreItems()
     }
