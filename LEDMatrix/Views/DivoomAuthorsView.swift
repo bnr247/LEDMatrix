@@ -157,7 +157,9 @@ private struct DivoomExpertCard: View {
     }
 
     private var previewItems: [DivoomFileItem] {
-        Array((expert.FileList ?? []).prefix(3))
+        // В превью показываем только анимации 16x16 (FileSize = 1),
+        // остальные размеры парсер не поддерживает.
+        Array((expert.FileList ?? []).filter { $0.FileSize == 1 }.prefix(3))
     }
 
     var body: some View {
