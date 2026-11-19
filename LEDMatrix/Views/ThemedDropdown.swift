@@ -20,10 +20,29 @@ struct ThemedDropdownOption<Value: Hashable>: Identifiable {
     let value: Value
 }
 
-private struct DropdownAnchorKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        value = nextValue()
+// MARK: - Точные координаты контрола в окне
+
+private final class AnchorStore {
+    weak var view: UIView?
+
+    var frame: CGRect? {
+        guard let view, let window = view.window else { return nil }
+        return view.convert(view.bounds, to: window)
+    }
+}
+
+private struct AnchorReporter: UIViewRepresentable {
+    let store: AnchorStore
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        store.view = uiView
     }
 }
 
@@ -58,62 +77,37 @@ private enum DropdownOverlay {
 
 private struct ThemedDropdownPanel: View {
     @ObservedObject var manager: MatrixManager
-    let title: String
     let items: [ThemedDropdownItem]
     let selectedIndex: Int?
     let onSelect: (Int) -> Void
-    let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(manager.lightAccentColor)
-                Spacer()
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundColor(manager.secondaryTextColor)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            Divider()
-                .background(manager.dividerColor)
-                .padding(.horizontal, 12)
-
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(items) { item in
-                        Button { onSelect(item.id) } label: {
-                            HStack {
-                                Text(item.title)
-                                    .foregroundColor(
-                                        item.id == selectedIndex
-                                            ? manager.accentColor
-                                            : manager.lightAccentColor
-                                    )
-                                Spacer()
-                                if item.id == selectedIndex {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(manager.accentColor)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-
-                        if item.id != items.last?.id {
-                            Divider()
-                                .background(manager.dividerColor)
-                                .padding(.horizontal, 12)
+            ForEach(items) { item in
+                Button { onSelect(item.id) } label: {
+                    HStack {
+                        Text(item.title)
+                            .foregroundColor(
+                                item.id == selectedIndex
+                                    ? manager.accentColor
+                                    : manager.lightAccentColor
+                            )
+                        Spacer()
+                        if item.id == selectedIndex {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(manager.accentColor)
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if item.id != items.last?.id {
+                    Divider()
+                        .background(manager.dividerColor)
+                        .padding(.horizontal, 12)
                 }
             }
         }
@@ -135,7 +129,6 @@ private struct ThemedDropdownPanel: View {
 private struct ThemedDropdownOverlay: View {
     @ObservedObject var manager: MatrixManager
     let anchor: CGRect
-    let title: String
     let items: [ThemedDropdownItem]
     let selectedIndex: Int?
     let onSelect: (Int) -> Void
@@ -148,7 +141,7 @@ private struct ThemedDropdownOverlay: View {
                     .onTapGesture { DropdownOverlay.dismiss() }
 
                 let panelWidth: CGFloat = 296
-                let panelHeight = CGFloat(45 * items.count + 62)
+                let panelHeight = CGFloat(45 * items.count + 16)
                 let centerX = min(max(anchor.midX, panelWidth / 2 + 8), geo.size.width - panelWidth / 2 - 8)
                 let belowCenter = anchor.maxY + 8 + panelHeight / 2
                 let aboveCenter = anchor.minY - 8 - panelHeight / 2
@@ -159,15 +152,12 @@ private struct ThemedDropdownOverlay: View {
 
                 ThemedDropdownPanel(
                     manager: manager,
-                    title: title,
                     items: items,
-                    selectedIndex: selectedIndex,
-                    onSelect: { index in
-                        onSelect(index)
-                        DropdownOverlay.dismiss()
-                    },
-                    onDismiss: { DropdownOverlay.dismiss() }
-                )
+                    selectedIndex: selectedIndex
+                ) { index in
+                    onSelect(index)
+                    DropdownOverlay.dismiss()
+                }
                 .frame(width: panelWidth, height: panelHeight)
                 .position(x: centerX, y: centerY)
             }
@@ -183,7 +173,7 @@ struct ThemedMenuPicker<Value: Hashable>: View {
     let options: [ThemedDropdownOption<Value>]
     @Binding var selection: Value
 
-    @State private var anchor: CGRect = .zero
+    @State private var anchorStore = AnchorStore()
 
     private var selectedOption: ThemedDropdownOption<Value>? {
         options.first { $0.value == selection }
@@ -199,11 +189,11 @@ struct ThemedMenuPicker<Value: Hashable>: View {
             .pickerStyle(.menu)
         } else {
             Button {
+                guard let frame = anchorStore.frame else { return }
                 DropdownOverlay.present {
                     ThemedDropdownOverlay(
                         manager: manager,
-                        anchor: anchor,
-                        title: title,
+                        anchor: frame,
                         items: options.map { ThemedDropdownItem(id: $0.id, title: $0.title) },
                         selectedIndex: selectedOption?.id
                     ) { index in
@@ -224,12 +214,7 @@ struct ThemedMenuPicker<Value: Hashable>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .background(
-                GeometryReader { geo in
-                    Color.clear.preference(key: DropdownAnchorKey.self, value: geo.frame(in: .global))
-                }
-            )
-            .onPreferenceChange(DropdownAnchorKey.self) { anchor = $0 }
+            .background(AnchorReporter(store: anchorStore))
         }
     }
 }
@@ -244,7 +229,7 @@ struct ThemedActionMenu<Label: View>: View {
     let onSelect: (Int) -> Void
     @ViewBuilder let label: Label
 
-    @State private var anchor: CGRect = .zero
+    @State private var anchorStore = AnchorStore()
 
     var body: some View {
         if manager.currentTheme.usesSystemAppearance {
@@ -259,11 +244,11 @@ struct ThemedActionMenu<Label: View>: View {
             }
         } else {
             Button {
+                guard let frame = anchorStore.frame else { return }
                 DropdownOverlay.present {
                     ThemedDropdownOverlay(
                         manager: manager,
-                        anchor: anchor,
-                        title: title,
+                        anchor: frame,
                         items: items,
                         selectedIndex: selectedIndex,
                         onSelect: onSelect
@@ -273,12 +258,7 @@ struct ThemedActionMenu<Label: View>: View {
                 label
             }
             .buttonStyle(.plain)
-            .background(
-                GeometryReader { geo in
-                    Color.clear.preference(key: DropdownAnchorKey.self, value: geo.frame(in: .global))
-                }
-            )
-            .onPreferenceChange(DropdownAnchorKey.self) { anchor = $0 }
+            .background(AnchorReporter(store: anchorStore))
         }
     }
 }
