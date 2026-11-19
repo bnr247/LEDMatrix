@@ -353,7 +353,7 @@ struct DeviceManagementSheet: View {
                 .listRowBackground(manager.cardBackgroundColor)
             }
             .themedForm(manager)
-            .navigationTitle("Управление устройствами")
+            .navigationTitle("Устройства")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

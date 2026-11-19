@@ -57,7 +57,7 @@ struct SettingsView: View {
             
             Section(header: Text("Настройки устройства").foregroundColor(manager.accentColor)) {
                 NavigationLink(destination: SettingsGeneralFormView(manager: manager)) {
-                    Label("Общие", systemImage: "sparkles.tv")
+                    Label("Основные", systemImage: "sparkles.tv")
                         .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsWifiFormView(manager: manager)) {
@@ -69,11 +69,11 @@ struct SettingsView: View {
                         .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsInfoFormView(manager: manager)) {
-                    Label("Об устройстве", systemImage: "info.circle")
+                    Label("Устройство", systemImage: "info.circle")
                         .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsLogsView(manager: manager)) {
-                    Label("Просмотр лога", systemImage: "terminal")
+                    Label("Лог", systemImage: "terminal")
                         .foregroundColor(manager.appTextColor)
                 }
             }
