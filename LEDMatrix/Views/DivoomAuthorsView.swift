@@ -264,33 +264,28 @@ struct DivoomExpertDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
-                    DivoomUserAvatarView(headId: info?.HeadId ?? expert.HeadId, size: 64)
+            // Никнейм остаётся только в навбаре: рядом с аватаркой его больше нет.
+            HStack(alignment: .top, spacing: 12) {
+                DivoomUserAvatarView(headId: info?.HeadId ?? expert.HeadId, size: 100)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(displayName)
-                            .font(.title3.bold())
-                            .foregroundColor(manager.appTextColor)
-
-                        HStack(spacing: 12) {
-                            Label("Score: \(score.formatted())", systemImage: "star.fill")
-                            Label("Лайки: \(likeCount.formatted())", systemImage: "heart")
-                            Label("Подписчики: \(fansCount.formatted())", systemImage: "person.2")
-                        }
-                        .font(.caption)
-                        .foregroundColor(manager.secondaryTextColor)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        DivoomProfileStat(manager: manager, title: "Score", value: score.formatted())
+                        DivoomProfileStat(manager: manager, title: "Лайки", value: likeCount.formatted())
+                        DivoomProfileStat(manager: manager, title: "Подписчики", value: fansCount.formatted())
                     }
-                }
 
-                DivoomExpertFollowButton(
-                    manager: manager,
-                    userId: expert.UserId,
-                    isFollowing: $isFollowing,
-                    fansCount: $fansCount
-                )
+                    // Кнопка под значениями, на их ширину, уже справа от аватарки.
+                    DivoomExpertFollowButton(
+                        manager: manager,
+                        userId: expert.UserId,
+                        isFollowing: $isFollowing,
+                        fansCount: $fansCount,
+                        fullWidth: true
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(manager.backgroundColor)
@@ -339,6 +334,7 @@ struct DivoomExpertFollowButton: View {
     let userId: Int
     @Binding var isFollowing: Bool
     @Binding var fansCount: Int
+    var fullWidth = false
 
     @State private var isBusy = false
 
@@ -347,6 +343,7 @@ struct DivoomExpertFollowButton: View {
             Text(isFollowing ? "Подписан" : "Подписаться")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
+                .frame(maxWidth: fullWidth ? .infinity : nil)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(
@@ -392,6 +389,27 @@ struct DivoomExpertFollowButton: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Статистика пользователя: заголовок над значением
+
+private struct DivoomProfileStat: View {
+    @ObservedObject var manager: MatrixManager
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(manager.secondaryTextColor)
+            Text(value)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(manager.appTextColor)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
