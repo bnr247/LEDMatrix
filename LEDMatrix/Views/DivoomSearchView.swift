@@ -28,13 +28,35 @@ struct DivoomSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Раздел поиска", selection: $selectedTab) {
+            HStack(spacing: 4) {
                 ForEach(DivoomSearchTab.visible) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Button {
+                        selectedTab = tab
+                    } label: {
+                        Text(tab.rawValue)
+                            .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
+                            .foregroundColor(selectedTab == tab ? manager.accentColor : manager.secondaryTextColor)
+                            .frame(maxWidth: .infinity, minHeight: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedTab == tab ? manager.cardBackgroundColor : Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(
+                                        selectedTab == tab ? manager.accentColor.opacity(0.6) : Color.clear,
+                                        lineWidth: 1
+                                    )
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selectedTab == tab ? [.isSelected] : [])
                 }
             }
-            .pickerStyle(.segmented)
-            .tint(manager.accentColor)
+            .padding(4)
+            .background(manager.fieldBackgroundColor)
+            .cornerRadius(10)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(manager.backgroundColor)
