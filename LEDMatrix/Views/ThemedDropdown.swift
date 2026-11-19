@@ -29,40 +29,67 @@ private struct DropdownAnchorKey: PreferenceKey {
 // MARK: - Тематическая панель списка
 
 private struct ThemedDropdownPanel: View {
+    @Environment(\.dismiss) private var dismiss
+
     @ObservedObject var manager: MatrixManager
+    let title: String
     let items: [ThemedDropdownItem]
     let selectedIndex: Int?
     let onSelect: (Int) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(items) { item in
-                Button {
-                    onSelect(item.id)
-                } label: {
-                    HStack {
-                        Text(item.title)
-                            .foregroundColor(
-                                item.id == selectedIndex
-                                    ? manager.accentColor
-                                    : manager.lightAccentColor
-                            )
-                        Spacer()
-                        if item.id == selectedIndex {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(manager.accentColor)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .contentShape(Rectangle())
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(manager.lightAccentColor)
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(manager.secondaryTextColor)
                 }
                 .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
-                if item.id != items.last?.id {
-                    Divider()
-                        .background(manager.dividerColor)
-                        .padding(.horizontal, 12)
+            Divider()
+                .background(manager.dividerColor)
+                .padding(.horizontal, 12)
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        Button {
+                            onSelect(item.id)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(item.title)
+                                    .foregroundColor(
+                                        item.id == selectedIndex
+                                            ? manager.accentColor
+                                            : manager.lightAccentColor
+                                    )
+                                Spacer()
+                                if item.id == selectedIndex {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(manager.accentColor)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if item.id != items.last?.id {
+                            Divider()
+                                .background(manager.dividerColor)
+                                .padding(.horizontal, 12)
+                        }
+                    }
                 }
             }
         }
@@ -75,16 +102,21 @@ private struct ThemedDropdownPanel: View {
                         .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
                 )
         )
+        // Отступ от границ: скругление и обводка панели не обрезаются.
+        .padding(8)
+        .presentationBackground(.clear)
+        .presentationCompactAdaptation(.popover)
     }
 }
 
-// MARK: - Оверлей с позиционированием у контрола
+// MARK: - Оверлей без системного баббла со стрелкой
 
 private struct ThemedDropdownOverlay: View {
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject var manager: MatrixManager
     let anchor: CGRect
+    let title: String
     let items: [ThemedDropdownItem]
     let selectedIndex: Int?
     let onSelect: (Int) -> Void
@@ -96,8 +128,8 @@ private struct ThemedDropdownOverlay: View {
                     .contentShape(Rectangle())
                     .onTapGesture { dismiss() }
 
-                let panelWidth: CGFloat = 280
-                let estimatedHeight = CGFloat(48 * items.count + 8)
+                let panelWidth: CGFloat = 296
+                let estimatedHeight = CGFloat(48 * items.count + 76)
                 let below = anchor.maxY + 8
                 let y = below + estimatedHeight > geo.size.height
                     ? max(8, anchor.minY - 8 - estimatedHeight)
@@ -106,12 +138,11 @@ private struct ThemedDropdownOverlay: View {
 
                 ThemedDropdownPanel(
                     manager: manager,
+                    title: title,
                     items: items,
-                    selectedIndex: selectedIndex
-                ) { index in
-                    onSelect(index)
-                    dismiss()
-                }
+                    selectedIndex: selectedIndex,
+                    onSelect: onSelect
+                )
                 .offset(x: x, y: y)
             }
         }
@@ -167,6 +198,7 @@ struct ThemedMenuPicker<Value: Hashable>: View {
                 ThemedDropdownOverlay(
                     manager: manager,
                     anchor: anchor,
+                    title: title,
                     items: options.map { ThemedDropdownItem(id: $0.id, title: $0.title) },
                     selectedIndex: selectedOption?.id
                 ) { index in
@@ -216,11 +248,11 @@ struct ThemedActionMenu<Label: View>: View {
                 ThemedDropdownOverlay(
                     manager: manager,
                     anchor: anchor,
+                    title: title,
                     items: items,
-                    selectedIndex: selectedIndex
-                ) { index in
-                    onSelect(index)
-                }
+                    selectedIndex: selectedIndex,
+                    onSelect: onSelect
+                )
             }
         }
     }
