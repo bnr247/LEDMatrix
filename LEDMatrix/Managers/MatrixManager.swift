@@ -525,8 +525,10 @@ extension MatrixManager {
     }
 
     // Цвет карточек / контейнеров
-    var cardBackgroundColor: Color {
-        switch currentTheme {
+    var cardBackgroundColor: Color { Self.cardBackgroundColor(for: currentTheme) }
+
+    static func cardBackgroundColor(for theme: AppTheme) -> Color {
+        switch theme {
         case .system:
             return Color(uiColor: .secondarySystemGroupedBackground)
         case .dark:
@@ -607,8 +609,10 @@ extension MatrixManager {
     // MARK: - Расширенная палитра темы
 
     /// Второстепенный текст: подписи, значения, подсказки.
-    var secondaryTextColor: Color {
-        switch currentTheme {
+    var secondaryTextColor: Color { Self.secondaryTextColor(for: currentTheme) }
+
+    static func secondaryTextColor(for theme: AppTheme) -> Color {
+        switch theme {
         case .system:
             return .secondary
         case .dark:

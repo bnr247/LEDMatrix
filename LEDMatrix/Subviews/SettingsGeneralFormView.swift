@@ -8,6 +8,7 @@
 // MARK: - ФОРМА: ОБЩИЕ НАСТРОЙКИ
 
 import SwiftUI
+import UIKit
 
 struct SettingsGeneralFormView: View {
     @ObservedObject var manager: MatrixManager
@@ -54,17 +55,20 @@ struct SettingsGeneralFormView: View {
             .listRowBackground(manager.cardBackgroundColor)
             
             Section(header: Text("День").themedSectionHeader(manager)) {
-                DatePicker(
-                    "Начало",
-                    selection: manager.dayStartTimeBinding,
-                    displayedComponents: .hourAndMinute
-                )
-                .datePickerStyle(.compact)
-                .preferredColorScheme(manager.currentTheme.colorScheme)
-                .if(!manager.currentTheme.usesSystemAppearance) { content in
-                    content
-                        .themedParameterText(manager)
-                        .themedValueText(manager)
+                if manager.currentTheme.usesSystemAppearance {
+                    DatePicker(
+                        "Начало",
+                        selection: manager.dayStartTimeBinding,
+                        displayedComponents: .hourAndMinute
+                    )
+                    .datePickerStyle(.compact)
+                } else {
+                    HStack {
+                        Text("Начало")
+                            .themedParameterText(manager)
+                        Spacer()
+                        ThemedTimePicker(manager: manager, selection: manager.dayStartTimeBinding)
+                    }
                 }
                 
                 ThemedMenuPicker(
@@ -97,17 +101,20 @@ struct SettingsGeneralFormView: View {
             .listRowBackground(manager.cardBackgroundColor)
                 
             Section(header: Text("Ночь").themedSectionHeader(manager)) {
-                DatePicker(
-                    "Начало",
-                    selection: manager.nightStartTimeBinding,
-                    displayedComponents: .hourAndMinute
-                )
-                .datePickerStyle(.compact)
-                .preferredColorScheme(manager.currentTheme.colorScheme)
-                .if(!manager.currentTheme.usesSystemAppearance) { content in
-                    content
-                        .themedParameterText(manager)
-                        .themedValueText(manager)
+                if manager.currentTheme.usesSystemAppearance {
+                    DatePicker(
+                        "Начало",
+                        selection: manager.nightStartTimeBinding,
+                        displayedComponents: .hourAndMinute
+                    )
+                    .datePickerStyle(.compact)
+                } else {
+                    HStack {
+                        Text("Начало")
+                            .themedParameterText(manager)
+                        Spacer()
+                        ThemedTimePicker(manager: manager, selection: manager.nightStartTimeBinding)
+                    }
                 }
                 
                 ThemedMenuPicker(
@@ -151,5 +158,113 @@ struct SettingsGeneralFormView: View {
         .themedForm(manager)
         .id(manager.currentTheme)
         .navigationTitle("Общие настройки")
+    }
+}
+
+/// Компактный пикер времени для декоративных тем.
+/// SwiftUI `DatePicker` не открывает свои внутренние UILabel/UITextField,
+/// поэтому красим UIDatePicker и всё его дерево напрямую.
+struct ThemedTimePicker: UIViewRepresentable {
+    @ObservedObject var manager: MatrixManager
+    @Binding var selection: Date
+
+    func makeUIView(context: Context) -> UIDatePicker {
+        let picker = UIDatePicker()
+        picker.datePickerMode = .time
+        picker.preferredDatePickerStyle = .compact
+        picker.date = selection
+        picker.addTarget(context.coordinator, action: #selector(Coordinator.dateChanged(_:)), for: .valueChanged)
+
+        applyTheme(to: picker)
+        DispatchQueue.main.async { [weak picker] in
+            guard let picker else { return }
+            self.applyTheme(to: picker)
+        }
+
+        return picker
+    }
+
+    func updateUIView(_ uiView: UIDatePicker, context: Context) {
+        if !Calendar.current.isDate(uiView.date, equalTo: selection, toGranularity: .minute) {
+            uiView.date = selection
+        }
+
+        applyTheme(to: uiView)
+        DispatchQueue.main.async { [weak uiView] in
+            guard let uiView else { return }
+            self.applyTheme(to: uiView)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    final class Coordinator {
+        var parent: ThemedTimePicker
+
+        init(parent: ThemedTimePicker) {
+            self.parent = parent
+        }
+
+        @objc func dateChanged(_ picker: UIDatePicker) {
+            parent.selection = picker.date
+        }
+    }
+
+    private func applyTheme(to picker: UIDatePicker) {
+        guard !manager.currentTheme.usesSystemAppearance else { return }
+
+        let accent = UIColor(manager.accentColor)
+        let text = UIColor(manager.lightAccentColor)
+        let background = UIColor(manager.fieldBackgroundColor)
+
+        picker.overrideUserInterfaceStyle = .dark
+        picker.tintColor = accent
+        picker.backgroundColor = background
+        picker.layer.cornerRadius = 8
+        picker.clipsToBounds = true
+
+        colorSubviews(of: picker, accent: accent, text: text, background: background)
+    }
+
+    private func colorSubviews(of view: UIView, accent: UIColor, text: UIColor, background: UIColor) {
+        view.tintColor = accent
+
+        if let pickerView = view as? UIPickerView {
+            pickerView.backgroundColor = background
+            pickerView.tintColor = accent
+        }
+        if let button = view as? UIButton {
+            button.tintColor = accent
+        }
+        if let label = view as? UILabel {
+            if let attributed = label.attributedText, attributed.length > 0 {
+                let colored = NSMutableAttributedString(attributedString: attributed)
+                colored.addAttributes(
+                    [.foregroundColor: text],
+                    range: NSRange(location: 0, length: colored.length)
+                )
+                label.attributedText = colored
+            } else {
+                label.textColor = text
+            }
+        }
+        if let textField = view as? UITextField {
+            textField.textColor = text
+            textField.tintColor = accent
+            if let attributed = textField.attributedText, attributed.length > 0 {
+                let colored = NSMutableAttributedString(attributedString: attributed)
+                colored.addAttributes(
+                    [.foregroundColor: text],
+                    range: NSRange(location: 0, length: colored.length)
+                )
+                textField.attributedText = colored
+            }
+        }
+
+        for subview in view.subviews {
+            colorSubviews(of: subview, accent: accent, text: text, background: background)
+        }
     }
 }

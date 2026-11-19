@@ -40,13 +40,43 @@ struct LEDMatrixApp: App {
 
         navigationBar.titleTextAttributes = attributes
         navigationBar.largeTitleTextAttributes = attributes
+        navigationBar.tintColor = theme.usesSystemAppearance ? nil : UIColor(MatrixManager.accentColor(for: theme))
         UISwitch.appearance().thumbTintColor = thumbColor
         UISlider.appearance().thumbTintColor = thumbColor
 
         UIDatePicker.appearance().tintColor = datePickerTintColor(for: theme)
         UIDatePicker.appearance().backgroundColor = datePickerBackgroundColor(for: theme)
         UILabel.appearance(whenContainedInInstancesOf: [UIDatePicker.self]).textColor = datePickerTextColor(for: theme)
-        UIPickerView.appearance(whenContainedInInstancesOf: [UIDatePicker.self]).backgroundColor = datePickerBackgroundColor(for: theme)
+        UITextField.appearance(whenContainedInInstancesOf: [UIDatePicker.self]).textColor = datePickerTextColor(for: theme)
+        UIButton.appearance(whenContainedInInstancesOf: [UIDatePicker.self]).tintColor = datePickerTintColor(for: theme)
+        UIPickerView.appearance().backgroundColor = datePickerBackgroundColor(for: theme)
+        UIPickerView.appearance().tintColor = datePickerTintColor(for: theme)
+        UILabel.appearance(whenContainedInInstancesOf: [UIPickerView.self]).textColor = datePickerTextColor(for: theme)
+
+        let usesSystem = theme.usesSystemAppearance
+        let accent = UIColor(MatrixManager.accentColor(for: theme))
+        let text = UIColor(MatrixManager.lightAccentColor(for: theme))
+        let secondary = UIColor(MatrixManager.secondaryTextColor(for: theme))
+        let card = UIColor(MatrixManager.cardBackgroundColor(for: theme))
+
+        let tabBar = UITabBar.appearance()
+        tabBar.tintColor = usesSystem ? nil : accent
+        tabBar.unselectedItemTintColor = usesSystem ? nil : secondary
+        tabBar.barTintColor = usesSystem ? nil : card
+        tabBar.backgroundColor = usesSystem ? nil : card
+        tabBar.isTranslucent = usesSystem
+        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: secondary], for: .normal)
+        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: accent], for: .selected)
+
+        let alertView = UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self])
+        alertView.tintColor = usesSystem ? nil : accent
+        alertView.backgroundColor = usesSystem ? nil : card
+        UILabel.appearance(whenContainedInInstancesOf: [UIAlertController.self]).textColor = usesSystem ? nil : text
+        let alertField = UITextField.appearance(whenContainedInInstancesOf: [UIAlertController.self])
+        alertField.textColor = usesSystem ? nil : accent
+        alertField.tintColor = usesSystem ? nil : accent
+        alertField.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.fieldBackgroundColor(for: theme))
+        UIButton.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = usesSystem ? nil : accent
     }
 
     /// Appearance proxy не перекрашивает уже созданные UISlider/UISwitch,
@@ -59,6 +89,10 @@ struct LEDMatrixApp: App {
         let dateTextColor = datePickerTextColor(for: theme)
         let dateTintColor = datePickerTintColor(for: theme)
         let dateBackgroundColor = datePickerBackgroundColor(for: theme)
+        let usesSystem = theme.usesSystemAppearance
+        let tabAccentColor = UIColor(MatrixManager.accentColor(for: theme))
+        let tabSecondaryColor = UIColor(MatrixManager.secondaryTextColor(for: theme))
+        let tabBackgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
 
         let windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -72,6 +106,10 @@ struct LEDMatrixApp: App {
                 dateTextColor: dateTextColor,
                 dateTintColor: dateTintColor,
                 dateBackgroundColor: dateBackgroundColor,
+                tabAccentColor: usesSystem ? nil : tabAccentColor,
+                tabSecondaryColor: usesSystem ? nil : tabSecondaryColor,
+                tabBackgroundColor: usesSystem ? nil : tabBackgroundColor,
+                usesSystemAppearance: usesSystem,
                 insideDatePicker: false
             )
         }
@@ -85,6 +123,10 @@ struct LEDMatrixApp: App {
         dateTextColor: UIColor?,
         dateTintColor: UIColor?,
         dateBackgroundColor: UIColor?,
+        tabAccentColor: UIColor?,
+        tabSecondaryColor: UIColor?,
+        tabBackgroundColor: UIColor?,
+        usesSystemAppearance: Bool,
         insideDatePicker: Bool
     ) {
         if let navigationBar = view as? UINavigationBar {
@@ -96,6 +138,13 @@ struct LEDMatrixApp: App {
         }
         if let toggle = view as? UISwitch {
             toggle.thumbTintColor = thumbColor
+        }
+        if let tabBar = view as? UITabBar {
+            tabBar.tintColor = tabAccentColor
+            tabBar.unselectedItemTintColor = tabSecondaryColor
+            tabBar.barTintColor = tabBackgroundColor
+            tabBar.backgroundColor = tabBackgroundColor
+            tabBar.isTranslucent = usesSystemAppearance
         }
 
         let isDatePicker = view is UIDatePicker
@@ -122,6 +171,10 @@ struct LEDMatrixApp: App {
                 dateTextColor: dateTextColor,
                 dateTintColor: dateTintColor,
                 dateBackgroundColor: dateBackgroundColor,
+                tabAccentColor: tabAccentColor,
+                tabSecondaryColor: tabSecondaryColor,
+                tabBackgroundColor: tabBackgroundColor,
+                usesSystemAppearance: usesSystemAppearance,
                 insideDatePicker: isInsideDatePicker
             )
         }
