@@ -88,8 +88,9 @@ struct SettingsInfoFormView: View {
     private func row(title: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(title) // Теперь Text сразу понимает, что это ключ локализации
+                .foregroundColor(manager.appTextColor)
             Spacer()
-            Text(value).foregroundColor(manager.secondaryTextColor)
+            Text(value).foregroundColor(manager.valueTextColor)
         }
     }
 }

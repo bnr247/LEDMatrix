@@ -368,7 +368,7 @@ struct DivoomFeedItemView: View {
                                     if let count = playlist.Count {
                                         Text("\(count)")
                                             .font(.system(size: 14))
-                                            .foregroundColor(manager.secondaryTextColor)
+                                            .foregroundColor(manager.valueTextColor)
                                     }
                                 }
                                 .padding(.vertical, 4)

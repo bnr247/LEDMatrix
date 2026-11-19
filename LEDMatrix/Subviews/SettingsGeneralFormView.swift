@@ -18,6 +18,7 @@ struct SettingsGeneralFormView: View {
                 Stepper(value: manager.clockDisplaySecondsBinding, in: 1...86400, step: 10) {
                     HStack {
                         Text("Часы (сек.)")
+                            .foregroundColor(manager.appTextColor)
                         Spacer()
                         Text("\(manager.settings.clockDisplaySeconds)")
                             .foregroundColor(manager.valueTextColor)
@@ -27,6 +28,7 @@ struct SettingsGeneralFormView: View {
                 Stepper(value: manager.animationDisplaySecondsBinding, in: 1...86400, step: 10) {
                     HStack {
                         Text("Анимации (сек.)")
+                            .foregroundColor(manager.appTextColor)
                         Spacer()
                         Text("\(manager.settings.animationDisplaySeconds)")
                             .foregroundColor(manager.valueTextColor)
@@ -71,7 +73,10 @@ struct SettingsGeneralFormView: View {
                 )
                 
                 VStack(alignment: .leading) {
-                    Text("Яркость: \(manager.settings.dayBrightnessPercent)")
+                    Text("Яркость: ")
+                        .foregroundColor(manager.appTextColor)
+                    + Text("\(manager.settings.dayBrightnessPercent)")
+                        .foregroundColor(manager.valueTextColor)
                     Slider(
                         value: Binding(
                             get: { Double(manager.settings.dayBrightnessPercent) },
@@ -105,7 +110,10 @@ struct SettingsGeneralFormView: View {
                 )
                 
                 VStack(alignment: .leading) {
-                    Text("Яркость: \(manager.settings.nightBrightnessPercent)")
+                    Text("Яркость: ")
+                        .foregroundColor(manager.appTextColor)
+                    + Text("\(manager.settings.nightBrightnessPercent)")
+                        .foregroundColor(manager.valueTextColor)
                     Slider(
                         value: Binding(
                             get: { Double(manager.settings.nightBrightnessPercent) },

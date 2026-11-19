@@ -152,8 +152,10 @@ struct ClockSettingsView: View {
                 }
 
                 HStack {
-                    Text("Цвет: \(selection.title)")
+                    Text("Цвет: ")
                         .foregroundColor(manager.appTextColor)
+                    + Text(selection.title)
+                        .foregroundColor(manager.valueTextColor)
                     Spacer()
                     if let face = currentFace {
                         ColorPicker(

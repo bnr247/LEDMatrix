@@ -137,8 +137,10 @@ struct MainScreenView: View {
                         HStack {
                             Image(systemName: "sun.max.fill")
                                 .foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
-                            Text("Яркость: \(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)")
+                            Text("Яркость: ")
                                 .foregroundColor(manager.appTextColor)
+                            + Text(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)
+                                .foregroundColor(manager.valueTextColor)
                             Spacer()
                         }
                                             

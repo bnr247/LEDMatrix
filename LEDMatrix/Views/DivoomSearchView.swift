@@ -380,8 +380,25 @@ private struct DivoomTagCard: View {
                     )
                 } label: {
                     HStack(spacing: 14) {
-                        Label("Анимации: \((tag.GalleryCnt ?? 0).formatted())", systemImage: "sparkles")
-                        Label("Подписки: \(followCount.formatted())", systemImage: "person.2")
+                        Label {
+                            HStack(spacing: 0) {
+                                Text("Анимации: ")
+                                Text("\((tag.GalleryCnt ?? 0).formatted())")
+                                    .foregroundColor(manager.valueTextColor)
+                            }
+                        } icon: {
+                            Image(systemName: "sparkles")
+                        }
+
+                        Label {
+                            HStack(spacing: 0) {
+                                Text("Подписки: ")
+                                Text(followCount.formatted())
+                                    .foregroundColor(manager.valueTextColor)
+                            }
+                        } icon: {
+                            Image(systemName: "person.2")
+                        }
                     }
                     .font(.caption)
                     .foregroundColor(manager.secondaryTextColor)
@@ -445,8 +462,25 @@ struct DivoomTagDetailView: View {
 
                 // Счётчики на отдельной строке — так же, как в карточке тэга.
                 HStack(spacing: 14) {
-                    Label("Анимации: \((tag.GalleryCnt ?? 0).formatted())", systemImage: "sparkles")
-                    Label("Подписки: \(followCount.formatted())", systemImage: "person.2")
+                    Label {
+                        HStack(spacing: 0) {
+                            Text("Анимации: ")
+                            Text("\((tag.GalleryCnt ?? 0).formatted())")
+                                .foregroundColor(manager.valueTextColor)
+                        }
+                    } icon: {
+                        Image(systemName: "sparkles")
+                    }
+
+                    Label {
+                        HStack(spacing: 0) {
+                            Text("Подписки: ")
+                            Text(followCount.formatted())
+                                .foregroundColor(manager.valueTextColor)
+                        }
+                    } icon: {
+                        Image(systemName: "person.2")
+                    }
                 }
                 .font(.caption)
                 .foregroundColor(manager.secondaryTextColor)

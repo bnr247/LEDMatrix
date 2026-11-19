@@ -211,8 +211,25 @@ private struct DivoomExpertCard: View {
                 detailView
             } label: {
                 HStack(spacing: 12) {
-                    Label("Score: \((expert.Score ?? 0).formatted())", systemImage: "star.fill")
-                    Label("Подписчики: \(fansCount.formatted())", systemImage: "person.2")
+                    Label {
+                        HStack(spacing: 0) {
+                            Text("Score: ")
+                            Text("\((expert.Score ?? 0).formatted())")
+                                .foregroundColor(manager.valueTextColor)
+                        }
+                    } icon: {
+                        Image(systemName: "star.fill")
+                    }
+
+                    Label {
+                        HStack(spacing: 0) {
+                            Text("Подписчики: ")
+                            Text(fansCount.formatted())
+                                .foregroundColor(manager.valueTextColor)
+                        }
+                    } icon: {
+                        Image(systemName: "person.2")
+                    }
                 }
                 .font(.caption)
                 .foregroundColor(manager.secondaryTextColor)
@@ -443,7 +460,7 @@ private struct DivoomProfileStat: View {
                 .foregroundColor(manager.secondaryTextColor)
             Text(value)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(manager.appTextColor)
+                .foregroundColor(manager.valueTextColor)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -73,9 +73,13 @@ struct DivoomPlaylistsView: View {
                                         .font(.subheadline)
                                         .foregroundColor(manager.secondaryTextColor)
                                 }
-                                Text("Элементов: \(playlist.Count ?? 0)")
-                                    .font(.caption)
-                                    .foregroundColor(manager.secondaryTextColor)
+                                HStack(spacing: 0) {
+                                    Text("Элементов: ")
+                                        .foregroundColor(manager.appTextColor)
+                                    Text("\(playlist.Count ?? 0)")
+                                        .foregroundColor(manager.valueTextColor)
+                                }
+                                .font(.caption)
                             }
                             .padding(.vertical, 4)
                         }
