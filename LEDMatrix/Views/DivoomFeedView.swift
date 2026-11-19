@@ -43,6 +43,7 @@ struct DivoomFeedView: View {
     // Привязка позиции к верхнему краю делает snap предсказуемым: активным
     // считается именно верхний пост, а не ближайший по центру.
     @State private var isRestoringPosition = false
+    @State private var lastSnappedId: String? = nil
     @State private var hapticTask: Task<Void, Never>?
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .rigid)
     private let pageSize = 30
@@ -81,13 +82,19 @@ struct DivoomFeedView: View {
                 onScrollPositionChanged?(newId)
 
                 // Смена верхнего поста означает, что порог перелистывания
-                // пройден и snap уже выполнится. Небольшая задержка отсекает
-                // дрожание/откат пальца: стук срабатывает только один раз.
+                // пройден. Небольшая задержка отсекает дрожание/откат пальца:
+                // стук и добирание до верха срабатывают только один раз.
+                guard newId != lastSnappedId else { return }
+                lastSnappedId = newId
+
                 hapticTask?.cancel()
-                if newId != nil {
+                if let newId {
                     hapticTask = Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(110))
                         guard !Task.isCancelled, scrollPositionId == newId else { return }
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                            proxy.scrollTo(newId, anchor: .top)
+                        }
                         feedbackGenerator.impactOccurred()
                     }
                 }
@@ -111,6 +118,7 @@ struct DivoomFeedView: View {
                     preloadAvatars(for: initialItems)
                     
                     isRestoringPosition = true
+                    lastSnappedId = selectedItemId
                     scrollPositionId = selectedItemId
                     
                     try? await Task.sleep(for: .milliseconds(50))
