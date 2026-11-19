@@ -57,8 +57,7 @@ struct DivoomMainView: View {
         }
         .background(manager.backgroundColor)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(manager.cardBackgroundColor)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .themedToolbarBackground(manager)
         .tint(manager.accentColor)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

@@ -15,7 +15,7 @@ struct SettingsWifiFormView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Данные для подключения").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Данные для подключения").themedSectionHeader(manager)) {
                 HStack {
                     Text("SSID")
                     Spacer()

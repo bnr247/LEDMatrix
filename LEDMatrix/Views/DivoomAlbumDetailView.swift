@@ -33,8 +33,7 @@ struct DivoomAlbumDetailView: View {
             }
         )
         .navigationTitle(album.AlbumName)
-        .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .themedToolbarBackground(manager)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Альбомы", isPresented: $isShowingAlert) {
             Button("OK", role: .cancel) {}

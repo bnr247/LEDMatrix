@@ -512,7 +512,7 @@ extension MatrixManager {
     var backgroundColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.systemBackground)
+            return Color(uiColor: .systemGroupedBackground)
         case .dark:
             return Color.black // Чистый OLED черный
         case .neon:
@@ -526,7 +526,7 @@ extension MatrixManager {
     var cardBackgroundColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.secondarySystemBackground)
+            return Color(uiColor: .secondarySystemGroupedBackground)
         case .dark:
             return Color(hex: "1A1A1A") // Темный графит для OLED
         case .neon:
@@ -540,7 +540,7 @@ extension MatrixManager {
     var appTextColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.label)
+            return .primary
         case .dark:
             return Color.white
         case .neon:
@@ -554,7 +554,7 @@ extension MatrixManager {
     var accentColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.tintColor) // Нативный tint iOS
+            return Color.accentColor // Реальный системный tint (без кастомного ассета)
         case .dark:
             return Color.green
         case .neon:
@@ -584,7 +584,7 @@ extension MatrixManager {
     var secondaryTextColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.secondaryLabel)
+            return .secondary
         case .dark:
             return Color.white.opacity(0.62)
         case .neon:
@@ -598,7 +598,7 @@ extension MatrixManager {
     var fieldBackgroundColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.tertiarySystemBackground)
+            return Color(uiColor: .systemFill)
         case .dark:
             return Color(hex: "242424")
         case .neon:
@@ -612,7 +612,7 @@ extension MatrixManager {
     var dividerColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.separator)
+            return .clear // Нативные разделители списков рисует система
         case .dark:
             return Color.white.opacity(0.12)
         case .neon:
@@ -735,14 +735,53 @@ extension MatrixManager {
 
 // MARK: - Общие тематические модификаторы
 
+/// Нативные стили кнопок, которые применяются только в системной теме.
+enum ThemedButtonStyle {
+    case plain
+    case borderless
+    case bordered
+    case borderedProminent
+}
+
 extension View {
-    /// Системная тема оставляет нативный фон Form/List и меняет только tint.
-    /// Декоративные темы рисуют свой фон поверх системного.
+    /// Условный модификатор: позволяет выключать декоративные слои
+    /// только для нативной темы, не раздувая body.
+    @ViewBuilder
+    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+
+    /// В системной теме кнопка получает нативный стиль iOS.
+    /// В остальных темах сохраняется `.plain`, чтобы работала кастомная обводка.
+    @ViewBuilder
+    func themedButtonStyle(_ manager: MatrixManager, _ style: ThemedButtonStyle) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            switch style {
+            case .plain:
+                self.buttonStyle(.plain)
+            case .borderless:
+                self.buttonStyle(.borderless)
+            case .bordered:
+                self.buttonStyle(.bordered)
+            case .borderedProminent:
+                self.buttonStyle(.borderedProminent)
+            }
+        } else {
+            self.buttonStyle(.plain)
+        }
+    }
+
+    /// Системная тема вообще не вмешивается в оформление Form/List:
+    /// ни фон, ни tint — всё берётся из дефолтов iOS.
     @MainActor
     @ViewBuilder
     func themedForm(_ manager: MatrixManager) -> some View {
         if manager.currentTheme.usesSystemAppearance {
-            self.tint(manager.accentColor)
+            self
         } else {
             self
                 .scrollContentBackground(.hidden)
@@ -751,20 +790,57 @@ extension View {
         }
     }
 
-    /// В системной теме карточка использует только семантическую заливку —
-    /// без обводки и тени. Остальные темы получают декоративный контур.
+    /// Системная тема не рисует декоративную карточку: только нативная
+    /// семантическая заливка строки, без скругления, обводки и тени.
     @MainActor
     @ViewBuilder
     func themedCard(_ manager: MatrixManager, cornerRadius: CGFloat = 16) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius)
 
         if manager.currentTheme.usesSystemAppearance {
-            self.background(shape.fill(manager.cardBackgroundColor))
+            self.background(manager.cardBackgroundColor)
         } else {
             self
                 .background(shape.fill(manager.cardBackgroundColor))
                 .overlay(shape.stroke(manager.cardBorderColor, lineWidth: manager.currentTheme.cardBorderWidth))
                 .shadow(color: manager.shadowColor, radius: 6, x: 0, y: 3)
+        }
+    }
+
+    /// Заголовки секций в системной теме остаются нативными (secondary).
+    @ViewBuilder
+    func themedSectionHeader(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self.foregroundColor(manager.accentColor)
+        }
+    }
+
+    /// Оставляет нативный полупрозрачный navbar в системной теме.
+    @MainActor
+    @ViewBuilder
+    func themedToolbarBackground(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self
+                .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+
+    /// Тёмный «терминальный» navbar нужен только декоративным темам.
+    @MainActor
+    @ViewBuilder
+    func themedDarkToolbar(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self
+                .toolbarColorScheme(.dark, for: .navigationBar)
+                .toolbarBackground(manager.matrixPanelColor, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
         }
     }
 }

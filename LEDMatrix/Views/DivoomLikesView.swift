@@ -30,8 +30,7 @@ struct DivoomLikesView: View {
             }
         )
         .navigationTitle("Избранное")
-        .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .themedToolbarBackground(manager)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Избранное", isPresented: $isShowingAlert) {
             Button("OK", role: .cancel) {}

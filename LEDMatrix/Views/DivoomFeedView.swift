@@ -258,12 +258,16 @@ struct DivoomFeedItemView: View {
                 }) {
                     Text(isFollowing ? "Following" : "Follow")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(manager.fieldBackgroundColor)
-                        .cornerRadius(16)
+                        .if(!manager.currentTheme.usesSystemAppearance) { content in
+                            content
+                                .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(manager.fieldBackgroundColor)
+                                .cornerRadius(16)
+                        }
                 }
+                .themedButtonStyle(manager, .borderless)
                 .disabled(isFollowLoading)
             }
             .padding(.horizontal, 16)
@@ -323,7 +327,9 @@ struct DivoomFeedItemView: View {
         }
         .frame(maxWidth: .infinity)
         .background(manager.cardBackgroundColor)
-        .cornerRadius(16)
+        .if(!manager.currentTheme.usesSystemAppearance) { content in
+            content.cornerRadius(16)
+        }
         .padding(.horizontal, 12)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {

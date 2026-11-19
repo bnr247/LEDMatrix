@@ -23,25 +23,31 @@ struct TextControlView: View {
                 HStack(alignment: .center, spacing: 8) {
                     TextField("Введите сообщение...", text: $manager.textToSend, axis: .vertical)
                         .lineLimit(2, reservesSpace: true)
-                        .foregroundColor(manager.appTextColor)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(manager.fieldBackgroundColor)
-                        )
+                        .if(!manager.currentTheme.usesSystemAppearance) { content in
+                            content
+                                .foregroundColor(manager.appTextColor)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(manager.fieldBackgroundColor)
+                                )
+                        }
 
                     Button(action: sendText) {
                         Image(systemName: "paperplane.fill")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(manager.accentColor)
-                            .frame(width: 38, height: 38)
-                            .background(
-                                Circle()
-                                    .fill(manager.accentColor.opacity(0.16))
-                            )
+                            .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                content
+                                    .foregroundColor(manager.accentColor)
+                                    .frame(width: 38, height: 38)
+                                    .background(
+                                        Circle()
+                                            .fill(manager.accentColor.opacity(0.16))
+                                    )
+                            }
                     }
-                    .buttonStyle(.plain)
+                    .themedButtonStyle(manager, .borderless)
                     .disabled(isTextEmpty)
                     .opacity(isTextEmpty ? 0.45 : 1)
                     .accessibilityLabel("Отправить текст")
@@ -49,10 +55,14 @@ struct TextControlView: View {
                 .padding(.vertical, 2)
             } header: {
                 Text("Сообщение")
-                    .foregroundColor(manager.accentColor)
+                    .if(!manager.currentTheme.usesSystemAppearance) { content in
+                        content.foregroundColor(manager.accentColor)
+                    }
             } footer: {
                 Text("Текст появится на матрице после нажатия кнопки отправки.")
-                    .foregroundColor(manager.secondaryTextColor)
+                    .if(!manager.currentTheme.usesSystemAppearance) { content in
+                        content.foregroundColor(manager.secondaryTextColor)
+                    }
             }
             .listRowBackground(manager.cardBackgroundColor)
 

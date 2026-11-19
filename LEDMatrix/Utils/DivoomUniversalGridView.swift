@@ -44,16 +44,20 @@ struct DivoomUniversalGridView: View {
                         Text("Вид и сортировка")
                     }
                     .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(manager.fieldBackgroundColor)
-                    .foregroundColor(manager.appTextColor)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(manager.cardBorderColor, lineWidth: 1)
-                    )
+                    .if(!manager.currentTheme.usesSystemAppearance) { content in
+                        content
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(manager.fieldBackgroundColor)
+                            .foregroundColor(manager.appTextColor)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(manager.cardBorderColor, lineWidth: 1)
+                            )
+                    }
                 }
+                .themedButtonStyle(manager, .borderless)
                 
                 Spacer()
                 
@@ -66,16 +70,20 @@ struct DivoomUniversalGridView: View {
                             Text("Воспроизвести")
                         }
                         .font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(manager.cardBackgroundColor)
-                        .foregroundColor(manager.accentColor)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
-                        )
+                        .if(!manager.currentTheme.usesSystemAppearance) { content in
+                            content
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(manager.cardBackgroundColor)
+                                .foregroundColor(manager.accentColor)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                                )
+                        }
                     }
+                    .themedButtonStyle(manager, .bordered)
                 }
             }
             .padding(.horizontal, 12)
@@ -174,7 +182,9 @@ struct DivoomUniversalGridView: View {
         .sheet(isPresented: $isShowingSettingsSheet) {
             gallerySettingsSheet
                 .presentationDetents([.height(260)])
-                .presentationBackground(manager.backgroundColor)
+                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                    content.presentationBackground(manager.backgroundColor)
+                }
         }
         .task(id: fileSortOption) {
             if items.isEmpty {
@@ -185,10 +195,12 @@ struct DivoomUniversalGridView: View {
     
     private var gallerySettingsSheet: some View {
         VStack(spacing: 20) {
-            RoundedRectangle(cornerRadius: 2.5)
-                .fill(manager.secondaryTextColor.opacity(0.4))
-                .frame(width: 36, height: 5)
-                .padding(.top, 8)
+            if !manager.currentTheme.usesSystemAppearance {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(manager.secondaryTextColor.opacity(0.4))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
+            }
             
             Text("Настройки галереи")
                 .font(.headline)
@@ -225,8 +237,11 @@ struct DivoomUniversalGridView: View {
             
             Spacer()
         }
-        .tint(manager.accentColor)
-        .presentationCornerRadius(24)
+        .if(!manager.currentTheme.usesSystemAppearance) { content in
+            content
+                .tint(manager.accentColor)
+                .presentationCornerRadius(24)
+        }
     }
     
     private func loadInitialItems() async {

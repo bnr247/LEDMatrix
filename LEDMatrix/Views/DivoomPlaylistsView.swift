@@ -104,8 +104,7 @@ struct DivoomPlaylistsView: View {
                     }
                 }
                 .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(manager.backgroundColor.ignoresSafeArea())
+                .themedForm(manager)
                 .refreshable {
                     await refreshPlaylists()
                 }

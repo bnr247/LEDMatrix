@@ -15,7 +15,7 @@ struct SettingsDivoomFormView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Учетные данные Divoom").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Учетные данные Divoom").themedSectionHeader(manager)) {
                 HStack {
                     Text("Email")
                     Spacer()

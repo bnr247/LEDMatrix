@@ -58,25 +58,29 @@ struct DivoomCategoriesView: View {
                         }) {
                             Text(category.name)
                                 .font(selectedCategoryId == category.id ? .subheadline.bold() : .subheadline)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    selectedCategoryId == category.id
-                                        ? manager.accentColor.opacity(0.18)
-                                        : manager.cardBackgroundColor
-                                )
-                                .foregroundColor(selectedCategoryId == category.id ? manager.accentColor : manager.appTextColor)
-                                .cornerRadius(16)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(
+                                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                    content
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(
                                             selectedCategoryId == category.id
-                                                ? manager.accentColor
-                                                : manager.cardBorderColor,
-                                            lineWidth: 1
+                                                ? manager.accentColor.opacity(0.18)
+                                                : manager.cardBackgroundColor
                                         )
-                                )
+                                        .foregroundColor(selectedCategoryId == category.id ? manager.accentColor : manager.appTextColor)
+                                        .cornerRadius(16)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .stroke(
+                                                    selectedCategoryId == category.id
+                                                        ? manager.accentColor
+                                                        : manager.cardBorderColor,
+                                                    lineWidth: 1
+                                                )
+                                        )
+                                }
                         }
+                        .themedButtonStyle(manager, selectedCategoryId == category.id ? .borderedProminent : .bordered)
                     }
                 }
                 .padding(.horizontal, 12)

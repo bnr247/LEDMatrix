@@ -190,7 +190,7 @@ struct ClockSettingsView: View {
     // MARK: - Внешний вид
 
     private var appearanceSection: some View {
-        Section(header: Text("Внешний вид").foregroundColor(manager.accentColor)) {
+        Section(header: Text("Внешний вид").themedSectionHeader(manager)) {
             Picker("Анимация", selection: manager.clockAnimationTypeBinding) {
                 Text("Стандартный").tag(ClockAnimationType.fading)
                 Text("Слайд").tag(ClockAnimationType.slideUp)

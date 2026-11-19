@@ -43,12 +43,15 @@ struct SettingsLogsView: View {
         .rotationEffect(.radians(.pi))
         .scaleEffect(x: -1, y: 1, anchor: .center)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(manager.matrixPanelColor.ignoresSafeArea())
+        .background(
+            (manager.currentTheme.usesSystemAppearance
+                ? manager.backgroundColor
+                : manager.matrixPanelColor)
+            .ignoresSafeArea()
+        )
         .navigationTitle("Вывод устройства")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(manager.matrixPanelColor, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .themedDarkToolbar(manager)
         .tint(manager.accentColor)
         .onAppear {
             manager.startLogStreaming()

@@ -28,38 +28,50 @@ struct DivoomSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                ForEach(DivoomSearchTab.visible) { tab in
-                    Button {
-                        selectedTab = tab
-                    } label: {
-                        Text(tab.rawValue)
-                            .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                            .foregroundColor(selectedTab == tab ? manager.accentColor : manager.secondaryTextColor)
-                            .frame(maxWidth: .infinity, minHeight: 32)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedTab == tab ? manager.cardBackgroundColor : Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(
-                                        selectedTab == tab ? manager.accentColor.opacity(0.6) : Color.clear,
-                                        lineWidth: 1
-                                    )
-                            )
-                            .contentShape(Rectangle())
+            if manager.currentTheme.usesSystemAppearance {
+                Picker("", selection: $selectedTab) {
+                    ForEach(DivoomSearchTab.visible) { tab in
+                        Text(tab.rawValue).tag(tab)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selectedTab == tab ? [.isSelected] : [])
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(manager.backgroundColor)
+            } else {
+                HStack(spacing: 4) {
+                    ForEach(DivoomSearchTab.visible) { tab in
+                        Button {
+                            selectedTab = tab
+                        } label: {
+                            Text(tab.rawValue)
+                                .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
+                                .foregroundColor(selectedTab == tab ? manager.accentColor : manager.secondaryTextColor)
+                                .frame(maxWidth: .infinity, minHeight: 32)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selectedTab == tab ? manager.cardBackgroundColor : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(
+                                            selectedTab == tab ? manager.accentColor.opacity(0.6) : Color.clear,
+                                            lineWidth: 1
+                                        )
+                                )
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(selectedTab == tab ? [.isSelected] : [])
+                    }
+                }
+                .padding(4)
+                .background(manager.fieldBackgroundColor)
+                .cornerRadius(10)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(manager.backgroundColor)
             }
-            .padding(4)
-            .background(manager.fieldBackgroundColor)
-            .cornerRadius(10)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(manager.backgroundColor)
 
             Rectangle()
                 .fill(manager.dividerColor)
@@ -465,8 +477,7 @@ struct DivoomTagDetailView: View {
         .background(manager.backgroundColor)
         .navigationTitle("#\(tag.TagName)")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .themedToolbarBackground(manager)
     }
 }
 
@@ -484,24 +495,27 @@ struct DivoomTagFollowButton: View {
         Button(action: toggleFollow) {
             Text(isFollowing ? "Подписан" : "Подписаться")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    Capsule()
-                        .fill(isFollowing
-                              ? manager.fieldBackgroundColor
-                              : manager.accentColor.opacity(0.16))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(isFollowing
-                                ? manager.cardBorderColor
-                                : manager.accentColor.opacity(0.5),
-                                lineWidth: 1)
-                )
+                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                    content
+                        .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule()
+                                .fill(isFollowing
+                                      ? manager.fieldBackgroundColor
+                                      : manager.accentColor.opacity(0.16))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(isFollowing
+                                        ? manager.cardBorderColor
+                                        : manager.accentColor.opacity(0.5),
+                                        lineWidth: 1)
+                        )
+                }
         }
-        .buttonStyle(.plain)
+        .themedButtonStyle(manager, .bordered)
         .disabled(isBusy)
         .opacity(isBusy ? 0.6 : 1)
     }

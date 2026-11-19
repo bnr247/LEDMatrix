@@ -15,7 +15,7 @@ struct ManualIPView: View {
 
     var body: some View {
         Form {
-            Section(header: Text("Параметры матрицы").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Параметры матрицы").themedSectionHeader(manager)) {
                 TextField("Название матрицы (например, Гостиная)", text: $customName)
                     .foregroundColor(manager.appTextColor)
                 TextField("192.168.1.50", text: $ipAddress)

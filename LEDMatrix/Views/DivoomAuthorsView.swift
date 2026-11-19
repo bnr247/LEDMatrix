@@ -348,8 +348,7 @@ struct DivoomUserGalleryView: View {
         .background(manager.backgroundColor)
         .navigationTitle(resolvedDisplayName)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .themedToolbarBackground(manager)
         .task {
             guard let result = try? await manager.fetchDivoomSomeoneInfo(userId: userId) else { return }
             guard !Task.isCancelled else { return }
@@ -377,25 +376,28 @@ struct DivoomExpertFollowButton: View {
         Button(action: toggleFollow) {
             Text(isFollowing ? "Подписан" : "Подписаться")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
                 .frame(maxWidth: fullWidth ? .infinity : nil)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    Capsule()
-                        .fill(isFollowing
-                              ? manager.fieldBackgroundColor
-                              : manager.accentColor.opacity(0.16))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(isFollowing
-                                ? manager.cardBorderColor
-                                : manager.accentColor.opacity(0.5),
-                                lineWidth: 1)
-                )
+                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                    content
+                        .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule()
+                                .fill(isFollowing
+                                      ? manager.fieldBackgroundColor
+                                      : manager.accentColor.opacity(0.16))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(isFollowing
+                                        ? manager.cardBorderColor
+                                        : manager.accentColor.opacity(0.5),
+                                        lineWidth: 1)
+                        )
+                }
         }
-        .buttonStyle(.plain)
+        .themedButtonStyle(manager, .bordered)
         .disabled(isBusy)
         .opacity(isBusy ? 0.6 : 1)
     }

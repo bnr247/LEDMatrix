@@ -90,16 +90,20 @@ struct MatrixControlView: View {
                                                 }
                                                 .font(.subheadline)
                                                 .fontWeight(.medium)
-                                                .padding(.horizontal, 14)
-                                                .padding(.vertical, 8)
-                                                .background(selectedTab == tab ? manager.accentColor : manager.fieldBackgroundColor)
-                                                .foregroundColor(selectedTab == tab ? manager.accentContrastColor : manager.appTextColor)
-                                                .clipShape(Capsule())
-                                                .overlay(
-                                                    Capsule()
-                                                        .stroke(selectedTab == tab ? manager.accentColor : manager.cardBorderColor, lineWidth: 1)
-                                                )
+                                                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                                    content
+                                                        .padding(.horizontal, 14)
+                                                        .padding(.vertical, 8)
+                                                        .background(selectedTab == tab ? manager.accentColor : manager.fieldBackgroundColor)
+                                                        .foregroundColor(selectedTab == tab ? manager.accentContrastColor : manager.appTextColor)
+                                                        .clipShape(Capsule())
+                                                        .overlay(
+                                                            Capsule()
+                                                                .stroke(selectedTab == tab ? manager.accentColor : manager.cardBorderColor, lineWidth: 1)
+                                                        )
+                                                }
                                             }
+                                            .themedButtonStyle(manager, selectedTab == tab ? .borderedProminent : .bordered)
                                             .id(tab)
                                         }
                                     }
