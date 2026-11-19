@@ -107,7 +107,6 @@ struct DivoomFeedView: View {
             }
             .onAppear { feedbackGenerator.prepare() }
             .background(Color.black)
-            .ignoresSafeArea(edges: .bottom)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .task {
