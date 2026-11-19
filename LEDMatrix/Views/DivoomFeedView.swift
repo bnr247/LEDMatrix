@@ -370,8 +370,6 @@ struct DivoomFeedItemView: View {
                         }
                     }
                 }
-                .themedForm(manager)
-                .ignoresSafeArea(edges: .bottom)
                 .navigationTitle("Выберите плейлист")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
