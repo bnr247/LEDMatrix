@@ -14,6 +14,8 @@ extension MatrixManager {
             self.otaStatusMessage = "Устройство не выбрано"
             return
         }
+
+        await ensureDeviceMacAddress(for: device)
         
         let accessing = fileURL.startAccessingSecurityScopedResource()
         defer {

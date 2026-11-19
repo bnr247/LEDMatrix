@@ -40,7 +40,9 @@ extension MatrixManager {
     /// Один HTTP-запрос к эндпоинту /logs/data
     private func fetchDeviceLogsData(for device: LEDMatrixDevice) async {
         guard let url = URL(string: "http://\(device.ipAddress)/logs/data") else { return }
-        
+
+        await ensureDeviceMacAddress(for: device)
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData // Отключаем кэш, как в JS {cache:'no-store'}

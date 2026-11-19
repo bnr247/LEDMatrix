@@ -46,8 +46,36 @@ extension MatrixManager {
         }
     }
     
+    /// Подтягивает MAC из /settings, если он ещё неизвестен. MAC нужен для
+    /// basic auth, а /settings доступен без авторизации, поэтому защищённый
+    /// запрос всегда можно подготовить корректно.
+    func ensureDeviceMacAddress(for device: LEDMatrixDevice) async {
+        guard settings.macAddress.isEmpty else { return }
+        guard let url = URL(string: "http://\(device.ipAddress)/settings") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("close", forHTTPHeaderField: "Connection")
+        request.timeoutInterval = 3.0
+
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
+            if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
+                let decoded = try JSONDecoder().decode(MatrixSettings.self, from: data)
+                if !decoded.macAddress.isEmpty {
+                    self.settings.macAddress = decoded.macAddress
+                }
+            }
+        } catch {
+            print("❌ Ошибка при получении MAC из /settings: \(error)")
+        }
+    }
+
     func fetchWifiSettings(for device: LEDMatrixDevice) async {
         self.selectedDevice = device
+        await ensureDeviceMacAddress(for: device)
         guard let url = URL(string: "http://\(device.ipAddress)/wifi") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -116,6 +144,9 @@ extension MatrixManager {
     /// Добавляем ключевое слово throws, чтобы метод умел пробрасывать ошибки наверх
     func sendCommand(endpoint: String, params: [String: Any]) async throws {
         guard let device = selectedDevice else { return }
+        // Некоторые команды (Wi-Fi, Divoom-credentials, сброс/перезагрузка)
+        // защищены basic auth, а пароль вычисляется из MAC из /settings.
+        await ensureDeviceMacAddress(for: device)
         let urlString = "http://\(device.ipAddress)/\(endpoint)"
         guard let url = URL(string: urlString) else { return }
         

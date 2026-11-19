@@ -251,7 +251,19 @@ class MatrixManager: NSObject, ObservableObject {
     @Published var screenErrorMessage: String? = nil
     
     var authUsername = "admin"
-    var authPassword = "s120Px17"
+
+    /// Пароль basic auth — MAC-адрес устройства в обратном порядке байт.
+    /// Например, MAC `28:84:85:89:6E:4C` даёт пароль `4C6E89858428`.
+    /// MAC приходит в /settings, который не требует авторизации.
+    var authPassword: String {
+        let hex = settings.macAddress.filter(\.isHexDigit).uppercased()
+        guard hex.count == 12 else { return "" }
+
+        let bytes = stride(from: 0, to: 12, by: 2).map { offset in
+            String(hex.dropFirst(offset).prefix(2))
+        }
+        return bytes.reversed().joined()
+    }
     
     var netServiceBrowser = NetServiceBrowser()
     var resolvingServices: [NetService] = []
@@ -270,7 +282,12 @@ class MatrixManager: NSObject, ObservableObject {
     var pendingDrawFrameData: Data?
     
     func addBasicAuthHeader(to request: inout URLRequest) {
-        let loginString = "\(authUsername):\(authPassword)"
+        let password = authPassword
+        // Пока MAC ещё не получен из /settings, защищённый запрос всё равно
+        // не пройдёт; не отправляем заведомо неверные учётные данные.
+        guard !password.isEmpty else { return }
+
+        let loginString = "\(authUsername):\(password)"
         guard let loginData = loginString.data(using: .utf8) else { return }
         let base64LoginString = loginData.base64EncodedString()
         request.setValue("Basic \(base64LoginString)", forHTTPHeaderField: "Authorization")
