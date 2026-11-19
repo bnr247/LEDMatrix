@@ -394,7 +394,6 @@ struct DivoomFeedItemView: View {
                 }
             }
             .presentationDetents([.medium, .large])
-            .presentationBackground(manager.backgroundColor)
         }
     }
 
