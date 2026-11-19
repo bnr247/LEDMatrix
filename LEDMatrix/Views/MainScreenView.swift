@@ -86,16 +86,22 @@ struct MainScreenView: View {
                                             .foregroundColor(manager.secondaryTextColor)
                                     }
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(manager.cardBackgroundColor)
-                                        .overlay(
+                                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                    content
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .background(
                                             RoundedRectangle(cornerRadius: 12)
-                                                .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                                                .fill(manager.cardBackgroundColor)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                                                )
                                         )
-                                )
+                                }
+                            }
+                            .if(manager.currentTheme.usesSystemAppearance) { content in
+                                content.buttonStyle(.borderless)
                             }
                             .disabled(manager.savedDevices.isEmpty)
                             
@@ -104,16 +110,22 @@ struct MainScreenView: View {
                             }) {
                                 Image(systemName: "gearshape.fill")
                                     .font(.title2)
-                                    .foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
-                                    .padding(12)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(manager.cardBackgroundColor)
-                                            .overlay(
+                                    .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                        content
+                                            .foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
+                                            .padding(12)
+                                            .background(
                                                 RoundedRectangle(cornerRadius: 12)
-                                                    .stroke(isDeviceAvailable ? manager.accentColor.opacity(0.5) : manager.secondaryTextColor.opacity(0.3), lineWidth: 1)
+                                                    .fill(manager.cardBackgroundColor)
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 12)
+                                                            .stroke(isDeviceAvailable ? manager.accentColor.opacity(0.5) : manager.secondaryTextColor.opacity(0.3), lineWidth: 1)
+                                                    )
                                             )
-                                    )
+                                    }
+                            }
+                            .if(manager.currentTheme.usesSystemAppearance) { content in
+                                content.buttonStyle(.borderless)
                             }
                             .disabled(!isDeviceAvailable)
                         }
@@ -145,14 +157,19 @@ struct MainScreenView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(manager.cardBackgroundColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
-                            )
-                    )
+                    .if(manager.currentTheme.usesSystemAppearance) { content in
+                        content.background(manager.cardBackgroundColor)
+                    }
+                    .if(!manager.currentTheme.usesSystemAppearance) { content in
+                        content.background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(manager.cardBackgroundColor)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(manager.accentColor.opacity(0.5), lineWidth: 1)
+                                )
+                        )
+                    }
                     .padding(.horizontal, 20)
                     .opacity(isDeviceAvailable ? 1.0 : 0.6)
                                         
@@ -175,17 +192,21 @@ struct MainScreenView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 110)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(manager.cardBackgroundColor)
-                                        .overlay(
+                                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                    content
+                                        .background(
                                             RoundedRectangle(cornerRadius: 20)
-                                                .stroke(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor.opacity(0.35), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                                                .fill(manager.cardBackgroundColor)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 20)
+                                                        .stroke(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor.opacity(0.35), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                                                )
                                         )
-                                )
-                                .foregroundColor(isDeviceAvailable ? manager.appTextColor : manager.secondaryTextColor)
-                                .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
+                                        .foregroundColor(isDeviceAvailable ? manager.appTextColor : manager.secondaryTextColor)
+                                        .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
+                                }
                             }
+                            .themedButtonStyle(manager, .bordered)
                             .disabled(!isDeviceAvailable)
                         }
                     }
@@ -273,7 +294,7 @@ struct DeviceManagementSheet: View {
                 // Секция сохраненных устройств
                 if !manager.savedDevices.isEmpty {
                     Section(header: HStack {
-                        Text("Мои устройства").foregroundColor(manager.accentColor)
+                        Text("Мои устройства").themedSectionHeader(manager)
                         if manager.isCheckingReachability {
                             Spacer()
                             ProgressView().controlSize(.small)
@@ -308,7 +329,7 @@ struct DeviceManagementSheet: View {
                 }
                 
                 // Секция найденных устройств в сети
-                Section(header: Text("Устройства в сети").foregroundColor(manager.accentColor)) {
+                Section(header: Text("Устройства в сети").themedSectionHeader(manager)) {
                     if manager.isScanning {
                         HStack {
                             ProgressView().padding(.trailing, 8)

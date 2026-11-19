@@ -23,7 +23,7 @@ struct SettingsView: View {
     
     var body: some View {
         Form {
-            Section(header: Text("Устройство").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Устройство").themedSectionHeader(manager)) {
                 HStack {
                     Text(manager.selectedDevice?.name ?? "Неизвестно")
                         .foregroundColor(manager.appTextColor)
@@ -41,7 +41,7 @@ struct SettingsView: View {
             }
             .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Внешний вид").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Внешний вид").themedSectionHeader(manager)) {
                 Picker("Тема оформления", selection: Binding(
                     get: { manager.currentTheme },
                     set: { manager.currentTheme = $0 }
@@ -55,7 +55,7 @@ struct SettingsView: View {
             }
             .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Настройки устройства").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Настройки устройства").themedSectionHeader(manager)) {
                 NavigationLink(destination: SettingsGeneralFormView(manager: manager)) {
                     Label("Основные", systemImage: "sparkles.tv")
                         .foregroundColor(manager.appTextColor)
@@ -79,7 +79,7 @@ struct SettingsView: View {
             }
             .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Обновление ПО").foregroundColor(manager.accentColor)) {
+            Section(header: Text("Обновление ПО").themedSectionHeader(manager)) {
                 if manager.isOtaUpdating {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(manager.otaStatusMessage)
