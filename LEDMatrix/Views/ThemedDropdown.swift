@@ -44,10 +44,12 @@ private struct ThemedDropdownPanel: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
-            Divider().background(manager.dividerColor)
+            Divider()
+                .background(manager.dividerColor)
+                .padding(.horizontal, 12)
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -69,29 +71,34 @@ private struct ThemedDropdownPanel: View {
                                         .foregroundColor(manager.accentColor)
                                 }
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
                         if item.id != items.last?.id {
-                            Divider().background(manager.dividerColor)
+                            Divider()
+                                .background(manager.dividerColor)
+                                .padding(.horizontal, 12)
                         }
                     }
                 }
             }
         }
-        .frame(width: 300)
+        .frame(width: 280)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 14)
                 .fill(manager.cardBackgroundColor)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 14)
                         .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
                 )
         )
-        .presentationBackground(manager.cardBackgroundColor)
+        // Отступ от границ поповера: иначе его собственный радиус срезает
+        // скругление и обводку панели.
+        .padding(8)
+        .presentationBackground(.clear)
         .presentationCompactAdaptation(.popover)
     }
 }
