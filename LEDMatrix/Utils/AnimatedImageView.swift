@@ -196,21 +196,21 @@ struct AnimatedImageRepresentable: UIViewRepresentable {
     }
 
     private func updateImageView(_ imageView: UIImageView, with image: UIImage?) {
+        // SwiftUI может вызвать updateUIView на каждом изменении скролла. если
+        // картинка та же, заново ставить animationImages и startAnimating —
+        // значит сбрасывать анимацию и получать подтормаживания при листании.
+        if imageView.image === image { return }
+
         imageView.image = image
-        if let image = image, let frames = image.images {
-            let safeFrames = frames.compactMap { $0 }
-            if !safeFrames.isEmpty {
-                imageView.animationImages = safeFrames
-                imageView.animationDuration = image.duration
-                imageView.startAnimating()
-            } else {
-                imageView.stopAnimating()
-                imageView.animationImages = nil
-            }
-        } else {
+        guard let image, let frames = image.images, !frames.isEmpty else {
             imageView.stopAnimating()
             imageView.animationImages = nil
+            return
         }
+
+        imageView.animationImages = frames
+        imageView.animationDuration = image.duration
+        imageView.startAnimating()
     }
 }
 

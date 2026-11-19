@@ -7,6 +7,12 @@
 
 import SwiftUI
 
+/// Скролл-позиция нужна только внутренней логике пагинации. Храним её в
+/// reference-типе, чтобы обновление индекса не перерисовывало всю сетку.
+private final class GridScrollTracker {
+    var lastVisibleIndex = 0
+}
+
 struct DivoomUniversalGridView: View {
     let title: String
     @ObservedObject var manager: MatrixManager
@@ -41,7 +47,7 @@ struct DivoomUniversalGridView: View {
     @State private var scrollPositionId: String? = nil
     // Позиция последней показанной ячейки: нужна, чтобы вставить уже
     // подготовленную страницу, даже если пользователь остановился у края.
-    @State private var lastVisibleIndex = 0
+    @State private var scrollTracker = GridScrollTracker()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -156,7 +162,7 @@ struct DivoomUniversalGridView: View {
                                     .id(item.id)
                                     .onAppear {
                                         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
-                                        lastVisibleIndex = index
+                                        scrollTracker.lastVisibleIndex = index
                                         // Половина страницы — начинаем грузить следующую заранее.
                                         if index >= items.count / 2 {
                                             Task { await prefetchNextPage() }
@@ -320,7 +326,7 @@ struct DivoomUniversalGridView: View {
         // Пользователь уже запросил следующую страницу, но предзагрузка была
         // ещё не готова. Вставляем её сразу по завершении — без повторного
         // скролла и дерганья списка.
-        let shouldAppend = isAwaitingNextPage || lastVisibleIndex >= items.count - nearEndThreshold
+        let shouldAppend = isAwaitingNextPage || scrollTracker.lastVisibleIndex >= items.count - nearEndThreshold
         if shouldAppend {
             isAwaitingNextPage = false
             _ = appendPrefetchedPage()
