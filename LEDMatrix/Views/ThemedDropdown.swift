@@ -31,75 +31,68 @@ private struct ThemedDropdownPanel: View {
     let onSelect: (Int) -> Void
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.55)
-                .ignoresSafeArea()
-                .onTapGesture { dismiss() }
-
-            VStack(spacing: 0) {
-                HStack {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundColor(manager.lightAccentColor)
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(manager.secondaryTextColor)
-                    }
-                    .buttonStyle(.plain)
+        VStack(spacing: 0) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(manager.lightAccentColor)
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(manager.secondaryTextColor)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
 
-                Divider().background(manager.dividerColor)
+            Divider().background(manager.dividerColor)
 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(items) { item in
-                            Button {
-                                onSelect(item.id)
-                                dismiss()
-                            } label: {
-                                HStack {
-                                    Text(item.title)
-                                        .foregroundColor(
-                                            item.id == selectedIndex
-                                                ? manager.accentColor
-                                                : manager.lightAccentColor
-                                        )
-                                    Spacer()
-                                    if item.id == selectedIndex {
-                                        Image(systemName: "checkmark")
-                                            .foregroundColor(manager.accentColor)
-                                    }
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        Button {
+                            onSelect(item.id)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(item.title)
+                                    .foregroundColor(
+                                        item.id == selectedIndex
+                                            ? manager.accentColor
+                                            : manager.lightAccentColor
+                                    )
+                                Spacer()
+                                if item.id == selectedIndex {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(manager.accentColor)
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
 
-                            if item.id != items.last?.id {
-                                Divider().background(manager.dividerColor)
-                            }
+                        if item.id != items.last?.id {
+                            Divider().background(manager.dividerColor)
                         }
                     }
                 }
             }
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(manager.cardBackgroundColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
-                    )
-            )
-            .frame(maxWidth: 420)
-            .padding(.horizontal, 24)
         }
-        .presentationDetents([.large])
-        .presentationBackground(.clear)
+        .frame(width: 300)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(manager.cardBackgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
+                )
+        )
+        .presentationBackground(manager.cardBackgroundColor)
+        .presentationCompactAdaptation(.popover)
     }
 }
 
@@ -140,7 +133,7 @@ struct ThemedMenuPicker<Value: Hashable>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .sheet(isPresented: $isPresented) {
+            .popover(isPresented: $isPresented, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
                 ThemedDropdownPanel(
                     manager: manager,
                     title: title,
@@ -182,7 +175,7 @@ struct ThemedActionMenu<Label: View>: View {
                 label
             }
             .buttonStyle(.plain)
-            .sheet(isPresented: $isPresented) {
+            .popover(isPresented: $isPresented, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
                 ThemedDropdownPanel(
                     manager: manager,
                     title: title,
