@@ -41,7 +41,7 @@ struct AnimatedImageView: View {
                     HStack(spacing: 4) {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(isLiked ? .red : .gray)
+                            .foregroundColor(manager.accentColor)
                         Text("\(likeCount)")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(.white)
@@ -56,7 +56,7 @@ struct AnimatedImageView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "bubble.right.fill")
                             .font(.system(size: 11))
-                            .foregroundColor(.gray)
+                            .foregroundColor(manager.accentColor)
                         Text("\(commentCnt)")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(.white)

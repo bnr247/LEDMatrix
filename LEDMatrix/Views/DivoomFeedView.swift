@@ -211,7 +211,7 @@ struct DivoomFeedItemView: View {
                 }) {
                     Text(isFollowing ? "Following" : "Follow")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.warningColor)
+                        .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
                         .background(Color.white.opacity(0.1))
@@ -244,7 +244,7 @@ struct DivoomFeedItemView: View {
                     HStack(spacing: 6) {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(isLiked ? manager.dangerColor : .white)
+                            .foregroundColor(manager.accentColor)
                         Text("\(likeCount)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
@@ -255,7 +255,7 @@ struct DivoomFeedItemView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "bubble.right")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundColor(manager.accentColor)
                     Text("\(item.CommentCnt ?? 0)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
@@ -266,7 +266,7 @@ struct DivoomFeedItemView: View {
                 }) {
                     Image(systemName: "text.badge.plus")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundColor(manager.accentColor)
                 }
                 
                 Spacer()
