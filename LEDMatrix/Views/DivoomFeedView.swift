@@ -53,11 +53,6 @@ struct DivoomFeedView: View {
                             avatarImage: loadedAvatars[item.UserHeaderId ?? ""]
                         )
                         .id(item.id)
-                        .scrollTransition(.interactive, axis: .vertical) { content, phase in
-                            content
-                                .opacity(phase.isIdentity ? 1.0 : 0.6)
-                                .scaleEffect(phase.isIdentity ? 1.0 : 0.98)
-                        }
                         .onAppear {
                             if item.id == items.last?.id {
                                 Task { await loadMore() }
