@@ -165,6 +165,70 @@ struct DivoomTagResponse: Codable {
     let TagList: [DivoomTag]?
 }
 
+/// Автор (эксперт) из GetExpertListV4.
+struct DivoomExpert: Identifiable, Codable {
+    let UserId: Int
+    let NickName: String
+    let HeadId: String?
+    let FansCnt: Int?
+    let Score: Int?
+    let Level: Int?
+    let IsFollow: Int?
+    let FileList: [DivoomFileItem]?
+
+    var id: Int { UserId }
+
+    enum CodingKeys: String, CodingKey {
+        case UserId, NickName, HeadId, FansCnt, Score, Level, IsFollow, FileList
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        NickName = try container.decode(String.self, forKey: .NickName)
+        HeadId = try? container.decode(String.self, forKey: .HeadId)
+        FansCnt = try? container.decode(Int.self, forKey: .FansCnt)
+        Score = try? container.decode(Int.self, forKey: .Score)
+        Level = try? container.decode(Int.self, forKey: .Level)
+        FileList = try? container.decode([DivoomFileItem].self, forKey: .FileList)
+
+        if let intVal = try? container.decode(Int.self, forKey: .UserId) {
+            UserId = intVal
+        } else if let str = try? container.decode(String.self, forKey: .UserId) {
+            UserId = Int(str) ?? 0
+        } else {
+            UserId = 0
+        }
+
+        if let intVal = try? container.decode(Int.self, forKey: .IsFollow) {
+            IsFollow = intVal
+        } else if let str = try? container.decode(String.self, forKey: .IsFollow) {
+            IsFollow = Int(str)
+        } else {
+            IsFollow = nil
+        }
+    }
+}
+
+struct DivoomExpertListResponse: Codable {
+    let ReturnCode: Int
+    let ReturnMessage: String
+    let ExpertList: [DivoomExpert]?
+    let CurListNum: Int?
+}
+
+/// Информация о пользователе из GetSomeoneInfoV2.
+struct DivoomSomeoneInfo: Codable {
+    let ReturnCode: Int
+    let ReturnMessage: String
+    let NickName: String?
+    let HeadId: String?
+    let Score: Int?
+    let LikeCnt: Int?
+    let FansCnt: Int?
+    let Level: Int?
+    let IsFollow: Int?
+}
+
 struct DivoomPlaylistResponse: Codable {
     let ReturnCode: Int
     let ReturnMessage: String
@@ -937,5 +1001,155 @@ extension MatrixManager {
         }
 
         return response
+    }
+
+    // MARK: - Авторы
+
+    func fetchDivoomExperts(startNum: Int, endNum: Int) async throws -> DivoomExpertListResponse {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/GetExpertListV4")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "UserId": session.userId,
+            "EndNum": endNum,
+            "Command": "GetExpertListV4",
+            "Language": "en",
+            "Version": 19,
+            "FileSize": 1,
+            "FileType": 5,
+            "StartNum": startNum,
+            "RefreshIndex": 0
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomExpertListResponse.self, from: data)
+
+        if let retryResult = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.fetchDivoomExperts(startNum: startNum, endNum: endNum)
+        }) {
+            return retryResult
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response
+    }
+
+    func fetchDivoomSomeoneInfo(userId: Int) async throws -> DivoomSomeoneInfo {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/GetSomeoneInfoV2")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "Command": "GetSomeoneInfoV2",
+            "UserId": session.userId,
+            "SomeOneUserId": userId,
+            "Language": "en"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomSomeoneInfo.self, from: data)
+
+        if let _ = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.fetchDivoomSomeoneInfo(userId: userId)
+        }) {
+            return response
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response
+    }
+
+    func fetchDivoomSomeoneImages(userId: Int, startNum: Int, endNum: Int, fileSort: Int = 1) async throws -> DivoomAlbumImageListResponse {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/GetSomeoneListV3")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "UserId": session.userId,
+            "EndNum": endNum,
+            "Command": "GetSomeoneListV3",
+            "Version": 19,
+            "SomeOneUserId": userId,
+            "FileType": 5,
+            "FileSize": 1,
+            "StartNum": startNum,
+            "RefreshIndex": 0,
+            "FileSort": fileSort
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomAlbumImageListResponse.self, from: data)
+
+        if let retryResult = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.fetchDivoomSomeoneImages(userId: userId, startNum: startNum, endNum: endNum, fileSort: fileSort)
+        }) {
+            return retryResult
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response
+    }
+
+    /// POST /FollowExpertV2: IsFollow 1 — подписаться, 0 — отписаться.
+    func toggleDivoomExpertFollow(userId: Int, isFollow: Int) async throws {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/FollowExpertV2")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "Command": "FollowExpertV2",
+            "UserId": session.userId,
+            "SomeOneUserId": userId,
+            "IsFollow": isFollow
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        struct FollowExpertResponse: Codable {
+            let ReturnCode: Int
+            let ReturnMessage: String
+        }
+
+        let response = try JSONDecoder().decode(FollowExpertResponse.self, from: data)
+
+        if let _ = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.toggleDivoomExpertFollow(userId: userId, isFollow: isFollow)
+        }) {
+            return
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage.isEmpty ? "Ошибка подписки на автора" : response.ReturnMessage])
+        }
     }
 }
