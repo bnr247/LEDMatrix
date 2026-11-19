@@ -372,6 +372,7 @@ struct DivoomFeedItemView: View {
                     }
                 }
                 .themedForm(manager)
+                .ignoresSafeArea(edges: .bottom)
                 .navigationTitle("Выберите плейлист")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -393,6 +394,7 @@ struct DivoomFeedItemView: View {
                     Task { await reloadPlaylists() }
                 }
             }
+            .ignoresSafeArea(edges: .bottom)
             .presentationDetents([.medium, .large])
         }
     }
