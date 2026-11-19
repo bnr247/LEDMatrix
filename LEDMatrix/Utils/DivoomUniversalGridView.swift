@@ -38,6 +38,12 @@ struct DivoomUniversalGridView: View {
     @State private var prefetchedItems: [DivoomFileItem] = []
     @State private var prefetchedImages: [String: UIImage] = [:]
     @State private var prefetchedNextStart = 1
+    // Метаданные следующей страницы можно получить сразу, но кадры грузим
+    // только после того, как закончили текущую страницу, чтобы не конкурировать
+    // за сеть и не замедлять то, что пользователь видит сейчас.
+    @State private var prefetchedRawItems: [DivoomFileItem] = []
+    @State private var prefetchedRawStart = 1
+    @State private var isRevealingCurrentPage = false
     @State private var isPrefetching = false
     @State private var isAwaitingNextPage = false
     @State private var prefetchGeneration = 0
@@ -266,6 +272,8 @@ struct DivoomUniversalGridView: View {
         revealedImages.removeAll()
         prefetchedItems.removeAll()
         prefetchedImages.removeAll()
+        prefetchedRawItems.removeAll()
+        isRevealingCurrentPage = false
         isPrefetching = false
         isAwaitingNextPage = false
 
@@ -281,7 +289,13 @@ struct DivoomUniversalGridView: View {
             } else {
                 currentStart = 1 + result.items.count
                 // Текущую страницу показываем сразу, кадры грузим порциями по порядку.
-                Task { await loadFirstFramesProgressively(for: result.items, generation: generation) }
+                isRevealingCurrentPage = true
+                Task {
+                    await loadFirstFramesProgressively(for: result.items, generation: generation)
+                    guard generation == prefetchGeneration else { return }
+                    isRevealingCurrentPage = false
+                    await preparePrefetchedFrames(generation: generation)
+                }
                 Task { await prefetchNextPage(generation: generation) }
             }
         } catch {
@@ -291,10 +305,11 @@ struct DivoomUniversalGridView: View {
         }
     }
 
-    /// Подгружает метаданные и первые кадры следующей страницы заранее.
+    /// Сначала берём только метаданные следующей страницы — это дешёвый запрос.
+    /// Кадры не грузим, пока не закончили порции текущей страницы.
     private func prefetchNextPage(generation: Int? = nil) async {
         let gen = generation ?? prefetchGeneration
-        guard !isPrefetching, hasMorePages, prefetchedItems.isEmpty else { return }
+        guard !isPrefetching, hasMorePages, prefetchedItems.isEmpty, prefetchedRawItems.isEmpty else { return }
         isPrefetching = true
 
         let start = currentStart
@@ -315,12 +330,41 @@ struct DivoomUniversalGridView: View {
 
         let existing = Set(items.map(\.id)).union(prefetchedItems.map(\.id))
         let unique = result.items.filter { !existing.contains($0.id) }
+
+        if isRevealingCurrentPage {
+            prefetchedRawItems = unique
+            prefetchedRawStart = start + result.items.count
+            isPrefetching = false
+            return
+        }
+
         let images = await loadFirstFrames(for: unique)
         guard gen == prefetchGeneration else { return }
+        applyPrefetched(unique, images: images, nextStart: start + result.items.count, generation: gen)
+    }
 
-        prefetchedItems = unique
+    /// Кадры следующей страницы грузятся только после текущей — так сеть не
+    /// делится между тем, что видит пользователь, и тем, что пока скрыто.
+    private func preparePrefetchedFrames(generation: Int) async {
+        guard generation == prefetchGeneration,
+              !prefetchedRawItems.isEmpty,
+              prefetchedItems.isEmpty,
+              !isPrefetching else { return }
+
+        let raw = prefetchedRawItems
+        let nextStart = prefetchedRawStart
+        isPrefetching = true
+
+        let images = await loadFirstFrames(for: raw)
+        guard generation == prefetchGeneration else { return }
+        applyPrefetched(raw, images: images, nextStart: nextStart, generation: generation)
+    }
+
+    private func applyPrefetched(_ itemsToApply: [DivoomFileItem], images: [String: UIImage], nextStart: Int, generation: Int) {
+        prefetchedItems = itemsToApply
         prefetchedImages = images
-        prefetchedNextStart = start + result.items.count
+        prefetchedNextStart = nextStart
+        prefetchedRawItems.removeAll()
         isPrefetching = false
 
         // Пользователь уже запросил следующую страницу, но предзагрузка была
@@ -403,6 +447,8 @@ struct DivoomUniversalGridView: View {
         revealedImages.removeAll()
         prefetchedItems.removeAll()
         prefetchedImages.removeAll()
+        prefetchedRawItems.removeAll()
+        isRevealingCurrentPage = false
         isPrefetching = false
         isAwaitingNextPage = false
 
@@ -416,7 +462,13 @@ struct DivoomUniversalGridView: View {
                 hasMorePages = false
             } else {
                 currentStart = 1 + result.items.count
-                Task { await loadFirstFramesProgressively(for: result.items, generation: generation) }
+                isRevealingCurrentPage = true
+                Task {
+                    await loadFirstFramesProgressively(for: result.items, generation: generation)
+                    guard generation == prefetchGeneration else { return }
+                    isRevealingCurrentPage = false
+                    await preparePrefetchedFrames(generation: generation)
+                }
                 Task { await prefetchNextPage(generation: generation) }
             }
         } catch {}
@@ -434,7 +486,7 @@ struct DivoomUniversalGridView: View {
         }
         guard !targets.isEmpty else { return }
 
-        let batchSize = 6
+        let batchSize = 4
         var cursor = 0
 
         while cursor < targets.count {
