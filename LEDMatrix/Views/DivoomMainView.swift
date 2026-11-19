@@ -123,7 +123,13 @@ struct DivoomMainView: View {
                     }
 
                 if !searchQuery.isEmpty {
-                    Button(action: { searchQuery = "" }) {
+                    Button(action: {
+                        searchQuery = ""
+                        // Сброс отправленного запроса возвращает результаты
+                        // поиска к стандартному состоянию (как при входе в поиск).
+                        submittedQuery = ""
+                        isSearchFieldFocused = false
+                    }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 15))
                             .foregroundColor(manager.secondaryTextColor)
