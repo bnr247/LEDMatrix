@@ -369,12 +369,9 @@ struct DivoomFeedItemView: View {
                             }
                             .listRowBackground(manager.cardBackgroundColor)
                             .scrollContentBackground(.hidden)
-                            .background(manager.backgroundColor)
                         }
                     }
                 }
-                .background(manager.backgroundColor)
-                .tint(manager.accentColor)
                 .navigationTitle("Выберите плейлист")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -396,7 +393,9 @@ struct DivoomFeedItemView: View {
                     Task { await reloadPlaylists() }
                 }
             }
+            .tint(manager.accentColor)
             .presentationDetents([.medium, .large])
+            .presentationBackground(.regularMaterial)
         }
     }
 
