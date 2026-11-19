@@ -134,11 +134,6 @@ struct ClockSettingsView: View {
                             .tabViewStyle(.page(indexDisplayMode: .never))
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(manager.cardBorderColor, lineWidth: 1)
-                    )
 
                 if faces.count > 1 {
                     HStack(spacing: 5) {
