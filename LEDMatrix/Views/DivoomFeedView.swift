@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct DivoomFeedView: View {
     let title: String
@@ -39,6 +40,11 @@ struct DivoomFeedView: View {
     @State private var hasMorePages = true
     @State private var currentStart = 1
     @State private var scrollPositionId: String? = nil
+    // Привязка позиции к верхнему краю делает snap предсказуемым: активным
+    // считается именно верхний пост, а не ближайший по центру.
+    @State private var isRestoringPosition = false
+    @State private var hapticTask: Task<Void, Never>?
+    @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .rigid)
     private let pageSize = 30
     
     var body: some View {
@@ -69,15 +75,30 @@ struct DivoomFeedView: View {
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-            .scrollPosition(id: $scrollPositionId)
+            .scrollPosition(id: $scrollPositionId, anchor: .top)
             .onChange(of: scrollPositionId) { _, newId in
-                onScrollPositionChanged?(newId) // <--- Синхронизируем позицию
+                guard !isRestoringPosition else { return }
+                onScrollPositionChanged?(newId)
+
+                // Смена верхнего поста означает, что порог перелистывания
+                // пройден и snap уже выполнится. Небольшая задержка отсекает
+                // дрожание/откат пальца: стук срабатывает только один раз.
+                hapticTask?.cancel()
+                if newId != nil {
+                    hapticTask = Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(110))
+                        guard !Task.isCancelled, scrollPositionId == newId else { return }
+                        feedbackGenerator.impactOccurred()
+                    }
+                }
+
                 if let id = newId, let item = items.first(where: { $0.id == id }), let galleryId = item.GalleryId, !galleryId.isEmpty {
                     Task {
                         await manager.addDivoomWatch(galleryId: galleryId, classify: item.Classify)
                     }
                 }
             }
+            .onAppear { feedbackGenerator.prepare() }
             .background(Color.black)
             .ignoresSafeArea(edges: .bottom)
             .navigationTitle(title)
@@ -89,12 +110,15 @@ struct DivoomFeedView: View {
                     preloadAnimations(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
+                    isRestoringPosition = true
                     scrollPositionId = selectedItemId
                     
                     try? await Task.sleep(for: .milliseconds(50))
                     withAnimation(.none) {
                         proxy.scrollTo(selectedItemId, anchor: .top)
                     }
+                    try? await Task.sleep(for: .milliseconds(150))
+                    isRestoringPosition = false
                     
                     if let initialItem = initialItems.first(where: { $0.id == selectedItemId }), let galleryId = initialItem.GalleryId, !galleryId.isEmpty {
                         await manager.addDivoomWatch(galleryId: galleryId, classify: initialItem.Classify)
