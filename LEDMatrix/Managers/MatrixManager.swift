@@ -17,14 +17,28 @@ enum AppTheme: String, CaseIterable, Identifiable {
     case system = "Системная"
     case dark = "Тёмная (OLED)"
     case neon = "Неоновая"
+    case amber = "Янтарная"
     
     var id: String { rawValue }
     
     var colorScheme: ColorScheme? {
         switch self {
-        case .system: return nil
+        case .system: return nil // Полностью следует системной схеме iOS
         case .dark: return .dark
         case .neon: return .dark // Неоновая также использует темную базу с яркими акцентами
+        case .amber: return .dark // Янтарная — тёплая монохромная LED-палитра
+        }
+    }
+    
+    /// Системная тема не добавляет собственного декора: только нативные
+    /// семантические цвета iOS, без обводок, свечений и теней.
+    var usesSystemAppearance: Bool { self == .system }
+    
+    /// Толщина обводки карточки для «декоративных» тем.
+    var cardBorderWidth: CGFloat {
+        switch self {
+        case .neon, .amber: return 1.2
+        default: return 1
         }
     }
 }
@@ -503,6 +517,8 @@ extension MatrixManager {
             return Color.black // Чистый OLED черный
         case .neon:
             return Color(hex: "080C14") // Глубокий киберпанк-оттенок (ночной сине-угольный)
+        case .amber:
+            return Color(hex: "140D05") // Тёплый чёрный монохромных LED-дисплеев
         }
     }
 
@@ -515,6 +531,8 @@ extension MatrixManager {
             return Color(hex: "1A1A1A") // Темный графит для OLED
         case .neon:
             return Color(hex: "111827") // Насыщенный темно-синий киберпанк-графит
+        case .amber:
+            return Color(hex: "241A0C") // Коричневатый корпус янтарного дисплея
         }
     }
 
@@ -527,6 +545,8 @@ extension MatrixManager {
             return Color.white
         case .neon:
             return Color(hex: "E2E8F0") // Светлый технологичный оттенок
+        case .amber:
+            return Color(hex: "FFD9A0") // Разогретый янтарь
         }
     }
 
@@ -534,11 +554,13 @@ extension MatrixManager {
     var accentColor: Color {
         switch currentTheme {
         case .system:
-            return Color.accentColor
+            return Color(UIColor.tintColor) // Нативный tint iOS
         case .dark:
             return Color.green
         case .neon:
             return Color(hex: "00F0FF") // Яркий неоновый циан (электрик) для контраста
+        case .amber:
+            return Color(hex: "FFB000") // Классический янтарный светодиод
         }
     }
 
@@ -551,6 +573,8 @@ extension MatrixManager {
             return Color.green.opacity(0.5)
         case .neon:
             return Color(hex: "00F0FF").opacity(0.8) // Циановая неоновая граница
+        case .amber:
+            return Color(hex: "FFB000").opacity(0.7)
         }
     }
 
@@ -565,6 +589,8 @@ extension MatrixManager {
             return Color.white.opacity(0.62)
         case .neon:
             return Color(hex: "8FA6C4")
+        case .amber:
+            return Color(hex: "C99A55")
         }
     }
 
@@ -577,6 +603,8 @@ extension MatrixManager {
             return Color(hex: "242424")
         case .neon:
             return Color(hex: "0B1524")
+        case .amber:
+            return Color(hex: "1F160A")
         }
     }
 
@@ -589,18 +617,22 @@ extension MatrixManager {
             return Color.white.opacity(0.12)
         case .neon:
             return Color(hex: "00F0FF").opacity(0.16)
+        case .amber:
+            return Color(hex: "FFB000").opacity(0.18)
         }
     }
 
-    /// Обводка карточек. В неоновой теме чуть заметнее, чем фон.
+    /// Обводка карточек. В системной теме её нет вовсе.
     var cardBorderColor: Color {
         switch currentTheme {
         case .system:
-            return Color(UIColor.separator).opacity(0.7)
+            return .clear
         case .dark:
             return Color.green.opacity(0.32)
         case .neon:
             return Color(hex: "00F0FF").opacity(0.45)
+        case .amber:
+            return Color(hex: "FFB000").opacity(0.5)
         }
     }
 
@@ -614,18 +646,22 @@ extension MatrixManager {
             return Color(hex: "0E0E0E")
         case .neon:
             return Color(hex: "05080F")
+        case .amber:
+            return Color(hex: "0D0904")
         }
     }
 
-    /// Цвет тени карточек (в неоне — лёгкое циановое свечение).
+    /// Цвет тени карточек. В системной теме теней нет.
     var shadowColor: Color {
         switch currentTheme {
         case .system:
-            return Color.black.opacity(0.12)
+            return .clear
         case .dark:
             return Color.black.opacity(0.45)
         case .neon:
             return Color(hex: "00F0FF").opacity(0.16)
+        case .amber:
+            return Color(hex: "FFB000").opacity(0.12)
         }
     }
 
@@ -638,39 +674,47 @@ extension MatrixManager {
             return .black
         case .neon:
             return Color(hex: "031018")
+        case .amber:
+            return Color(hex: "1A1206")
         }
     }
 
     var successColor: Color {
         switch currentTheme {
         case .system:
-            return .green
+            return Color(UIColor.systemGreen)
         case .dark:
             return Color(hex: "4ADE80")
         case .neon:
             return Color(hex: "2DFFB2")
+        case .amber:
+            return Color(hex: "BCE86B")
         }
     }
 
     var warningColor: Color {
         switch currentTheme {
         case .system:
-            return .orange
+            return Color(UIColor.systemOrange)
         case .dark:
             return Color(hex: "FBBF24")
         case .neon:
             return Color(hex: "FFC857")
+        case .amber:
+            return Color(hex: "FFD166")
         }
     }
 
     var dangerColor: Color {
         switch currentTheme {
         case .system:
-            return .red
+            return Color(UIColor.systemRed)
         case .dark:
             return Color(hex: "FF6B6B")
         case .neon:
             return Color(hex: "FF4D8D")
+        case .amber:
+            return Color(hex: "FF6B4A")
         }
     }
 
@@ -683,6 +727,8 @@ extension MatrixManager {
             return Color(hex: "242424").opacity(0.96)
         case .neon:
             return Color(hex: "0B1524").opacity(0.96)
+        case .amber:
+            return Color(hex: "241A0C").opacity(0.96)
         }
     }
 }
@@ -690,27 +736,35 @@ extension MatrixManager {
 // MARK: - Общие тематические модификаторы
 
 extension View {
-    /// Применяет фон, акцент и прозрачный системный фон к Form/List.
+    /// Системная тема оставляет нативный фон Form/List и меняет только tint.
+    /// Декоративные темы рисуют свой фон поверх системного.
     @MainActor
+    @ViewBuilder
     func themedForm(_ manager: MatrixManager) -> some View {
-        self
-            .scrollContentBackground(.hidden)
-            .background(manager.backgroundColor.ignoresSafeArea())
-            .tint(manager.accentColor)
+        if manager.currentTheme.usesSystemAppearance {
+            self.tint(manager.accentColor)
+        } else {
+            self
+                .scrollContentBackground(.hidden)
+                .background(manager.backgroundColor.ignoresSafeArea())
+                .tint(manager.accentColor)
+        }
     }
 
-    /// Карточка в стиле главного экрана: заливка, обводка и мягкая тень.
+    /// В системной теме карточка использует только семантическую заливку —
+    /// без обводки и тени. Остальные темы получают декоративный контур.
     @MainActor
+    @ViewBuilder
     func themedCard(_ manager: MatrixManager, cornerRadius: CGFloat = 16) -> some View {
-        self
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(manager.cardBackgroundColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(manager.cardBorderColor, lineWidth: manager.currentTheme == .neon ? 1.2 : 1)
-            )
-            .shadow(color: manager.shadowColor, radius: 6, x: 0, y: 3)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius)
+
+        if manager.currentTheme.usesSystemAppearance {
+            self.background(shape.fill(manager.cardBackgroundColor))
+        } else {
+            self
+                .background(shape.fill(manager.cardBackgroundColor))
+                .overlay(shape.stroke(manager.cardBorderColor, lineWidth: manager.currentTheme.cardBorderWidth))
+                .shadow(color: manager.shadowColor, radius: 6, x: 0, y: 3)
+        }
     }
 }

@@ -106,7 +106,7 @@ struct DivoomFeedView: View {
                 }
             }
             .onAppear { feedbackGenerator.prepare() }
-            .background(Color.black)
+            .background(manager.backgroundColor)
             .ignoresSafeArea(edges: .bottom)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -223,7 +223,7 @@ struct DivoomFeedItemView: View {
                     } else {
                         Circle()
                             .fill(Color.gray.opacity(0.3))
-                            .overlay(Image(systemName: "person.fill").foregroundColor(.white.opacity(0.7)))
+                            .overlay(Image(systemName: "person.fill").foregroundColor(manager.secondaryTextColor.opacity(0.7)))
                     }
                 }
                 .frame(width: 36, height: 36)
@@ -242,13 +242,13 @@ struct DivoomFeedItemView: View {
                     } label: {
                         Text(item.UserName ?? "Pixel Artist")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(manager.appTextColor)
                     }
                     .buttonStyle(.plain)
                 } else {
                     Text(item.UserName ?? "Pixel Artist")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(manager.appTextColor)
                 }
                 
                 Spacer()
@@ -261,7 +261,7 @@ struct DivoomFeedItemView: View {
                         .foregroundColor(isFollowing ? manager.secondaryTextColor : manager.accentColor)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.1))
+                        .background(manager.fieldBackgroundColor)
                         .cornerRadius(16)
                 }
                 .disabled(isFollowLoading)
@@ -294,7 +294,7 @@ struct DivoomFeedItemView: View {
                             .foregroundColor(manager.accentColor)
                         Text("\(likeCount)")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
+                            .foregroundColor(manager.appTextColor)
                     }
                 }
                 .buttonStyle(.plain)
@@ -305,7 +305,7 @@ struct DivoomFeedItemView: View {
                         .foregroundColor(manager.accentColor)
                     Text("\(item.CommentCnt ?? 0)")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundColor(manager.appTextColor)
                 }
                 
                 Button(action: {
@@ -322,7 +322,7 @@ struct DivoomFeedItemView: View {
             .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGray6).opacity(0.12))
+        .background(manager.cardBackgroundColor)
         .cornerRadius(16)
         .padding(.horizontal, 12)
         .overlay(alignment: .bottom) {
