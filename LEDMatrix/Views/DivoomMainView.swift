@@ -155,9 +155,6 @@ struct DivoomMainView: View {
             DivoomSearchView(manager: manager, query: submittedQuery)
         }
         .background(manager.backgroundColor)
-        .onAppear {
-            isSearchFieldFocused = true
-        }
     }
 
     private func toggleSearch() {
@@ -165,7 +162,9 @@ struct DivoomMainView: View {
             isSearching.toggle()
             if isSearching {
                 submittedQuery = ""
-                isSearchFieldFocused = true
+                // Фокус не ставим: клавиатура должна появляться только когда
+                // пользователь сам тапнет по полю ввода.
+                isSearchFieldFocused = false
             } else {
                 searchQuery = ""
                 submittedQuery = ""
