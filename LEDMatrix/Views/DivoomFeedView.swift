@@ -14,7 +14,7 @@ struct DivoomFeedView: View {
     let initialItems: [DivoomFileItem]
     let selectedItemId: String
     let fetchMoreItems: (_ startNum: Int, _ endNum: Int) async throws -> [DivoomFileItem]
-    let onScrollPositionChanged: ((String?) -> Void)?
+    let onScrollPositionChanged: ((String?) -> Void)? // <--- Добавлено
     
     init(
         title: String,
@@ -33,15 +33,13 @@ struct DivoomFeedView: View {
     }
     
     @State private var items: [DivoomFileItem] = []
-    @State private var prefetchedAnimations: [String: UIImage] = [:]
+    @State private var loadedAnimations: [String: UIImage] = [:]
     @State private var loadedAvatars: [String: UIImage] = [:]
     @State private var isLoadingMore = false
-    @State private var isAwaitingMore = false
     @State private var hasMorePages = true
     @State private var currentStart = 1
     @State private var scrollPositionId: String? = nil
     private let pageSize = 30
-    private let nearEndThreshold = 8
     
     var body: some View {
         ScrollViewReader { proxy in
@@ -51,7 +49,7 @@ struct DivoomFeedView: View {
                         DivoomFeedItemView(
                             manager: manager,
                             item: item,
-                            animationImage: prefetchedAnimations[item.FileId ?? ""],
+                            animationImage: loadedAnimations[item.FileId ?? ""],
                             avatarImage: loadedAvatars[item.UserHeaderId ?? ""]
                         )
                         .id(item.id)
@@ -61,9 +59,9 @@ struct DivoomFeedView: View {
                                 .scaleEffect(phase.isIdentity ? 1.0 : 0.98)
                         }
                         .onAppear {
-                            guard let index = items.firstIndex(where: { $0.id == item.id }),
-                                  index >= items.count - nearEndThreshold else { return }
-                            Task { await requestMore() }
+                            if item.id == items.last?.id {
+                                Task { await loadMore() }
+                            }
                         }
                     }
                     
@@ -93,7 +91,7 @@ struct DivoomFeedView: View {
                 if items.isEmpty {
                     items = initialItems
                     currentStart = initialItems.count + 1
-                    prefetchFirstFrames(for: initialItems)
+                    preloadAnimations(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
                     scrollPositionId = selectedItemId
@@ -111,15 +109,6 @@ struct DivoomFeedView: View {
         }
     }
     
-    /// Пользователь близко к концу списка. Если загрузка уже идёт — запоминаем
-    /// намерение и повторяем её сразу после завершения, без повторного скролла.
-    private func requestMore() async {
-        guard hasMorePages else { return }
-        isAwaitingMore = true
-        guard !isLoadingMore else { return }
-        await loadMore()
-    }
-
     private func loadMore() async {
         guard !isLoadingMore, hasMorePages else { return }
         isLoadingMore = true
@@ -132,68 +121,28 @@ struct DivoomFeedView: View {
             } else {
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
-                isAwaitingMore = false
-                prefetchFirstFrames(for: fetched)
+                preloadAnimations(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
         
         isLoadingMore = false
-        if isAwaitingMore, hasMorePages {
-            Task { await loadMore() }
-        }
     }
     
-    /// Подготавливает первые кадры порциями строго по порядку, чтобы посты
-    /// заполнялись сверху вниз, а не ждали загрузки всех 30 файлов.
-    private func prefetchFirstFrames(for list: [DivoomFileItem]) {
-        let targets = list.enumerated().compactMap { index, item -> (order: Int, fileId: String)? in
-            guard let fileId = item.FileId, !fileId.isEmpty,
-                  prefetchedAnimations[fileId] == nil else { return nil }
-            return (index, fileId)
-        }
-        guard !targets.isEmpty else { return }
-
-        Task.detached(priority: .utility) {
-            let batchSize = 6
-            var cursor = 0
-
-            while cursor < targets.count {
-                let end = min(cursor + batchSize, targets.count)
-                let batch = Array(targets[cursor..<end])
-                let fileIds = Dictionary(uniqueKeysWithValues: batch.map { ($0.order, $0.fileId) })
-
-                let ordered = await withTaskGroup(
-                    of: (Int, UIImage?).self,
-                    returning: [(String, UIImage)].self
-                ) { group in
-                    for target in batch {
-                        group.addTask {
-                            let image = await DivoomAnimationLoader.loadFirstFrame(from: target.fileId)
-                            return (target.order, image)
-                        }
-                    }
-
-                    var collected: [Int: UIImage] = [:]
-                    for await (order, image) in group {
-                        if let image { collected[order] = image }
-                    }
-
-                    return collected.keys.sorted().compactMap { order in
-                        guard let image = collected[order], let fileId = fileIds[order] else { return nil }
-                        return (fileId, image)
+    private func preloadAnimations(for list: [DivoomFileItem]) {
+        for item in list {
+            guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { continue }
+            Task.detached(priority: .background) {
+                // Parse or load data on background thread
+                if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
+                    await MainActor.run {
+                        self.loadedAnimations[fileId] = result.image
                     }
                 }
-
-                let batchLoaded = Dictionary(uniqueKeysWithValues: ordered)
-                await MainActor.run {
-                    self.prefetchedAnimations.merge(batchLoaded) { _, new in new }
-                }
-                cursor = end
             }
         }
     }
-
+    
     private func preloadAvatars(for list: [DivoomFileItem]) {
         for item in list {
             guard let headerId = item.UserHeaderId, !headerId.isEmpty, loadedAvatars[headerId] == nil else { continue }
@@ -223,12 +172,6 @@ struct DivoomFeedItemView: View {
     @State private var playlists: [DivoomPlaylist] = []
     @State private var isLoadingPlaylists = false
     @State private var toastMessage: String? = nil
-    @State private var loadedAnimationImage: UIImage?
-    @State private var isLoadingAnimation = false
-    @State private var didRequestFullAnimation = false
-
-    // Полная анимация, догруженная постом, заменяет переданный первый кадр.
-    private var displayedAnimationImage: UIImage? { loadedAnimationImage ?? animationImage }
 
     init(manager: MatrixManager, item: DivoomFileItem, animationImage: UIImage?, avatarImage: UIImage?) {
         self.manager = manager
@@ -281,29 +224,17 @@ struct DivoomFeedItemView: View {
             
             // 2. Анимация поста (квадрат по ширине экрана)
             ZStack {
-                if let image = displayedAnimationImage {
+                if let image = animationImage {
                     AnimatedImageRepresentable(image: image)
                         .aspectRatio(1, contentMode: .fit)
                 } else {
                     Rectangle()
                         .fill(Color.gray.opacity(0.15))
                         .aspectRatio(1, contentMode: .fit)
-                        .overlay {
-                            if isLoadingAnimation {
-                                ProgressView().tint(manager.accentColor)
-                            }
-                        }
+                        .overlay(ProgressView().tint(manager.accentColor))
                 }
             }
             .frame(maxWidth: .infinity)
-            .task(id: item.FileId ?? "") {
-                guard !didRequestFullAnimation else { return }
-                if let animationImage, animationImage.images != nil {
-                    didRequestFullAnimation = true
-                    return
-                }
-                await loadAnimation()
-            }
             
             // 3. Нижняя панель: Лайки, Комментарии, Кнопка добавления в альбом
             HStack(spacing: 20) {
@@ -405,27 +336,6 @@ struct DivoomFeedItemView: View {
                 }
             }
             .presentationDetents([.medium, .large])
-        }
-    }
-
-    /// Загружаем анимацию только для видимого поста. Сначала быстрый первый
-    /// кадр, затем полную анимацию из уже закэшированного файла.
-    private func loadAnimation() async {
-        guard let fileId = item.FileId, !fileId.isEmpty else { return }
-        isLoadingAnimation = true
-        defer { isLoadingAnimation = false }
-
-        if displayedAnimationImage == nil,
-           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
-        {
-            guard !Task.isCancelled else { return }
-            loadedAnimationImage = firstFrame
-        }
-
-        if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
-            guard !Task.isCancelled else { return }
-            loadedAnimationImage = result.image
-            didRequestFullAnimation = true
         }
     }
 
