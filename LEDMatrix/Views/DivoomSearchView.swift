@@ -13,6 +13,11 @@ enum DivoomSearchTab: String, CaseIterable, Identifiable {
     case users = "Пользователи"
 
     var id: String { rawValue }
+
+    // Пользователи пока скрыты — вернём вкладку, когда будет готово API.
+    static var visible: [DivoomSearchTab] {
+        [.tags, .animations]
+    }
 }
 
 struct DivoomSearchView: View {
@@ -24,7 +29,7 @@ struct DivoomSearchView: View {
     var body: some View {
         VStack(spacing: 0) {
             Picker("Раздел поиска", selection: $selectedTab) {
-                ForEach(DivoomSearchTab.allCases) { tab in
+                ForEach(DivoomSearchTab.visible) { tab in
                     Text(tab.rawValue).tag(tab)
                 }
             }
@@ -287,16 +292,19 @@ private struct DivoomTagCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                NavigationLink {
-                    DivoomTagDetailView(
-                        manager: manager,
-                        tag: tag,
-                        isFollowing: $isFollowing,
-                        followCount: $followCount
-                    )
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
+            // Заголовок и кнопка подписки в одной строке, а счётчики —
+            // отдельной строкой ниже, чтобы они не переносились и не упирались
+            // в кнопку на узких экранах.
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 8) {
+                    NavigationLink {
+                        DivoomTagDetailView(
+                            manager: manager,
+                            tag: tag,
+                            isFollowing: $isFollowing,
+                            followCount: $followCount
+                        )
+                    } label: {
                         HStack(spacing: 4) {
                             Text(tag.TagName)
                                 .font(.headline)
@@ -305,25 +313,37 @@ private struct DivoomTagCard: View {
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(manager.secondaryTextColor)
                         }
-
-                        HStack(spacing: 14) {
-                            Label("Анимации: \((tag.GalleryCnt ?? 0).formatted())", systemImage: "sparkles")
-                            Label("Подписки: \(followCount.formatted())", systemImage: "person.2")
-                        }
-                        .font(.caption)
-                        .foregroundColor(manager.secondaryTextColor)
+                        .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
+
+                    DivoomTagFollowButton(
+                        manager: manager,
+                        tagName: tag.TagName,
+                        isFollowing: $isFollowing,
+                        followCount: $followCount
+                    )
+                }
+
+                NavigationLink {
+                    DivoomTagDetailView(
+                        manager: manager,
+                        tag: tag,
+                        isFollowing: $isFollowing,
+                        followCount: $followCount
+                    )
+                } label: {
+                    HStack(spacing: 14) {
+                        Label("Анимации: \((tag.GalleryCnt ?? 0).formatted())", systemImage: "sparkles")
+                        Label("Подписки: \(followCount.formatted())", systemImage: "person.2")
+                    }
+                    .font(.caption)
+                    .foregroundColor(manager.secondaryTextColor)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-
-                DivoomTagFollowButton(
-                    manager: manager,
-                    tagName: tag.TagName,
-                    isFollowing: $isFollowing,
-                    followCount: $followCount
-                )
             }
 
             if previewItems.isEmpty {
@@ -397,28 +417,29 @@ struct DivoomTagDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 8) {
                     Text("#\(tag.TagName)")
                         .font(.title3.bold())
                         .foregroundColor(manager.appTextColor)
 
-                    HStack(spacing: 14) {
-                        Label("Анимации: \((tag.GalleryCnt ?? 0).formatted())", systemImage: "sparkles")
-                        Label("Подписки: \(followCount.formatted())", systemImage: "person.2")
-                    }
-                    .font(.caption)
-                    .foregroundColor(manager.secondaryTextColor)
+                    Spacer(minLength: 0)
+
+                    DivoomTagFollowButton(
+                        manager: manager,
+                        tagName: tag.TagName,
+                        isFollowing: $isFollowing,
+                        followCount: $followCount
+                    )
                 }
 
-                Spacer()
-
-                DivoomTagFollowButton(
-                    manager: manager,
-                    tagName: tag.TagName,
-                    isFollowing: $isFollowing,
-                    followCount: $followCount
-                )
+                // Счётчики на отдельной строке — так же, как в карточке тэга.
+                HStack(spacing: 14) {
+                    Label("Анимации: \((tag.GalleryCnt ?? 0).formatted())", systemImage: "sparkles")
+                    Label("Подписки: \(followCount.formatted())", systemImage: "person.2")
+                }
+                .font(.caption)
+                .foregroundColor(manager.secondaryTextColor)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)

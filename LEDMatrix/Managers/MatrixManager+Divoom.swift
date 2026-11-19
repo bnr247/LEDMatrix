@@ -857,6 +857,9 @@ extension MatrixManager {
         return response
     }
 
+    /// POST /Tag/Follow с теми же полями, что ждёт API: Token, Command,
+    /// UserId, IsFollow (1 — подписаться, 0 — отписаться) и TagName —
+    /// имя тэга (из поискового запроса).
     func toggleDivoomTagFollow(tagName: String, isFollow: Int) async throws {
         let session = try await getValidDivoomSession()
         let url = URL(string: "https://appin.divoom-gz.com/Tag/Follow")!
