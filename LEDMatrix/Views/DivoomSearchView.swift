@@ -212,7 +212,9 @@ private struct DivoomTagSearchResults: View {
 
     private func preloadPreviews(for list: [DivoomTag]) {
         for tag in list {
-            for item in (tag.GalleryList ?? []).filter({ $0.FileSize == 1 }).prefix(3) {
+            // SearchTagMoreV2 уже запрашивает FileSize: 1, но не возвращает
+            // это поле в ответе — поэтому nil тоже считаем подходящим.
+            for item in (tag.GalleryList ?? []).filter({ $0.FileSize == nil || $0.FileSize == 1 }).prefix(3) {
                 guard let fileId = item.FileId, !fileId.isEmpty,
                       previewImages[fileId] == nil else { continue }
 
@@ -293,8 +295,9 @@ private struct DivoomTagCard: View {
     }
 
     private var previewItems: [DivoomFileItem] {
-        // В превью только анимации 16x16 (FileSize = 1).
-        Array((tag.GalleryList ?? []).filter { $0.FileSize == 1 }.prefix(3))
+        // В превью только анимации 16x16: SearchTagMoreV2 запрашивает
+        // FileSize: 1, но не возвращает поле, поэтому nil тоже допустим.
+        Array((tag.GalleryList ?? []).filter { $0.FileSize == nil || $0.FileSize == 1 }.prefix(3))
     }
 
     var body: some View {
