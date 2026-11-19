@@ -56,13 +56,18 @@ struct DivoomMainView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .tint(manager.accentColor)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: toggleSearch) {
-                    Image(systemName: isSearching ? "xmark" : "magnifyingglass")
-                        .font(.body)
-                        .foregroundColor(manager.appTextColor)
+            // На экране плейлистов значок поиска не нужен: там есть кнопка
+            // создания плейлиста. В режиме поиска крестик оставляем всегда,
+            // чтобы всегда можно было вернуться ко вкладкам.
+            if selectedSection != .playlists || isSearching {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: toggleSearch) {
+                        Image(systemName: isSearching ? "xmark" : "magnifyingglass")
+                            .font(.body)
+                            .foregroundColor(manager.appTextColor)
+                    }
+                    .accessibilityLabel(isSearching ? "Закрыть поиск" : "Поиск")
                 }
-                .accessibilityLabel(isSearching ? "Закрыть поиск" : "Поиск")
             }
         }
     }

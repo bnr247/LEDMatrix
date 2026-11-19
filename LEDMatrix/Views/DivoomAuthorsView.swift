@@ -267,19 +267,41 @@ struct DivoomExpertDetailView: View {
     @Binding var isFollowing: Bool
     @Binding var fansCount: Int
 
+    var body: some View {
+        DivoomUserGalleryView(
+            manager: manager,
+            userId: expert.UserId,
+            displayName: expert.NickName,
+            headId: expert.HeadId,
+            isFollowing: $isFollowing,
+            fansCount: $fansCount
+        )
+    }
+}
+
+/// Галерея пользователя: используется и из вкладки «Авторы», и при тапе
+/// на имя автора в фиде.
+struct DivoomUserGalleryView: View {
+    @ObservedObject var manager: MatrixManager
+    let userId: Int
+    let displayName: String
+    let headId: String?
+    @Binding var isFollowing: Bool
+    @Binding var fansCount: Int
+
     @State private var info: DivoomSomeoneInfo?
     @State private var score = 0
     @State private var likeCount = 0
 
-    private var displayName: String {
-        info?.NickName ?? expert.NickName
+    private var resolvedDisplayName: String {
+        info?.NickName ?? displayName
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // Никнейм остаётся только в навбаре: рядом с аватаркой его больше нет.
             HStack(alignment: .top, spacing: 12) {
-                DivoomUserAvatarView(headId: info?.HeadId ?? expert.HeadId, size: 100)
+                DivoomUserAvatarView(headId: info?.HeadId ?? headId, size: 100)
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 12) {
@@ -291,7 +313,7 @@ struct DivoomExpertDetailView: View {
                     // Кнопка под значениями, на их ширину, уже справа от аватарки.
                     DivoomExpertFollowButton(
                         manager: manager,
-                        userId: expert.UserId,
+                        userId: userId,
                         isFollowing: $isFollowing,
                         fansCount: $fansCount,
                         fullWidth: true
@@ -308,12 +330,12 @@ struct DivoomExpertDetailView: View {
                 .frame(height: 0.5)
 
             DivoomUniversalGridView(
-                title: displayName,
+                title: resolvedDisplayName,
                 manager: manager,
                 fetchItems: { start, end, _ in
                     // По спецификации GetSomeoneListV3 всегда использует FileSort = 1.
                     let response = try await manager.fetchDivoomSomeoneImages(
-                        userId: expert.UserId,
+                        userId: userId,
                         startNum: start,
                         endNum: end,
                         fileSort: 1
@@ -324,12 +346,12 @@ struct DivoomExpertDetailView: View {
             )
         }
         .background(manager.backgroundColor)
-        .navigationTitle(displayName)
+        .navigationTitle(resolvedDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .task {
-            guard let result = try? await manager.fetchDivoomSomeoneInfo(userId: expert.UserId) else { return }
+            guard let result = try? await manager.fetchDivoomSomeoneInfo(userId: userId) else { return }
             guard !Task.isCancelled else { return }
             info = result
             score = result.Score ?? 0

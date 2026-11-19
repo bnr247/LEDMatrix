@@ -194,6 +194,7 @@ struct DivoomFeedItemView: View {
     @State private var isLiked: Bool
     @State private var likeCount: Int
     @State private var isFollowing: Bool
+    @State private var authorFansCount = 0
     @State private var isFollowLoading = false
     @State private var isShowingPlaylists = false
     @State private var playlists: [DivoomPlaylist] = []
@@ -227,9 +228,27 @@ struct DivoomFeedItemView: View {
                 .frame(width: 36, height: 36)
                 .clipShape(Circle())
                 
-                Text(item.UserName ?? "Pixel Artist")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                if let userId = item.UserId {
+                    NavigationLink {
+                        DivoomUserGalleryView(
+                            manager: manager,
+                            userId: userId,
+                            displayName: item.UserName ?? "Pixel Artist",
+                            headId: item.UserHeaderId,
+                            isFollowing: $isFollowing,
+                            fansCount: $authorFansCount
+                        )
+                    } label: {
+                        Text(item.UserName ?? "Pixel Artist")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text(item.UserName ?? "Pixel Artist")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                }
                 
                 Spacer()
                 
