@@ -33,8 +33,6 @@ struct DivoomFeedView: View {
     }
     
     @State private var items: [DivoomFileItem] = []
-    @State private var loadedAnimations: [String: UIImage] = [:]
-    @State private var upgradedAnimations: Set<String> = []
     @State private var loadedAvatars: [String: UIImage] = [:]
     @State private var isLoadingMore = false
     @State private var hasMorePages = true
@@ -50,7 +48,7 @@ struct DivoomFeedView: View {
                         DivoomFeedItemView(
                             manager: manager,
                             item: item,
-                            animationImage: loadedAnimations[item.FileId ?? ""],
+                            animationImage: nil,
                             avatarImage: loadedAvatars[item.UserHeaderId ?? ""]
                         )
                         .id(item.id)
@@ -90,12 +88,8 @@ struct DivoomFeedView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 if items.isEmpty {
-                    let loaded = await loadFirstFrames(for: initialItems)
-                    loadedAnimations.merge(loaded) { _, new in new }
-
                     items = initialItems
                     currentStart = initialItems.count + 1
-                    upgradeToAnimations(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
                     scrollPositionId = selectedItemId
@@ -123,106 +117,13 @@ struct DivoomFeedView: View {
             if fetched.isEmpty {
                 hasMorePages = false
             } else {
-                // Быстро показываем первые кадры, полные анимации догружаем в фоне.
-                let loaded = await loadFirstFrames(for: fetched)
-                loadedAnimations.merge(loaded) { _, new in new }
-
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
-                upgradeToAnimations(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
         
         isLoadingMore = false
-    }
-    
-    /// Быстрые первые кадры для мгновенного отображения страницы.
-    private func loadFirstFrames(for list: [DivoomFileItem]) async -> [String: UIImage] {
-        let targets = list.compactMap { item -> String? in
-            guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { return nil }
-            return fileId
-        }
-        guard !targets.isEmpty else { return [:] }
-
-        var loaded: [String: UIImage] = [:]
-        let batchSize = 12
-        var index = 0
-
-        while index < targets.count {
-            let end = min(index + batchSize, targets.count)
-            let batch = targets[index..<end]
-
-            let batchLoaded = await withTaskGroup(
-                of: (String, UIImage?).self,
-                returning: [String: UIImage].self
-            ) { group in
-                for fileId in batch {
-                    group.addTask {
-                        let image = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
-                        return (fileId, image)
-                    }
-                }
-                var result: [String: UIImage] = [:]
-                for await (fileId, image) in group {
-                    if let image { result[fileId] = image }
-                }
-                return result
-            }
-            loaded.merge(batchLoaded) { _, new in new }
-
-            index = end
-        }
-
-        return loaded
-    }
-
-    /// Полные анимации догружаются в фоне и подменяют показанные первые кадры.
-    private func upgradeToAnimations(for list: [DivoomFileItem]) {
-        let targets = list.compactMap { item -> String? in
-            guard let fileId = item.FileId, !fileId.isEmpty, !upgradedAnimations.contains(fileId) else { return nil }
-            return fileId
-        }
-        guard !targets.isEmpty else { return }
-
-        Task.detached(priority: .utility) {
-            var loaded: [String: UIImage] = [:]
-            let batchSize = 8
-            var index = 0
-
-            while index < targets.count {
-                let end = min(index + batchSize, targets.count)
-                let batch = targets[index..<end]
-
-                let batchLoaded = await withTaskGroup(
-                    of: (String, UIImage?).self,
-                    returning: [String: UIImage].self
-                ) { group in
-                    for fileId in batch {
-                        group.addTask {
-                            let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId)
-                            return (fileId, result?.image)
-                        }
-                    }
-                    var result: [String: UIImage] = [:]
-                    for await (fileId, image) in group {
-                        if let image { result[fileId] = image }
-                    }
-                    return result
-                }
-                loaded.merge(batchLoaded) { _, new in new }
-
-                index = end
-            }
-
-            let finalLoaded = loaded
-            await MainActor.run {
-                for (fileId, image) in finalLoaded {
-                    self.loadedAnimations[fileId] = image
-                    self.upgradedAnimations.insert(fileId)
-                }
-            }
-        }
     }
     
     private func preloadAvatars(for list: [DivoomFileItem]) {
@@ -254,6 +155,10 @@ struct DivoomFeedItemView: View {
     @State private var playlists: [DivoomPlaylist] = []
     @State private var isLoadingPlaylists = false
     @State private var toastMessage: String? = nil
+    @State private var loadedAnimationImage: UIImage?
+    @State private var isLoadingAnimation = false
+
+    private var displayedAnimationImage: UIImage? { animationImage ?? loadedAnimationImage }
 
     init(manager: MatrixManager, item: DivoomFileItem, animationImage: UIImage?, avatarImage: UIImage?) {
         self.manager = manager
@@ -306,17 +211,25 @@ struct DivoomFeedItemView: View {
             
             // 2. Анимация поста (квадрат по ширине экрана)
             ZStack {
-                if let image = animationImage {
+                if let image = displayedAnimationImage {
                     AnimatedImageRepresentable(image: image)
                         .aspectRatio(1, contentMode: .fit)
                 } else {
                     Rectangle()
                         .fill(Color.gray.opacity(0.15))
                         .aspectRatio(1, contentMode: .fit)
-                        .overlay(ProgressView().tint(manager.accentColor))
+                        .overlay {
+                            if isLoadingAnimation {
+                                ProgressView().tint(manager.accentColor)
+                            }
+                        }
                 }
             }
             .frame(maxWidth: .infinity)
+            .task(id: item.FileId ?? "") {
+                guard animationImage == nil, displayedAnimationImage == nil else { return }
+                await loadAnimation()
+            }
             
             // 3. Нижняя панель: Лайки, Комментарии, Кнопка добавления в альбом
             HStack(spacing: 20) {
@@ -418,6 +331,24 @@ struct DivoomFeedItemView: View {
                 }
             }
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    /// Загружаем анимацию только для видимого поста. Сначала быстрый первый
+    /// кадр, затем полную анимацию из уже закэшированного файла.
+    private func loadAnimation() async {
+        guard let fileId = item.FileId, !fileId.isEmpty else { return }
+        isLoadingAnimation = true
+        defer { isLoadingAnimation = false }
+
+        if let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
+            guard !Task.isCancelled else { return }
+            loadedAnimationImage = firstFrame
+        }
+
+        if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
+            guard !Task.isCancelled else { return }
+            loadedAnimationImage = result.image
         }
     }
 
