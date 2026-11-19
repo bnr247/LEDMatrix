@@ -18,23 +18,25 @@ struct SettingsWifiFormView: View {
             Section(header: Text("Данные для подключения").themedSectionHeader(manager)) {
                 HStack {
                     Text("SSID")
+                        .themedParameterText(manager)
                     Spacer()
                     TextField("", text: $manager.localWifiSsid)
                         .multilineTextAlignment(.trailing)
                         .autocorrectionDisabled(true)
                         // Поля заблокированы ТОЛЬКО непосредственно в момент самой отправки байт
                         .disabled(manager.isSavingSettings)
-                        .foregroundColor(manager.appTextColor)
+                        .themedValueText(manager)
                 }
                 HStack {
                     Text("Пароль")
+                        .themedParameterText(manager)
                     Spacer()
                     SecureField("", text: $manager.localWifiPassword)
                         .multilineTextAlignment(.trailing)
                         .focused($isPasswordFocused)
                         // Поля заблокированы ТОЛЬКО непосредственно в момент самой отправки байт
                         .disabled(manager.isSavingSettings)
-                        .foregroundColor(manager.appTextColor)
+                        .themedValueText(manager)
                 }
             }
             .listRowBackground(manager.cardBackgroundColor)

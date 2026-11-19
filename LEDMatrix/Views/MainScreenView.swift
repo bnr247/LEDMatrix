@@ -364,7 +364,7 @@ struct DeviceManagementSheet: View {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(device.name).font(.headline)
-                                Text(device.ipAddress).font(.subheadline).foregroundColor(manager.secondaryTextColor)
+                                Text(device.ipAddress).font(.subheadline).themedValueText(manager)
                             }
                             Spacer()
                             Button("Добавить") {

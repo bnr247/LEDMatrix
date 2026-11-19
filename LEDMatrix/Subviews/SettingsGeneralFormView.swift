@@ -60,6 +60,12 @@ struct SettingsGeneralFormView: View {
                     displayedComponents: .hourAndMinute
                 )
                 .datePickerStyle(.compact)
+                .preferredColorScheme(manager.currentTheme.colorScheme)
+                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                    content
+                        .themedParameterText(manager)
+                        .themedValueText(manager)
+                }
                 
                 ThemedMenuPicker(
                     manager: manager,
@@ -97,6 +103,12 @@ struct SettingsGeneralFormView: View {
                     displayedComponents: .hourAndMinute
                 )
                 .datePickerStyle(.compact)
+                .preferredColorScheme(manager.currentTheme.colorScheme)
+                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                    content
+                        .themedParameterText(manager)
+                        .themedValueText(manager)
+                }
                 
                 ThemedMenuPicker(
                     manager: manager,
@@ -137,6 +149,7 @@ struct SettingsGeneralFormView: View {
             .listRowBackground(manager.cardBackgroundColor)
         }
         .themedForm(manager)
+        .id(manager.currentTheme)
         .navigationTitle("Общие настройки")
     }
 }

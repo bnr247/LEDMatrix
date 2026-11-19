@@ -17,10 +17,10 @@ struct ManualIPView: View {
         Form {
             Section(header: Text("Параметры матрицы").themedSectionHeader(manager)) {
                 TextField("Название матрицы (например, Гостиная)", text: $customName)
-                    .foregroundColor(manager.appTextColor)
+                    .themedValueText(manager)
                 TextField("192.168.1.50", text: $ipAddress)
                     .keyboardType(.numbersAndPunctuation)
-                    .foregroundColor(manager.appTextColor)
+                    .themedValueText(manager)
             }
             .listRowBackground(manager.cardBackgroundColor)
 

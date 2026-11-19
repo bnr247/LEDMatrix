@@ -18,21 +18,23 @@ struct SettingsDivoomFormView: View {
             Section(header: Text("Учетные данные Divoom").themedSectionHeader(manager)) {
                 HStack {
                     Text("Email")
+                        .themedParameterText(manager)
                     Spacer()
                     TextField("", text: $manager.localDivoomEmail)
                         .multilineTextAlignment(.trailing)
                         .autocorrectionDisabled(true)
                         .disabled(manager.isSavingSettings)
-                        .foregroundColor(manager.appTextColor)
+                        .themedValueText(manager)
                 }
                 HStack {
                     Text("Пароль")
+                        .themedParameterText(manager)
                     Spacer()
                     SecureField("", text: $manager.localDivoomPassword)
                         .multilineTextAlignment(.trailing)
                         .focused($isPasswordFocused)
                         .disabled(manager.isSavingSettings)
-                        .foregroundColor(manager.appTextColor)
+                        .themedValueText(manager)
                 }
             }
             .listRowBackground(manager.cardBackgroundColor)

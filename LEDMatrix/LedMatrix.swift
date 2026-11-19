@@ -42,6 +42,11 @@ struct LEDMatrixApp: App {
         navigationBar.largeTitleTextAttributes = attributes
         UISwitch.appearance().thumbTintColor = thumbColor
         UISlider.appearance().thumbTintColor = thumbColor
+
+        UIDatePicker.appearance().tintColor = datePickerTintColor(for: theme)
+        UIDatePicker.appearance().backgroundColor = datePickerBackgroundColor(for: theme)
+        UILabel.appearance(whenContainedInInstancesOf: [UIDatePicker.self]).textColor = datePickerTextColor(for: theme)
+        UIPickerView.appearance(whenContainedInInstancesOf: [UIDatePicker.self]).backgroundColor = datePickerBackgroundColor(for: theme)
     }
 
     /// Appearance proxy не перекрашивает уже созданные UISlider/UISwitch,
@@ -51,18 +56,37 @@ struct LEDMatrixApp: App {
     private static func refreshExistingControls(for theme: AppTheme) {
         let attributes = titleAttributes(for: theme)
         let thumbColor = thumbTintColor(for: theme)
+        let dateTextColor = datePickerTextColor(for: theme)
+        let dateTintColor = datePickerTintColor(for: theme)
+        let dateBackgroundColor = datePickerBackgroundColor(for: theme)
 
         let windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
 
         for window in windows {
-            refresh(view: window, attributes: attributes, thumbColor: thumbColor)
+            refresh(
+                view: window,
+                attributes: attributes,
+                thumbColor: thumbColor,
+                dateTextColor: dateTextColor,
+                dateTintColor: dateTintColor,
+                dateBackgroundColor: dateBackgroundColor,
+                insideDatePicker: false
+            )
         }
     }
 
     @MainActor
-    private static func refresh(view: UIView, attributes: [NSAttributedString.Key: UIColor]?, thumbColor: UIColor?) {
+    private static func refresh(
+        view: UIView,
+        attributes: [NSAttributedString.Key: UIColor]?,
+        thumbColor: UIColor?,
+        dateTextColor: UIColor?,
+        dateTintColor: UIColor?,
+        dateBackgroundColor: UIColor?,
+        insideDatePicker: Bool
+    ) {
         if let navigationBar = view as? UINavigationBar {
             navigationBar.titleTextAttributes = attributes
             navigationBar.largeTitleTextAttributes = attributes
@@ -74,8 +98,32 @@ struct LEDMatrixApp: App {
             toggle.thumbTintColor = thumbColor
         }
 
+        let isDatePicker = view is UIDatePicker
+        let isInsideDatePicker = insideDatePicker || isDatePicker
+
+        if let datePicker = view as? UIDatePicker {
+            datePicker.tintColor = dateTintColor
+            datePicker.backgroundColor = dateBackgroundColor
+        }
+        if isInsideDatePicker {
+            if let pickerView = view as? UIPickerView {
+                pickerView.backgroundColor = dateBackgroundColor
+            }
+            if let label = view as? UILabel {
+                label.textColor = dateTextColor
+            }
+        }
+
         for subview in view.subviews {
-            refresh(view: subview, attributes: attributes, thumbColor: thumbColor)
+            refresh(
+                view: subview,
+                attributes: attributes,
+                thumbColor: thumbColor,
+                dateTextColor: dateTextColor,
+                dateTintColor: dateTintColor,
+                dateBackgroundColor: dateBackgroundColor,
+                insideDatePicker: isInsideDatePicker
+            )
         }
     }
 
@@ -87,5 +135,20 @@ struct LEDMatrixApp: App {
     private static func thumbTintColor(for theme: AppTheme) -> UIColor? {
         guard !theme.usesSystemAppearance else { return nil }
         return UIColor(MatrixManager.lightAccentColor(for: theme))
+    }
+
+    private static func datePickerTextColor(for theme: AppTheme) -> UIColor? {
+        guard !theme.usesSystemAppearance else { return nil }
+        return UIColor(MatrixManager.lightAccentColor(for: theme))
+    }
+
+    private static func datePickerTintColor(for theme: AppTheme) -> UIColor? {
+        guard !theme.usesSystemAppearance else { return nil }
+        return UIColor(MatrixManager.accentColor(for: theme))
+    }
+
+    private static func datePickerBackgroundColor(for theme: AppTheme) -> UIColor? {
+        guard !theme.usesSystemAppearance else { return nil }
+        return UIColor(MatrixManager.fieldBackgroundColor(for: theme))
     }
 }

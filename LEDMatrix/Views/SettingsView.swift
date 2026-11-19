@@ -26,7 +26,7 @@ struct SettingsView: View {
             Section(header: Text("Устройство").themedSectionHeader(manager)) {
                 HStack {
                     Text(manager.selectedDevice?.name ?? "Неизвестно")
-                        .foregroundColor(manager.appTextColor)
+                        .themedValueText(manager)
                     Spacer()
                     Button("Переименовать") {
                         if let currentDevice = manager.selectedDevice {
@@ -91,7 +91,7 @@ struct SettingsView: View {
                         
                         Text("\(Int(manager.otaProgress * 100))%")
                             .font(.caption)
-                            .foregroundColor(manager.secondaryTextColor)
+                            .themedValueText(manager)
                     }
                     .padding(.vertical, 4)
                 } else {
@@ -111,6 +111,7 @@ struct SettingsView: View {
         // Диалоговое окно переименования устройства
         .alert("Переименовать устройство", isPresented: $isRenameAlertPresented) {
             TextField("Новое название", text: $newDeviceName)
+                .themedValueText(manager)
             Button("Сохранить") {
                 if let currentDevice = manager.selectedDevice, !newDeviceName.isEmpty {
                     manager.renameDevice(id: currentDevice.id, newName: newDeviceName)

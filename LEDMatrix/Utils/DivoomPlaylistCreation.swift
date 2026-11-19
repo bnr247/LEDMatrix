@@ -19,6 +19,7 @@ struct DivoomCreatePlaylistModifier: ViewModifier {
         content
             .alert("Новый плейлист", isPresented: $isPresented) {
                 TextField("Название плейлиста", text: $playlistName)
+                    .themedValueText(manager)
                 Button("Отмена", role: .cancel) {
                     playlistName = ""
                 }

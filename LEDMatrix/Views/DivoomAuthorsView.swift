@@ -188,7 +188,7 @@ private struct DivoomExpertCard: View {
                                 .foregroundColor(manager.appTextColor)
                             Text("Lv.\(expert.Level ?? 0)")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundColor(manager.secondaryTextColor)
+                                .themedValueText(manager)
                         }
                     }
                     .contentShape(Rectangle())

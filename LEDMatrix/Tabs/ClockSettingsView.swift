@@ -222,9 +222,10 @@ struct ClockSettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Скорость эффекта")
+                            .themedParameterText(manager)
                         Spacer()
                         Text("\(manager.settings.clockEffectSpeed)")
-                            .foregroundColor(manager.secondaryTextColor)
+                            .themedValueText(manager)
                             .monospacedDigit()
                     }
                     Slider(

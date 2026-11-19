@@ -509,8 +509,10 @@ class MatrixManager: NSObject, ObservableObject {
 
 extension MatrixManager {
     // Цвет основного фона
-    var backgroundColor: Color {
-        switch currentTheme {
+    var backgroundColor: Color { Self.backgroundColor(for: currentTheme) }
+
+    static func backgroundColor(for theme: AppTheme) -> Color {
+        switch theme {
         case .system:
             return Color(uiColor: .systemGroupedBackground)
         case .dark:
@@ -573,8 +575,10 @@ extension MatrixManager {
     }
 
     // Акцентный цвет
-    var accentColor: Color {
-        switch currentTheme {
+    var accentColor: Color { Self.accentColor(for: currentTheme) }
+
+    static func accentColor(for theme: AppTheme) -> Color {
+        switch theme {
         case .system:
             return Color.accentColor // Реальный системный tint (без кастомного ассета)
         case .dark:
@@ -617,8 +621,10 @@ extension MatrixManager {
     }
 
     /// Фон полей ввода и небольших вложенных контролов.
-    var fieldBackgroundColor: Color {
-        switch currentTheme {
+    var fieldBackgroundColor: Color { Self.fieldBackgroundColor(for: currentTheme) }
+
+    static func fieldBackgroundColor(for theme: AppTheme) -> Color {
+        switch theme {
         case .system:
             return Color(uiColor: .systemFill)
         case .dark:
@@ -867,6 +873,30 @@ extension View {
                 .background(shape.fill(manager.cardBackgroundColor))
                 .overlay(shape.stroke(manager.cardBorderColor, lineWidth: manager.currentTheme.cardBorderWidth))
                 .shadow(color: manager.shadowColor, radius: 6, x: 0, y: 3)
+        }
+    }
+
+    /// Название параметра: в декоративных темах светлый акцент,
+    /// в системной — нативный primary.
+    @ViewBuilder
+    func themedParameterText(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self.foregroundColor(manager.appTextColor)
+        }
+    }
+
+    /// Значение параметра: в декоративных темах акцент,
+    /// в системной — нативный текст без переопределения.
+    @ViewBuilder
+    func themedValueText(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self
+                .foregroundColor(manager.valueTextColor)
+                .tint(manager.accentColor)
         }
     }
 
