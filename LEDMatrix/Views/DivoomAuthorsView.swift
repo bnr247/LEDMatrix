@@ -20,7 +20,7 @@ struct DivoomAuthorsView: View {
     // при возврате остаёмся на том же авторе, а не сбрасываемся в начало.
     @State private var scrollPositionId: String? = nil
 
-    private let pageSize = 20
+    private let pageSize = 30
 
     var body: some View {
         Group {
