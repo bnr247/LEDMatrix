@@ -368,10 +368,13 @@ struct DivoomFeedItemView: View {
                                 .padding(.vertical, 4)
                             }
                             .listRowBackground(manager.cardBackgroundColor)
+                            .scrollContentBackground(.hidden)
+                            .background(manager.backgroundColor)
                         }
                     }
                 }
-                .themedForm(manager)
+                .background(manager.backgroundColor)
+                .tint(manager.accentColor)
                 .navigationTitle("Выберите плейлист")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
