@@ -547,8 +547,10 @@ extension MatrixManager {
     }
 
     /// Светлый оттенок акцента — заменяет чистый белый в декоративных темах.
-    var lightAccentColor: Color {
-        switch currentTheme {
+    var lightAccentColor: Color { Self.lightAccentColor(for: currentTheme) }
+
+    static func lightAccentColor(for theme: AppTheme) -> Color {
+        switch theme {
         case .system:
             return .primary
         case .dark:
@@ -792,6 +794,35 @@ extension View {
             }
         } else {
             self.buttonStyle(.plain)
+        }
+    }
+
+    /// Большая кнопка действия: в декоративных темах повторяет плитку функции
+    /// на главном экране — карточка, обводка акцентом и светлый акцентный текст.
+    /// В системной теме остаётся нативной prominent-кнопкой с заданным tint.
+    @ViewBuilder
+    func themedActionButton(_ manager: MatrixManager, buttonTint: Color? = nil, isEnabled: Bool = true) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            if let buttonTint {
+                self.buttonStyle(.borderedProminent).tint(buttonTint)
+            } else {
+                self.buttonStyle(.borderedProminent)
+            }
+        } else {
+            self
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(manager.cardBackgroundColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(buttonTint ?? manager.accentColor, lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                        )
+                )
+                .foregroundColor(isEnabled ? manager.appTextColor : manager.secondaryTextColor)
+                .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
+                .buttonStyle(.plain)
+                .opacity(isEnabled ? 1 : 0.5)
         }
     }
 

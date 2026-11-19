@@ -51,7 +51,7 @@ struct DrawingView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .themedActionButton(manager)
                     .padding(.horizontal, 40)
                     
                     if let errorMsg = manager.drawErrorMessage {
@@ -211,15 +211,10 @@ struct DrawingView: View {
                 }) {
                     Text("Выйти")
                         .bold()
-                        .foregroundColor(.white)
-                        .if(!manager.currentTheme.usesSystemAppearance) { content in
-                            content.foregroundColor(manager.accentContrastColor)
-                        }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(manager.dangerColor)
+                .themedActionButton(manager, buttonTint: manager.dangerColor)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }

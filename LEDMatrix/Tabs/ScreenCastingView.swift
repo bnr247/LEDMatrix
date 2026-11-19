@@ -86,7 +86,7 @@ struct ScreenCastingView: View {
                 HStack {
                     if manager.isScreenLoading {
                         ProgressView()
-                            .tint(manager.accentContrastColor)
+                            .tint(manager.currentTheme.usesSystemAppearance ? manager.accentContrastColor : manager.lightAccentColor)
                             .padding(.trailing, 8)
                     } else {
                         Image(systemName: "arrow.clockwise")
@@ -97,8 +97,10 @@ struct ScreenCastingView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(manager.accentColor)
+            .themedActionButton(
+                manager,
+                isEnabled: !manager.isScreenLoading && !manager.isScreenLiveActive
+            )
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
             .padding(.bottom, 140)

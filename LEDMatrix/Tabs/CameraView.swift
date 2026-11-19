@@ -95,8 +95,7 @@ struct CameraView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(isStreaming ? manager.dangerColor : manager.accentColor)
+                .themedActionButton(manager, buttonTint: isStreaming ? manager.dangerColor : manager.accentColor)
                 
                 HStack(spacing: 16) {
                     Button(action: {
