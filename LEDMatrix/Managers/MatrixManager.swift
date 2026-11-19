@@ -870,26 +870,26 @@ extension View {
         }
     }
 
-    /// Выпадающие списки: в декоративных темах подпись берёт светлый акцент,
-    /// а выбранное значение — цвет названия темы. Системная тема остаётся нативной.
+    /// Небольшая кнопка в стиле карточек главного экрана: фон темы,
+    /// обводка акцентом и светлый акцентный текст. Системная — нативная.
     @ViewBuilder
-    func themedMenuPicker(_ manager: MatrixManager) -> some View {
+    func themedInlineButton(_ manager: MatrixManager) -> some View {
         if manager.currentTheme.usesSystemAppearance {
-            self
+            self.buttonStyle(.bordered).controlSize(.small)
         } else {
             self
-                .foregroundColor(manager.appTextColor)
-                .tint(manager.valueTextColor)
-        }
-    }
-
-    /// Строки внутри выпадающего списка.
-    @ViewBuilder
-    func themedMenuOption(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self.foregroundColor(manager.lightAccentColor)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(manager.cardBackgroundColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
+                        )
+                )
+                .foregroundColor(manager.lightAccentColor)
+                .buttonStyle(.plain)
         }
     }
 

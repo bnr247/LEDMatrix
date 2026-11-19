@@ -64,21 +64,17 @@ struct MainScreenView: View {
                             .foregroundColor(manager.secondaryTextColor)
                         
                         HStack(spacing: 12) {
-                            Menu {
-                                if manager.savedDevices.isEmpty {
-                                    Text("Нет устройств")
-                                        .themedMenuOption(manager)
-                                } else {
-                                    ForEach(manager.savedDevices) { device in
-                                        Button(action: {
-                                            manager.selectDevice(device)
-                                        }) {
-                                            Text(device.name)
-                                                .themedMenuOption(manager)
-                                        }
-                                    }
+                            ThemedActionMenu(
+                                manager: manager,
+                                title: "Устройства",
+                                items: manager.savedDevices.enumerated().map { index, device in
+                                    ThemedDropdownItem(id: index, title: device.name)
+                                },
+                                selectedIndex: manager.savedDevices.firstIndex { $0.id == manager.selectedDevice?.id },
+                                onSelect: { index in
+                                    manager.selectDevice(manager.savedDevices[index])
                                 }
-                            } label: {
+                            ) {
                                 HStack {
                                     Text(manager.savedDevices.isEmpty ? "Нет устройств" : (manager.selectedDevice?.name ?? "Выберите устройство"))
                                         .fontWeight(.medium)
@@ -107,7 +103,6 @@ struct MainScreenView: View {
                             .if(manager.currentTheme.usesSystemAppearance) { content in
                                 content.buttonStyle(.borderless)
                             }
-                            .themedMenuPicker(manager)
                             .disabled(manager.savedDevices.isEmpty)
                             
                             Button(action: {

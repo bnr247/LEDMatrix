@@ -34,26 +34,23 @@ struct SettingsView: View {
                             isRenameAlertPresented = true
                         }
                     }
-                    .foregroundColor(manager.accentColor)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .themedInlineButton(manager)
                 }
             }
             .listRowBackground(manager.cardBackgroundColor)
             
             Section(header: Text("Внешний вид").themedSectionHeader(manager)) {
-                Picker("Тема оформления", selection: Binding(
-                    get: { manager.currentTheme },
-                    set: { manager.currentTheme = $0 }
-                )) {
-                    ForEach(AppTheme.allCases) { theme in
-                        Text(theme.rawValue)
-                            .themedMenuOption(manager)
-                            .tag(theme)
-                    }
-                }
-                .pickerStyle(.menu)
-                .themedMenuPicker(manager)
+                ThemedMenuPicker(
+                    manager: manager,
+                    title: "Тема оформления",
+                    options: AppTheme.allCases.enumerated().map { index, theme in
+                        ThemedDropdownOption(id: index, title: theme.rawValue, value: theme)
+                    },
+                    selection: Binding(
+                        get: { manager.currentTheme },
+                        set: { manager.currentTheme = $0 }
+                    )
+                )
             }
             .listRowBackground(manager.cardBackgroundColor)
             

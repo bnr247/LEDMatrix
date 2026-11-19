@@ -36,14 +36,18 @@ struct SettingsGeneralFormView: View {
             .listRowBackground(manager.cardBackgroundColor)
             
             Section(header: Text("Тип анимации").themedSectionHeader(manager)) {
-                Picker("Режим", selection: manager.animationTypeBinding) {
-                    Text("Стандартный").themedMenuOption(manager).tag(AnimationType.standard(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Категории").themedMenuOption(manager).tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Альбом").themedMenuOption(manager).tag(AnimationType.album(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Избранное").themedMenuOption(manager).tag(AnimationType.likes(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Плейлист").themedMenuOption(manager).tag(AnimationType.playlist(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                }
-                .themedMenuPicker(manager)
+                ThemedMenuPicker(
+                    manager: manager,
+                    title: "Режим",
+                    options: [
+                        ThemedDropdownOption(id: 0, title: "Стандартный", value: AnimationType.standard(sortOrder: manager.settings.animationType?.sortOrder ?? 0)),
+                        ThemedDropdownOption(id: 1, title: "Категории", value: AnimationType.category(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0)),
+                        ThemedDropdownOption(id: 2, title: "Альбом", value: AnimationType.album(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0)),
+                        ThemedDropdownOption(id: 3, title: "Избранное", value: AnimationType.likes(sortOrder: manager.settings.animationType?.sortOrder ?? 0)),
+                        ThemedDropdownOption(id: 4, title: "Плейлист", value: AnimationType.playlist(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    ],
+                    selection: manager.animationTypeBinding
+                )
             }
             .listRowBackground(manager.cardBackgroundColor)
             
@@ -55,12 +59,16 @@ struct SettingsGeneralFormView: View {
                 )
                 .datePickerStyle(.compact)
                 
-                Picker("Режим экрана", selection: manager.dayDeviceModeBinding) {
-                    Text("Смешанный").themedMenuOption(manager).tag("mixed")
-                    Text("Только часы").themedMenuOption(manager).tag("clock_only")
-                    Text("Только анимация").themedMenuOption(manager).tag("animation_only")
-                }
-                .themedMenuPicker(manager)
+                ThemedMenuPicker(
+                    manager: manager,
+                    title: "Режим экрана",
+                    options: [
+                        ThemedDropdownOption(id: 0, title: "Смешанный", value: "mixed"),
+                        ThemedDropdownOption(id: 1, title: "Только часы", value: "clock_only"),
+                        ThemedDropdownOption(id: 2, title: "Только анимация", value: "animation_only")
+                    ],
+                    selection: manager.dayDeviceModeBinding
+                )
                 
                 VStack(alignment: .leading) {
                     Text("Яркость: \(manager.settings.dayBrightnessPercent)")
@@ -85,12 +93,16 @@ struct SettingsGeneralFormView: View {
                 )
                 .datePickerStyle(.compact)
                 
-                Picker("Режим экрана", selection: manager.nightDeviceModeBinding) {
-                    Text("Смешанный").themedMenuOption(manager).tag("mixed")
-                    Text("Только часы").themedMenuOption(manager).tag("clock_only")
-                    Text("Только анимация").themedMenuOption(manager).tag("animation_only")
-                }
-                .themedMenuPicker(manager)
+                ThemedMenuPicker(
+                    manager: manager,
+                    title: "Режим экрана",
+                    options: [
+                        ThemedDropdownOption(id: 0, title: "Смешанный", value: "mixed"),
+                        ThemedDropdownOption(id: 1, title: "Только часы", value: "clock_only"),
+                        ThemedDropdownOption(id: 2, title: "Только анимация", value: "animation_only")
+                    ],
+                    selection: manager.nightDeviceModeBinding
+                )
                 
                 VStack(alignment: .leading) {
                     Text("Яркость: \(manager.settings.nightBrightnessPercent)")

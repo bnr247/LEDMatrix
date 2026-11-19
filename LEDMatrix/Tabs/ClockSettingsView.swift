@@ -191,22 +191,30 @@ struct ClockSettingsView: View {
 
     private var appearanceSection: some View {
         Section(header: Text("Внешний вид").themedSectionHeader(manager)) {
-            Picker("Анимация", selection: manager.clockAnimationTypeBinding) {
-                Text("Стандартный").themedMenuOption(manager).tag(ClockAnimationType.fading)
-                Text("Слайд").themedMenuOption(manager).tag(ClockAnimationType.slideUp)
-                Text("Вспышка").themedMenuOption(manager).tag(ClockAnimationType.flash)
-                Text("Помехи").themedMenuOption(manager).tag(ClockAnimationType.tvStatic)
-            }
-            .themedMenuPicker(manager)
+            ThemedMenuPicker(
+                manager: manager,
+                title: "Анимация",
+                options: [
+                    ThemedDropdownOption(id: 0, title: "Стандартный", value: ClockAnimationType.fading),
+                    ThemedDropdownOption(id: 1, title: "Слайд", value: ClockAnimationType.slideUp),
+                    ThemedDropdownOption(id: 2, title: "Вспышка", value: ClockAnimationType.flash),
+                    ThemedDropdownOption(id: 3, title: "Помехи", value: ClockAnimationType.tvStatic)
+                ],
+                selection: manager.clockAnimationTypeBinding
+            )
 
-            Picker("Эффект", selection: manager.clockColorEffectBinding) {
-                Text("Нет").themedMenuOption(manager).tag(ClockColorEffect.off)
-                Text("Обмен цветом").themedMenuOption(manager).tag(ClockColorEffect.swap)
-                Text("Спектр").themedMenuOption(manager).tag(ClockColorEffect.spectrum)
-                Text("Радуга").themedMenuOption(manager).tag(ClockColorEffect.rainbow)
-                Text("Случайный цвет").themedMenuOption(manager).tag(ClockColorEffect.randomColor)
-            }
-            .themedMenuPicker(manager)
+            ThemedMenuPicker(
+                manager: manager,
+                title: "Эффект",
+                options: [
+                    ThemedDropdownOption(id: 0, title: "Нет", value: ClockColorEffect.off),
+                    ThemedDropdownOption(id: 1, title: "Обмен цветом", value: ClockColorEffect.swap),
+                    ThemedDropdownOption(id: 2, title: "Спектр", value: ClockColorEffect.spectrum),
+                    ThemedDropdownOption(id: 3, title: "Радуга", value: ClockColorEffect.rainbow),
+                    ThemedDropdownOption(id: 4, title: "Случайный цвет", value: ClockColorEffect.randomColor)
+                ],
+                selection: manager.clockColorEffectBinding
+            )
 
             if manager.settings.clockColorEffect?.usesSpeed == true {
                 VStack(alignment: .leading, spacing: 4) {
