@@ -192,19 +192,21 @@ struct ClockSettingsView: View {
     private var appearanceSection: some View {
         Section(header: Text("Внешний вид").themedSectionHeader(manager)) {
             Picker("Анимация", selection: manager.clockAnimationTypeBinding) {
-                Text("Стандартный").tag(ClockAnimationType.fading)
-                Text("Слайд").tag(ClockAnimationType.slideUp)
-                Text("Вспышка").tag(ClockAnimationType.flash)
-                Text("Помехи").tag(ClockAnimationType.tvStatic)
+                Text("Стандартный").themedMenuOption(manager).tag(ClockAnimationType.fading)
+                Text("Слайд").themedMenuOption(manager).tag(ClockAnimationType.slideUp)
+                Text("Вспышка").themedMenuOption(manager).tag(ClockAnimationType.flash)
+                Text("Помехи").themedMenuOption(manager).tag(ClockAnimationType.tvStatic)
             }
+            .themedMenuPicker(manager)
 
             Picker("Эффект", selection: manager.clockColorEffectBinding) {
-                Text("Нет").tag(ClockColorEffect.off)
-                Text("Обмен цветом").tag(ClockColorEffect.swap)
-                Text("Спектр").tag(ClockColorEffect.spectrum)
-                Text("Радуга").tag(ClockColorEffect.rainbow)
-                Text("Случайный цвет").tag(ClockColorEffect.randomColor)
+                Text("Нет").themedMenuOption(manager).tag(ClockColorEffect.off)
+                Text("Обмен цветом").themedMenuOption(manager).tag(ClockColorEffect.swap)
+                Text("Спектр").themedMenuOption(manager).tag(ClockColorEffect.spectrum)
+                Text("Радуга").themedMenuOption(manager).tag(ClockColorEffect.rainbow)
+                Text("Случайный цвет").themedMenuOption(manager).tag(ClockColorEffect.randomColor)
             }
+            .themedMenuPicker(manager)
 
             if manager.settings.clockColorEffect?.usesSpeed == true {
                 VStack(alignment: .leading, spacing: 4) {

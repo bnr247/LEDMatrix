@@ -37,12 +37,13 @@ struct SettingsGeneralFormView: View {
             
             Section(header: Text("Тип анимации").themedSectionHeader(manager)) {
                 Picker("Режим", selection: manager.animationTypeBinding) {
-                    Text("Стандартный").tag(AnimationType.standard(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Категории").tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Альбом").tag(AnimationType.album(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Избранное").tag(AnimationType.likes(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
-                    Text("Плейлист").tag(AnimationType.playlist(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Стандартный").themedMenuOption(manager).tag(AnimationType.standard(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Категории").themedMenuOption(manager).tag(AnimationType.category(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Альбом").themedMenuOption(manager).tag(AnimationType.album(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Избранное").themedMenuOption(manager).tag(AnimationType.likes(sortOrder: manager.settings.animationType?.sortOrder ?? 0))
+                    Text("Плейлист").themedMenuOption(manager).tag(AnimationType.playlist(id: manager.settings.animationType?.id ?? 0, sortOrder: manager.settings.animationType?.sortOrder ?? 0))
                 }
+                .themedMenuPicker(manager)
             }
             .listRowBackground(manager.cardBackgroundColor)
             
@@ -55,10 +56,11 @@ struct SettingsGeneralFormView: View {
                 .datePickerStyle(.compact)
                 
                 Picker("Режим экрана", selection: manager.dayDeviceModeBinding) {
-                    Text("Смешанный").tag("mixed")
-                    Text("Только часы").tag("clock_only")
-                    Text("Только анимация").tag("animation_only")
+                    Text("Смешанный").themedMenuOption(manager).tag("mixed")
+                    Text("Только часы").themedMenuOption(manager).tag("clock_only")
+                    Text("Только анимация").themedMenuOption(manager).tag("animation_only")
                 }
+                .themedMenuPicker(manager)
                 
                 VStack(alignment: .leading) {
                     Text("Яркость: \(manager.settings.dayBrightnessPercent)")
@@ -84,10 +86,11 @@ struct SettingsGeneralFormView: View {
                 .datePickerStyle(.compact)
                 
                 Picker("Режим экрана", selection: manager.nightDeviceModeBinding) {
-                    Text("Смешанный").tag("mixed")
-                    Text("Только часы").tag("clock_only")
-                    Text("Только анимация").tag("animation_only")
+                    Text("Смешанный").themedMenuOption(manager).tag("mixed")
+                    Text("Только часы").themedMenuOption(manager).tag("clock_only")
+                    Text("Только анимация").themedMenuOption(manager).tag("animation_only")
                 }
+                .themedMenuPicker(manager)
                 
                 VStack(alignment: .leading) {
                     Text("Яркость: \(manager.settings.nightBrightnessPercent)")

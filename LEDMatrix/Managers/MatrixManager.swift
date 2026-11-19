@@ -870,6 +870,29 @@ extension View {
         }
     }
 
+    /// Выпадающие списки: в декоративных темах подпись берёт светлый акцент,
+    /// а выбранное значение — цвет названия темы. Системная тема остаётся нативной.
+    @ViewBuilder
+    func themedMenuPicker(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self
+                .foregroundColor(manager.appTextColor)
+                .tint(manager.valueTextColor)
+        }
+    }
+
+    /// Строки внутри выпадающего списка.
+    @ViewBuilder
+    func themedMenuOption(_ manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self
+        } else {
+            self.foregroundColor(manager.lightAccentColor)
+        }
+    }
+
     /// Заголовки секций в системной теме остаются нативными (secondary).
     @ViewBuilder
     func themedSectionHeader(_ manager: MatrixManager) -> some View {

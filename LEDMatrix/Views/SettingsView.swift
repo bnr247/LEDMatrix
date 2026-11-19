@@ -47,11 +47,13 @@ struct SettingsView: View {
                     set: { manager.currentTheme = $0 }
                 )) {
                     ForEach(AppTheme.allCases) { theme in
-                        Text(theme.rawValue).tag(theme)
+                        Text(theme.rawValue)
+                            .themedMenuOption(manager)
+                            .tag(theme)
                     }
                 }
                 .pickerStyle(.menu)
-                .foregroundColor(manager.appTextColor)
+                .themedMenuPicker(manager)
             }
             .listRowBackground(manager.cardBackgroundColor)
             

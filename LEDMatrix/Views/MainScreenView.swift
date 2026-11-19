@@ -67,10 +67,14 @@ struct MainScreenView: View {
                             Menu {
                                 if manager.savedDevices.isEmpty {
                                     Text("Нет устройств")
+                                        .themedMenuOption(manager)
                                 } else {
                                     ForEach(manager.savedDevices) { device in
-                                        Button(device.name) {
+                                        Button(action: {
                                             manager.selectDevice(device)
+                                        }) {
+                                            Text(device.name)
+                                                .themedMenuOption(manager)
                                         }
                                     }
                                 }
@@ -103,6 +107,7 @@ struct MainScreenView: View {
                             .if(manager.currentTheme.usesSystemAppearance) { content in
                                 content.buttonStyle(.borderless)
                             }
+                            .themedMenuPicker(manager)
                             .disabled(manager.savedDevices.isEmpty)
                             
                             Button(action: {
