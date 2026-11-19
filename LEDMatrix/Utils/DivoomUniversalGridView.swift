@@ -260,17 +260,15 @@ struct DivoomUniversalGridView: View {
             let result = try await fetchItems(currentStart, currentStart + pageSize - 1, fileSortOption)
             guard generation == prefetchGeneration else { return }
 
-            let images = await loadFirstFrames(for: result.items)
-            guard generation == prefetchGeneration else { return }
-
             items = result.items
-            revealedImages.merge(images) { _, new in new }
             isLoading = false
 
             if result.items.isEmpty {
                 hasMorePages = false
             } else {
                 currentStart = 1 + result.items.count
+                // Текущую страницу показываем сразу, кадры грузим порциями по порядку.
+                Task { await loadFirstFramesProgressively(for: result.items, generation: generation) }
                 Task { await prefetchNextPage(generation: generation) }
             }
         } catch {
@@ -383,23 +381,69 @@ struct DivoomUniversalGridView: View {
             let result = try await fetchItems(currentStart, currentStart + pageSize - 1, fileSortOption)
             guard generation == prefetchGeneration else { return }
 
-            let images = await loadFirstFrames(for: result.items)
-            guard generation == prefetchGeneration else { return }
-
             items = result.items
-            revealedImages.merge(images) { _, new in new }
 
             if result.items.isEmpty {
                 hasMorePages = false
             } else {
                 currentStart = 1 + result.items.count
+                Task { await loadFirstFramesProgressively(for: result.items, generation: generation) }
                 Task { await prefetchNextPage(generation: generation) }
             }
         } catch {}
         isLoading = false
     }
 
-    /// Быстрая загрузка первых кадров: по одному 16x16 изображению на анимацию.
+    /// Показываем текущую страницу сразу, но подгружаем её первые кадры
+    /// небольшими порциями строго сверху вниз — без ожидания всех 30 файлов
+    /// и без хаотичного заполнения ячеек.
+    private func loadFirstFramesProgressively(for list: [DivoomFileItem], generation: Int) async {
+        let targets = list.enumerated().compactMap { index, item -> (order: Int, fileId: String)? in
+            guard let fileId = item.FileId, !fileId.isEmpty,
+                  revealedImages[fileId] == nil else { return nil }
+            return (index, fileId)
+        }
+        guard !targets.isEmpty else { return }
+
+        let batchSize = 6
+        var cursor = 0
+
+        while cursor < targets.count {
+            let end = min(cursor + batchSize, targets.count)
+            let batch = Array(targets[cursor..<end])
+            let fileIds = Dictionary(uniqueKeysWithValues: batch.map { ($0.order, $0.fileId) })
+
+            let ordered = await withTaskGroup(
+                of: (Int, UIImage?).self,
+                returning: [(String, UIImage)].self
+            ) { group in
+                for target in batch {
+                    group.addTask {
+                        let image = await DivoomAnimationLoader.loadFirstFrame(from: target.fileId)
+                        return (target.order, image)
+                    }
+                }
+
+                var collected: [Int: UIImage] = [:]
+                for await (order, image) in group {
+                    if let image { collected[order] = image }
+                }
+
+                return collected.keys.sorted().compactMap { order in
+                    guard let image = collected[order], let fileId = fileIds[order] else { return nil }
+                    return (fileId, image)
+                }
+            }
+
+            guard generation == prefetchGeneration else { return }
+            for (fileId, image) in ordered {
+                revealedImages[fileId] = image
+            }
+            cursor = end
+        }
+    }
+
+    /// Быстрая загрузка первых кадров для скрытой следующей страницы.
     private func loadFirstFrames(for list: [DivoomFileItem]) async -> [String: UIImage] {
         let targets = list.compactMap { item -> String? in
             guard let fileId = item.FileId, !fileId.isEmpty, revealedImages[fileId] == nil else { return nil }

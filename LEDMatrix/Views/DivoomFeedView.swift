@@ -14,7 +14,7 @@ struct DivoomFeedView: View {
     let initialItems: [DivoomFileItem]
     let selectedItemId: String
     let fetchMoreItems: (_ startNum: Int, _ endNum: Int) async throws -> [DivoomFileItem]
-    let onScrollPositionChanged: ((String?) -> Void)? // <--- Добавлено
+    let onScrollPositionChanged: ((String?) -> Void)?
     
     init(
         title: String,
@@ -129,48 +129,52 @@ struct DivoomFeedView: View {
         isLoadingMore = false
     }
     
-    /// Подготавливает первые кадры для нескольких следующих постов, чтобы
-    /// ячейки успевали показать картинку раньше, чем пользователь до них доскроллит.
+    /// Подготавливает первые кадры порциями строго по порядку, чтобы посты
+    /// заполнялись сверху вниз, а не ждали загрузки всех 30 файлов.
     private func prefetchFirstFrames(for list: [DivoomFileItem]) {
-        let targets = list.compactMap { item -> String? in
+        let targets = list.enumerated().compactMap { index, item -> (order: Int, fileId: String)? in
             guard let fileId = item.FileId, !fileId.isEmpty,
                   prefetchedAnimations[fileId] == nil else { return nil }
-            return fileId
+            return (index, fileId)
         }
         guard !targets.isEmpty else { return }
 
         Task.detached(priority: .utility) {
-            var loaded: [String: UIImage] = [:]
-            let batchSize = 12
-            var index = 0
+            let batchSize = 6
+            var cursor = 0
 
-            while index < targets.count {
-                let end = min(index + batchSize, targets.count)
-                let batch = targets[index..<end]
+            while cursor < targets.count {
+                let end = min(cursor + batchSize, targets.count)
+                let batch = Array(targets[cursor..<end])
+                let fileIds = Dictionary(uniqueKeysWithValues: batch.map { ($0.order, $0.fileId) })
 
-                let batchLoaded = await withTaskGroup(
-                    of: (String, UIImage?).self,
-                    returning: [String: UIImage].self
+                let ordered = await withTaskGroup(
+                    of: (Int, UIImage?).self,
+                    returning: [(String, UIImage)].self
                 ) { group in
-                    for fileId in batch {
+                    for target in batch {
                         group.addTask {
-                            let image = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
-                            return (fileId, image)
+                            let image = await DivoomAnimationLoader.loadFirstFrame(from: target.fileId)
+                            return (target.order, image)
                         }
                     }
-                    var result: [String: UIImage] = [:]
-                    for await (fileId, image) in group {
-                        if let image { result[fileId] = image }
-                    }
-                    return result
-                }
-                loaded.merge(batchLoaded) { _, new in new }
-                index = end
-            }
 
-            let finalLoaded = loaded
-            await MainActor.run {
-                self.prefetchedAnimations.merge(finalLoaded) { _, new in new }
+                    var collected: [Int: UIImage] = [:]
+                    for await (order, image) in group {
+                        if let image { collected[order] = image }
+                    }
+
+                    return collected.keys.sorted().compactMap { order in
+                        guard let image = collected[order], let fileId = fileIds[order] else { return nil }
+                        return (fileId, image)
+                    }
+                }
+
+                let batchLoaded = Dictionary(uniqueKeysWithValues: ordered)
+                await MainActor.run {
+                    self.prefetchedAnimations.merge(batchLoaded) { _, new in new }
+                }
+                cursor = end
             }
         }
     }
