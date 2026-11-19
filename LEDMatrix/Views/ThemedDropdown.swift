@@ -19,70 +19,50 @@ struct ThemedDropdownOption<Value: Hashable>: Identifiable {
     let value: Value
 }
 
+private struct DropdownAnchorKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
 // MARK: - Тематическая панель списка
 
 private struct ThemedDropdownPanel: View {
-    @Environment(\.dismiss) private var dismiss
-
     @ObservedObject var manager: MatrixManager
-    let title: String
     let items: [ThemedDropdownItem]
     let selectedIndex: Int?
     let onSelect: (Int) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(manager.lightAccentColor)
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundColor(manager.secondaryTextColor)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-
-            Divider()
-                .background(manager.dividerColor)
-                .padding(.horizontal, 12)
-
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(items) { item in
-                        Button {
-                            onSelect(item.id)
-                            dismiss()
-                        } label: {
-                            HStack {
-                                Text(item.title)
-                                    .foregroundColor(
-                                        item.id == selectedIndex
-                                            ? manager.accentColor
-                                            : manager.lightAccentColor
-                                    )
-                                Spacer()
-                                if item.id == selectedIndex {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(manager.accentColor)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-
-                        if item.id != items.last?.id {
-                            Divider()
-                                .background(manager.dividerColor)
-                                .padding(.horizontal, 12)
+            ForEach(items) { item in
+                Button {
+                    onSelect(item.id)
+                } label: {
+                    HStack {
+                        Text(item.title)
+                            .foregroundColor(
+                                item.id == selectedIndex
+                                    ? manager.accentColor
+                                    : manager.lightAccentColor
+                            )
+                        Spacer()
+                        if item.id == selectedIndex {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(manager.accentColor)
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if item.id != items.last?.id {
+                    Divider()
+                        .background(manager.dividerColor)
+                        .padding(.horizontal, 12)
                 }
             }
         }
@@ -95,11 +75,47 @@ private struct ThemedDropdownPanel: View {
                         .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
                 )
         )
-        // Отступ от границ поповера: иначе его собственный радиус срезает
-        // скругление и обводку панели.
-        .padding(8)
+    }
+}
+
+// MARK: - Оверлей с позиционированием у контрола
+
+private struct ThemedDropdownOverlay: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @ObservedObject var manager: MatrixManager
+    let anchor: CGRect
+    let items: [ThemedDropdownItem]
+    let selectedIndex: Int?
+    let onSelect: (Int) -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { dismiss() }
+
+                let panelWidth: CGFloat = 280
+                let estimatedHeight = CGFloat(48 * items.count + 8)
+                let below = anchor.maxY + 8
+                let y = below + estimatedHeight > geo.size.height
+                    ? max(8, anchor.minY - 8 - estimatedHeight)
+                    : max(8, below)
+                let x = min(max(anchor.minX, 8), max(8, geo.size.width - panelWidth - 8))
+
+                ThemedDropdownPanel(
+                    manager: manager,
+                    items: items,
+                    selectedIndex: selectedIndex
+                ) { index in
+                    onSelect(index)
+                    dismiss()
+                }
+                .offset(x: x, y: y)
+            }
+        }
         .presentationBackground(.clear)
-        .presentationCompactAdaptation(.popover)
     }
 }
 
@@ -112,6 +128,7 @@ struct ThemedMenuPicker<Value: Hashable>: View {
     @Binding var selection: Value
 
     @State private var isPresented = false
+    @State private var anchor: CGRect = .zero
 
     private var selectedOption: ThemedDropdownOption<Value>? {
         options.first { $0.value == selection }
@@ -140,10 +157,16 @@ struct ThemedMenuPicker<Value: Hashable>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .popover(isPresented: $isPresented, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
-                ThemedDropdownPanel(
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: DropdownAnchorKey.self, value: geo.frame(in: .global))
+                }
+            )
+            .onPreferenceChange(DropdownAnchorKey.self) { anchor = $0 }
+            .fullScreenCover(isPresented: $isPresented) {
+                ThemedDropdownOverlay(
                     manager: manager,
-                    title: title,
+                    anchor: anchor,
                     items: options.map { ThemedDropdownItem(id: $0.id, title: $0.title) },
                     selectedIndex: selectedOption?.id
                 ) { index in
@@ -165,6 +188,7 @@ struct ThemedActionMenu<Label: View>: View {
     @ViewBuilder let label: Label
 
     @State private var isPresented = false
+    @State private var anchor: CGRect = .zero
 
     var body: some View {
         if manager.currentTheme.usesSystemAppearance {
@@ -182,10 +206,16 @@ struct ThemedActionMenu<Label: View>: View {
                 label
             }
             .buttonStyle(.plain)
-            .popover(isPresented: $isPresented, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
-                ThemedDropdownPanel(
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: DropdownAnchorKey.self, value: geo.frame(in: .global))
+                }
+            )
+            .onPreferenceChange(DropdownAnchorKey.self) { anchor = $0 }
+            .fullScreenCover(isPresented: $isPresented) {
+                ThemedDropdownOverlay(
                     manager: manager,
-                    title: title,
+                    anchor: anchor,
                     items: items,
                     selectedIndex: selectedIndex
                 ) { index in
