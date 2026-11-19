@@ -129,11 +129,12 @@ private struct ThemedDropdownOverlay: View {
                     .onTapGesture { dismiss() }
 
                 let panelWidth: CGFloat = 296
-                let estimatedHeight = CGFloat(48 * items.count + 76)
-                let below = anchor.maxY + 8
-                let y = below + estimatedHeight > geo.size.height
-                    ? max(8, anchor.minY - 8 - estimatedHeight)
-                    : max(8, below)
+                let panelHeight = CGFloat(45 * items.count + 62)
+                let maxY = max(8, geo.size.height - panelHeight - 8)
+                let preferredY = anchor.maxY + 8 + panelHeight <= geo.size.height - 8
+                    ? anchor.maxY + 8
+                    : anchor.minY - panelHeight - 8
+                let y = min(max(8, preferredY), maxY)
                 let x = min(max(anchor.minX, 8), max(8, geo.size.width - panelWidth - 8))
 
                 ThemedDropdownPanel(
@@ -143,6 +144,7 @@ private struct ThemedDropdownOverlay: View {
                     selectedIndex: selectedIndex,
                     onSelect: onSelect
                 )
+                .frame(width: panelWidth, height: panelHeight)
                 .offset(x: x, y: y)
             }
         }
