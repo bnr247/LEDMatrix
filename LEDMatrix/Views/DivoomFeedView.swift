@@ -197,6 +197,7 @@ struct DivoomFeedItemView: View {
     @State private var authorFansCount = 0
     @State private var isFollowLoading = false
     @State private var isShowingPlaylists = false
+    @State private var isShowingCreatePlaylist = false
     @State private var playlists: [DivoomPlaylist] = []
     @State private var isLoadingPlaylists = false
     @State private var toastMessage: String? = nil
@@ -368,6 +369,7 @@ struct DivoomFeedItemView: View {
                             }
                             .listRowBackground(manager.cardBackgroundColor)
                         }
+                        .listStyle(.plain)
                     }
                 }
                 .themedForm(manager)
@@ -379,9 +381,22 @@ struct DivoomFeedItemView: View {
                             isShowingPlaylists = false
                         }
                     }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            isShowingCreatePlaylist = true
+                        }) {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Создать плейлист")
+                    }
+                }
+                .divoomCreatePlaylistAlert(manager: manager, isPresented: $isShowingCreatePlaylist) {
+                    Task { await reloadPlaylists() }
                 }
             }
+            .ignoresSafeArea(edges: .bottom)
             .presentationDetents([.medium, .large])
+            .presentationBackground(manager.backgroundColor)
         }
     }
 
@@ -436,17 +451,19 @@ struct DivoomFeedItemView: View {
     private func loadAndShowPlaylists() {
         isLoadingPlaylists = true
         isShowingPlaylists = true
-        Task {
-            do {
-                let fetched = try await manager.fetchDivoomPlaylists(startNum: 1, endNum: 50)
-                await MainActor.run {
-                    playlists = fetched
-                    isLoadingPlaylists = false
-                }
-            } catch {
-                await MainActor.run {
-                    isLoadingPlaylists = false
-                }
+        Task { await reloadPlaylists() }
+    }
+
+    private func reloadPlaylists() async {
+        do {
+            let fetched = try await manager.fetchDivoomPlaylists(startNum: 1, endNum: 50)
+            await MainActor.run {
+                playlists = fetched
+                isLoadingPlaylists = false
+            }
+        } catch {
+            await MainActor.run {
+                isLoadingPlaylists = false
             }
         }
     }

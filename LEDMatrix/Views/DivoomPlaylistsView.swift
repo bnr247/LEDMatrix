@@ -9,6 +9,8 @@ import SwiftUI
 
 struct DivoomPlaylistsView: View {
     @ObservedObject var manager: MatrixManager
+    // Увеличивается родителем после создания плейлиста из навбара.
+    let refreshTrigger: Int
     
     @State private var playlists: [DivoomPlaylist] = []
     @State private var isLoading = false
@@ -18,11 +20,6 @@ struct DivoomPlaylistsView: View {
     @State private var hasMorePages = true
     @State private var currentStart = 1
     private let pageSize = 30
-    
-    // Состояния для модального окна добавления плейлиста
-    @State private var isShowingAddAlert = false
-    @State private var newPlaylistName = ""
-    @State private var isCreating = false
     
     // Состояния для подтверждения удаления
     @State private var playlistToDelete: DivoomPlaylist? = nil
@@ -116,35 +113,8 @@ struct DivoomPlaylistsView: View {
         }
         .tint(manager.accentColor)
         .background(manager.backgroundColor.ignoresSafeArea())
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    newPlaylistName = ""
-                    isShowingAddAlert = true
-                }) {
-                    Image(systemName: "plus")
-                }
-            }
-        }
-        .alert("Новый плейлист", isPresented: $isShowingAddAlert) {
-            TextField("Название плейлиста", text: $newPlaylistName)
-            Button("Отмена", role: .cancel) {}
-            Button("Добавить") {
-                let nameToCreate = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !nameToCreate.isEmpty else { return }
-                Task {
-                    isCreating = true
-                    do {
-                        try await manager.createDivoomPlaylist(name: nameToCreate)
-                        await loadInitialPlaylists()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                    }
-                    isCreating = false
-                }
-            }
-        } message: {
-            Text("Введите название нового плейлиста")
+        .onChange(of: refreshTrigger) { _, _ in
+            Task { await loadInitialPlaylists() }
         }
         .alert("Удаление плейлиста", isPresented: $isShowingDeleteAlert, presenting: playlistToDelete) { playlist in
             Button("Отмена", role: .cancel) {

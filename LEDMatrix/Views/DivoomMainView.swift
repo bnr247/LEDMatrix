@@ -42,6 +42,11 @@ struct DivoomMainView: View {
     @State private var submittedQuery = ""
     @FocusState private var isSearchFieldFocused: Bool
 
+    // Кнопка создания плейлиста живёт в навбаре родителя: вложенный
+    // toolbar внутри TabView на этом экране не отображается.
+    @State private var isShowingCreatePlaylist = false
+    @State private var playlistsRefreshTrigger = 0
+
     var body: some View {
         Group {
             if isSearching {
@@ -56,19 +61,35 @@ struct DivoomMainView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .tint(manager.accentColor)
         .toolbar {
-            // На экране плейлистов значок поиска не нужен: там есть кнопка
-            // создания плейлиста. В режиме поиска крестик оставляем всегда,
-            // чтобы всегда можно было вернуться ко вкладкам.
-            if selectedSection != .playlists || isSearching {
-                ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if isSearching {
                     Button(action: toggleSearch) {
-                        Image(systemName: isSearching ? "xmark" : "magnifyingglass")
+                        Image(systemName: "xmark")
                             .font(.body)
                             .foregroundColor(manager.appTextColor)
                     }
-                    .accessibilityLabel(isSearching ? "Закрыть поиск" : "Поиск")
+                    .accessibilityLabel("Закрыть поиск")
+                } else if selectedSection == .playlists {
+                    Button(action: {
+                        isShowingCreatePlaylist = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.body)
+                            .foregroundColor(manager.appTextColor)
+                    }
+                    .accessibilityLabel("Создать плейлист")
+                } else {
+                    Button(action: toggleSearch) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.body)
+                            .foregroundColor(manager.appTextColor)
+                    }
+                    .accessibilityLabel("Поиск")
                 }
             }
+        }
+        .divoomCreatePlaylistAlert(manager: manager, isPresented: $isShowingCreatePlaylist) {
+            playlistsRefreshTrigger += 1
         }
     }
 
@@ -94,7 +115,7 @@ struct DivoomMainView: View {
                 }
                 .tag(DivoomSection.favorites)
 
-            DivoomPlaylistsView(manager: manager)
+            DivoomPlaylistsView(manager: manager, refreshTrigger: playlistsRefreshTrigger)
                 .tabItem {
                     Label(DivoomSection.playlists.rawValue, systemImage: DivoomSection.playlists.iconName)
                 }
