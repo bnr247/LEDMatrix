@@ -15,31 +15,37 @@ struct DivoomCategoryModel: Identifiable, Hashable {
 struct DivoomCategoriesView: View {
     @ObservedObject var manager: MatrixManager
     
-    let categories: [DivoomCategoryModel] = [
-        DivoomCategoryModel(id: 0, name: "New"),
-        DivoomCategoryModel(id: 20, name: "Follow"),
-        DivoomCategoryModel(id: 30, name: "Haunted 2026"),
-        DivoomCategoryModel(id: 18, name: "Recommend"),
-        DivoomCategoryModel(id: 3, name: "Character"),
-        DivoomCategoryModel(id: 17, name: "Festival"),
-        DivoomCategoryModel(id: 4, name: "Emoji"),
-        DivoomCategoryModel(id: 8, name: "Pattern"),
-        DivoomCategoryModel(id: 9, name: "Creative"),
-        DivoomCategoryModel(id: 6, name: "Nature"),
-        DivoomCategoryModel(id: 5, name: "Daily"),
-        DivoomCategoryModel(id: 15, name: "Gadget"),
-        DivoomCategoryModel(id: 7, name: "Icon"),
-        DivoomCategoryModel(id: 16, name: "Business"),
-        DivoomCategoryModel(id: 1, name: "Default"),
-        DivoomCategoryModel(id: 40, name: "AI"),
-        DivoomCategoryModel(id: 12, name: "Photo")
-    ]
-    
     @State private var selectedCategoryId: Int = 0
     @State private var alertMessage: String? = nil
     @State private var isShowingAlert = false
     @State private var selectedCategoryName: String? = nil
     @State private var sortOrder: Int = 0
+
+    /// Название третьей вкладки приходит из Divoom (`GalleryMatchName`).
+    /// Пока ответ не получен или если запрос не удался, показываем Contest.
+    @State private var contestCategoryName: String = "Contest"
+
+    private var categories: [DivoomCategoryModel] {
+        [
+            DivoomCategoryModel(id: 0, name: "New"),
+            DivoomCategoryModel(id: 20, name: "Follow"),
+            DivoomCategoryModel(id: 30, name: contestCategoryName),
+            DivoomCategoryModel(id: 18, name: "Recommend"),
+            DivoomCategoryModel(id: 3, name: "Character"),
+            DivoomCategoryModel(id: 17, name: "Festival"),
+            DivoomCategoryModel(id: 4, name: "Emoji"),
+            DivoomCategoryModel(id: 8, name: "Pattern"),
+            DivoomCategoryModel(id: 9, name: "Creative"),
+            DivoomCategoryModel(id: 6, name: "Nature"),
+            DivoomCategoryModel(id: 5, name: "Daily"),
+            DivoomCategoryModel(id: 15, name: "Gadget"),
+            DivoomCategoryModel(id: 7, name: "Icon"),
+            DivoomCategoryModel(id: 16, name: "Business"),
+            DivoomCategoryModel(id: 1, name: "Default"),
+            DivoomCategoryModel(id: 40, name: "AI"),
+            DivoomCategoryModel(id: 12, name: "Photo")
+        ]
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -106,6 +112,9 @@ struct DivoomCategoriesView: View {
         }
         //.frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await loadContestCategoryName()
+        }
         .alert("Категории", isPresented: $isShowingAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -113,6 +122,20 @@ struct DivoomCategoriesView: View {
         }
     }
     
+    private func loadContestCategoryName() async {
+        do {
+            let fetched = try await manager.fetchDivoomGalleryMatchName()
+            if let name = fetched?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+                await MainActor.run { contestCategoryName = name }
+                return
+            }
+        } catch {
+            // Ниже сработает запасное название Contest.
+        }
+
+        await MainActor.run { contestCategoryName = "Contest" }
+    }
+
     private func sendCategoryCommand(sortOrder: Int) {
         let currentCategory = categories.first(where: { $0.id == selectedCategoryId })
         let categoryName = currentCategory?.name ?? "Категория"

@@ -141,6 +141,12 @@ struct DivoomFileItem: Identifiable, Codable {
     }
 }
 
+struct DivoomUserAllInfoResponse: Codable {
+    let ReturnCode: Int
+    let ReturnMessage: String
+    let GalleryMatchName: String?
+}
+
 struct DivoomPlaylistResponse: Codable {
     let ReturnCode: Int
     let ReturnMessage: String
@@ -324,6 +330,43 @@ extension MatrixManager {
         return response
     }
     
+    /// Имя праздничной/конкурсной категории Divoom. Приложение показывает его
+    /// на третьей вкладке в категориях; при ошибке экран подставляет Contest.
+    func fetchDivoomGalleryMatchName() async throws -> String? {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/GetUserAllInfo")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "UserId": session.userId,
+            "Language": "en",
+            "Command": "GetUserAllInfo",
+            "NotUseIpFlag": 1,
+            "CountryISOCode": "RU",
+            "TimeZone": "+3"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomUserAllInfoResponse.self, from: data)
+
+        if let retryResult = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.fetchDivoomGalleryMatchName()
+        }) {
+            return retryResult
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response.GalleryMatchName
+    }
+
     func fetchDivoomPlaylists(startNum: Int, endNum: Int) async throws -> [DivoomPlaylist] {
         let session = try await getValidDivoomSession()
         let url = URL(string: "https://appin.divoom-gz.com/Playlist/GetMyList")!
