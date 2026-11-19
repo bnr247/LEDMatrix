@@ -58,24 +58,11 @@ private struct DivoomPreviewThumbnailSlot: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                DivoomPreviewPlaceholder()
+                // Пустой слот ничего не рисует, но занимает ту же ширину,
+                // чтобы заполненные превью не растягивались.
+                Color.clear
             }
         }
     }
 }
 
-/// Пустой слот той же формы, что и AnimatedImageView: квадрат плюс плашка 28 pt.
-private struct DivoomPreviewPlaceholder: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            Color.black
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            Color.black.opacity(0.85)
-                .frame(height: 28)
-        }
-        .background(Color.black)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-}

@@ -16,6 +16,10 @@ struct DivoomAuthorsView: View {
     @State private var hasMore = true
     @State private var errorMessage: String? = nil
 
+    // Позиция списка сохраняется между уходами в галерею пользователя:
+    // при возврате остаёмся на том же авторе, а не сбрасываемся в начало.
+    @State private var scrollPositionId: String? = nil
+
     private let pageSize = 20
 
     var body: some View {
@@ -59,6 +63,7 @@ struct DivoomAuthorsView: View {
                     LazyVStack(spacing: 12) {
                         ForEach(experts) { expert in
                             DivoomExpertCard(manager: manager, expert: expert)
+                                .id(String(expert.UserId))
                                 .onAppear {
                                     guard expert.id == experts.last?.id else { return }
                                     Task { await loadMore() }
@@ -71,9 +76,11 @@ struct DivoomAuthorsView: View {
                                 .padding()
                         }
                     }
+                    .scrollTargetLayout()
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
                 }
+                .scrollPosition(id: $scrollPositionId)
                 .refreshable {
                     await reload()
                 }
@@ -81,7 +88,11 @@ struct DivoomAuthorsView: View {
         }
         .background(manager.backgroundColor)
         .task {
-            await reload()
+            // Не очищаем уже загруженный список при возврате из карточки
+            // пользователя — иначе позиция прокрутки сбрасывается.
+            if experts.isEmpty {
+                await reload()
+            }
         }
     }
 
