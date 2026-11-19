@@ -893,4 +893,46 @@ extension MatrixManager {
             throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage.isEmpty ? "Ошибка подписки на тэг" : response.ReturnMessage])
         }
     }
+
+    // MARK: - Поиск анимаций
+
+    func searchDivoomAnimations(keywords: String, startNum: Int, endNum: Int, fileSort: Int = 1) async throws -> DivoomAlbumImageListResponse {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/SearchGalleryV3")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Version": 19,
+            "UserId": session.userId,
+            "EndNum": endNum,
+            "Keywords": keywords,
+            "FileType": 5,
+            "FileSort": fileSort,
+            "StartNum": startNum,
+            "Command": "SearchGalleryV3",
+            "Token": session.token,
+            "FileSize": 1,
+            "RefreshIndex": 1,
+            "KeywordsEn": ""
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomAlbumImageListResponse.self, from: data)
+
+        if let retryResult = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.searchDivoomAnimations(keywords: keywords, startNum: startNum, endNum: endNum, fileSort: fileSort)
+        }) {
+            return retryResult
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response
+    }
 }

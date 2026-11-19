@@ -43,11 +43,7 @@ struct DivoomSearchView: View {
                 case .tags:
                     DivoomTagSearchResults(manager: manager, query: query)
                 case .animations:
-                    DivoomSearchPlaceholder(
-                        manager: manager,
-                        title: "Анимации",
-                        icon: "sparkles"
-                    )
+                    DivoomAnimationSearchResults(manager: manager, query: query)
                 case .users:
                     DivoomSearchPlaceholder(
                         manager: manager,
@@ -143,13 +139,8 @@ private struct DivoomTagSearchResults: View {
             }
         }
         .background(manager.backgroundColor)
+        // query меняется только по кнопке «Поиск» на клавиатуре — поиск не инкрементальный.
         .task(id: query) {
-            let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-            // Не отправляем запрос на каждую букву: ждём паузу в наборе.
-            if !trimmed.isEmpty {
-                try? await Task.sleep(for: .milliseconds(350))
-                guard !Task.isCancelled else { return }
-            }
             await reload()
         }
     }
@@ -223,6 +214,52 @@ private struct DivoomTagSearchResults: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Поиск анимаций
+
+private struct DivoomAnimationSearchResults: View {
+    @ObservedObject var manager: MatrixManager
+    let query: String
+
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        Group {
+            if trimmedQuery.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 34))
+                        .foregroundColor(manager.accentColor)
+                    Text("Введите запрос и нажмите «Поиск»")
+                        .font(.subheadline)
+                        .foregroundColor(manager.secondaryTextColor)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                DivoomUniversalGridView(
+                    title: "Поиск: \(trimmedQuery)",
+                    manager: manager,
+                    fetchItems: { start, end, sort in
+                        let response = try await manager.searchDivoomAnimations(
+                            keywords: trimmedQuery,
+                            startNum: start,
+                            endNum: end,
+                            fileSort: sort
+                        )
+                        return (response.FileList ?? [], response.CurListNum ?? response.FileList?.count ?? 0)
+                    },
+                    onPlayTapped: nil
+                )
+                // Полностью пересоздаём галерею при новом запросе, чтобы
+                // сбросить пагинацию и загрузить результаты заново.
+                .id(trimmedQuery)
+            }
+        }
+        .background(manager.backgroundColor)
     }
 }
 

@@ -37,6 +37,9 @@ struct DivoomMainView: View {
     // к той вкладке, на которой пользователь был до входа в поиск.
     @State private var isSearching = false
     @State private var searchQuery = ""
+    // Поиск запускается только по кнопке «Поиск» на клавиатуре: пока
+    // пользователь печатает, запросы к API не отправляются.
+    @State private var submittedQuery = ""
     @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
@@ -127,6 +130,7 @@ struct DivoomMainView: View {
                     .focused($isSearchFieldFocused)
                     .submitLabel(.search)
                     .onSubmit {
+                        submittedQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                         isSearchFieldFocused = false
                     }
 
@@ -148,7 +152,7 @@ struct DivoomMainView: View {
                 .fill(manager.dividerColor)
                 .frame(height: 0.5)
 
-            DivoomSearchView(manager: manager, query: searchQuery)
+            DivoomSearchView(manager: manager, query: submittedQuery)
         }
         .background(manager.backgroundColor)
         .onAppear {
@@ -160,9 +164,11 @@ struct DivoomMainView: View {
         withAnimation {
             isSearching.toggle()
             if isSearching {
+                submittedQuery = ""
                 isSearchFieldFocused = true
             } else {
                 searchQuery = ""
+                submittedQuery = ""
                 isSearchFieldFocused = false
             }
         }
