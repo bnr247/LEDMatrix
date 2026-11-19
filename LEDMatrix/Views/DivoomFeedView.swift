@@ -36,10 +36,12 @@ struct DivoomFeedView: View {
     @State private var prefetchedAnimations: [String: UIImage] = [:]
     @State private var loadedAvatars: [String: UIImage] = [:]
     @State private var isLoadingMore = false
+    @State private var isAwaitingMore = false
     @State private var hasMorePages = true
     @State private var currentStart = 1
     @State private var scrollPositionId: String? = nil
     private let pageSize = 30
+    private let nearEndThreshold = 8
     
     var body: some View {
         ScrollViewReader { proxy in
@@ -59,9 +61,9 @@ struct DivoomFeedView: View {
                                 .scaleEffect(phase.isIdentity ? 1.0 : 0.98)
                         }
                         .onAppear {
-                            if item.id == items.last?.id {
-                                Task { await loadMore() }
-                            }
+                            guard let index = items.firstIndex(where: { $0.id == item.id }),
+                                  index >= items.count - nearEndThreshold else { return }
+                            Task { await requestMore() }
                         }
                     }
                     
@@ -109,6 +111,15 @@ struct DivoomFeedView: View {
         }
     }
     
+    /// Пользователь близко к концу списка. Если загрузка уже идёт — запоминаем
+    /// намерение и повторяем её сразу после завершения, без повторного скролла.
+    private func requestMore() async {
+        guard hasMorePages else { return }
+        isAwaitingMore = true
+        guard !isLoadingMore else { return }
+        await loadMore()
+    }
+
     private func loadMore() async {
         guard !isLoadingMore, hasMorePages else { return }
         isLoadingMore = true
@@ -121,12 +132,16 @@ struct DivoomFeedView: View {
             } else {
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
+                isAwaitingMore = false
                 prefetchFirstFrames(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
         
         isLoadingMore = false
+        if isAwaitingMore, hasMorePages {
+            Task { await loadMore() }
+        }
     }
     
     /// Подготавливает первые кадры порциями строго по порядку, чтобы посты

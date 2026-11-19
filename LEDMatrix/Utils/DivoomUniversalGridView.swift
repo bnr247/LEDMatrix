@@ -33,7 +33,9 @@ struct DivoomUniversalGridView: View {
     @State private var prefetchedImages: [String: UIImage] = [:]
     @State private var prefetchedNextStart = 1
     @State private var isPrefetching = false
+    @State private var isAwaitingNextPage = false
     @State private var prefetchGeneration = 0
+    private let nearEndThreshold = 15
     
     @State private var isShowingSettingsSheet = false
     @State private var scrollPositionId: String? = nil
@@ -160,7 +162,7 @@ struct DivoomUniversalGridView: View {
                                             Task { await prefetchNextPage() }
                                         }
                                         // Почти конец — подключаем уже подготовленную страницу.
-                                        if index >= items.count - 10 {
+                                        if index >= items.count - nearEndThreshold {
                                             Task { await ensureNextPage() }
                                         }
                                     }
@@ -259,6 +261,7 @@ struct DivoomUniversalGridView: View {
         prefetchedItems.removeAll()
         prefetchedImages.removeAll()
         isPrefetching = false
+        isAwaitingNextPage = false
 
         do {
             let result = try await fetchItems(currentStart, currentStart + pageSize - 1, fileSortOption)
@@ -314,9 +317,12 @@ struct DivoomUniversalGridView: View {
         prefetchedNextStart = start + result.items.count
         isPrefetching = false
 
-        // Если пользователь уже доскроллил до края, а предзагрузка только что
-        // закончилась — вставляем страницу сразу, без дополнительного дерганья.
-        if lastVisibleIndex >= items.count - 10 {
+        // Пользователь уже запросил следующую страницу, но предзагрузка была
+        // ещё не готова. Вставляем её сразу по завершении — без повторного
+        // скролла и дерганья списка.
+        let shouldAppend = isAwaitingNextPage || lastVisibleIndex >= items.count - nearEndThreshold
+        if shouldAppend {
+            isAwaitingNextPage = false
             _ = appendPrefetchedPage()
         }
     }
@@ -335,6 +341,7 @@ struct DivoomUniversalGridView: View {
         prefetchedItems.removeAll()
         prefetchedImages.removeAll()
         currentStart = nextStart
+        isAwaitingNextPage = false
 
         Task { await prefetchNextPage(generation: generation) }
         return true
@@ -342,8 +349,10 @@ struct DivoomUniversalGridView: View {
 
     private func ensureNextPage() async {
         if appendPrefetchedPage() { return }
-        // Предзагрузка уже идёт — не дёргаем тот же URL второй раз.
-        // Когда она закончится, страница вставится сама (см. prefetchNextPage).
+
+        // Запоминаем намерение: как только предзагрузка закончится, страница
+        // будет вставлена автоматически, даже если ячейки больше не появятся.
+        isAwaitingNextPage = true
         if isPrefetching { return }
         await loadMoreItems()
     }
@@ -372,6 +381,7 @@ struct DivoomUniversalGridView: View {
             items.append(contentsOf: unique)
             revealedImages.merge(images) { _, new in new }
             currentStart = start + result.items.count
+            isAwaitingNextPage = false
             Task { await prefetchNextPage(generation: generation) }
         } catch {}
     }
@@ -388,6 +398,7 @@ struct DivoomUniversalGridView: View {
         prefetchedItems.removeAll()
         prefetchedImages.removeAll()
         isPrefetching = false
+        isAwaitingNextPage = false
 
         do {
             let result = try await fetchItems(currentStart, currentStart + pageSize - 1, fileSortOption)
