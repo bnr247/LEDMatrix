@@ -226,7 +226,6 @@ struct DivoomUniversalGridView: View {
             Spacer()
         }
         .tint(manager.accentColor)
-        .ignoresSafeArea(edges: .bottom)
         .presentationCornerRadius(24)
     }
     

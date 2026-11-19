@@ -107,6 +107,7 @@ struct DivoomFeedView: View {
             }
             .onAppear { feedbackGenerator.prepare() }
             .background(Color.black)
+            .ignoresSafeArea(edges: .bottom)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .task {
@@ -339,16 +340,60 @@ struct DivoomFeedItemView: View {
                     .animation(.easeInOut, value: toastMessage)
             }
         }
-        .fullScreenCover(isPresented: $isShowingPlaylists) {
-            DivoomPlaylistPickerPanel(
-                manager: manager,
-                playlists: playlists,
-                isLoading: isLoadingPlaylists,
-                onCancel: { isShowingPlaylists = false },
-                onSelect: { addToPlaylist($0) },
-                isShowingCreatePlaylist: $isShowingCreatePlaylist,
-                onCreate: { Task { await reloadPlaylists() } }
-            )
+        .sheet(isPresented: $isShowingPlaylists) {
+            NavigationView {
+                Group {
+                    if isLoadingPlaylists {
+                        ProgressView()
+                            .tint(manager.accentColor)
+                    } else if playlists.isEmpty {
+                        Text("Нет плейлистов")
+                            .foregroundColor(manager.secondaryTextColor)
+                    } else {
+                        List(playlists) { playlist in
+                            Button(action: {
+                                addToPlaylist(playlist)
+                            }) {
+                                HStack {
+                                    Text(playlist.Name)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(manager.appTextColor)
+                                    Spacer()
+                                    if let count = playlist.Count {
+                                        Text("\(count)")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(manager.secondaryTextColor)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .listRowBackground(manager.cardBackgroundColor)
+                        }
+                    }
+                }
+                .themedForm(manager)
+                .navigationTitle("Выберите плейлист")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Отмена") {
+                            isShowingPlaylists = false
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            isShowingCreatePlaylist = true
+                        }) {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Новый плейлист")
+                    }
+                }
+                .divoomCreatePlaylistAlert(manager: manager, isPresented: $isShowingCreatePlaylist) {
+                    Task { await reloadPlaylists() }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -446,93 +491,5 @@ struct DivoomFeedItemView: View {
                 }
             }
         }
-    }
-}
-
-/// Собственная нижняя панель вместо системного `.sheet`: системная шторка
-/// на этом экране оставляла зазор снизу, а панель прижата к самому краю.
-struct DivoomPlaylistPickerPanel: View {
-    @ObservedObject var manager: MatrixManager
-    let playlists: [DivoomPlaylist]
-    let isLoading: Bool
-    let onCancel: () -> Void
-    let onSelect: (DivoomPlaylist) -> Void
-    @Binding var isShowingCreatePlaylist: Bool
-    let onCreate: () -> Void
-
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .bottom) {
-                Color.black.opacity(0.45)
-                    .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onCancel)
-
-                VStack(spacing: 0) {
-                    HStack {
-                        Button("Отмена", action: onCancel)
-                            .foregroundColor(manager.accentColor)
-                        Spacer()
-                        Text("Выберите плейлист")
-                            .font(.headline)
-                            .foregroundColor(manager.appTextColor)
-                        Spacer()
-                        Button(action: {
-                            isShowingCreatePlaylist = true
-                        }) {
-                            Image(systemName: "plus")
-                                .foregroundColor(manager.accentColor)
-                        }
-                        .accessibilityLabel("Новый плейлист")
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(manager.cardBackgroundColor)
-
-                    Group {
-                        if isLoading {
-                            ProgressView()
-                                .tint(manager.accentColor)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if playlists.isEmpty {
-                            Text("Нет плейлистов")
-                                .foregroundColor(manager.secondaryTextColor)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            List(playlists) { playlist in
-                                Button(action: {
-                                    onSelect(playlist)
-                                }) {
-                                    HStack {
-                                        Text(playlist.Name)
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(manager.appTextColor)
-                                        Spacer()
-                                        if let count = playlist.Count {
-                                            Text("\(count)")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(manager.secondaryTextColor)
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                                .listRowBackground(manager.cardBackgroundColor)
-                            }
-                            .listStyle(.plain)
-                            .scrollContentBackground(.hidden)
-                        }
-                    }
-                    .background(manager.backgroundColor)
-                }
-                // Нижние скруглённые углы уходят за край экрана, поэтому
-                // видна только верхняя дуга — как у обычной шторки.
-                .frame(height: geometry.size.height * 0.55 + 24)
-                .background(manager.backgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: 24))
-                .offset(y: 24)
-            }
-        }
-        .ignoresSafeArea()
-        .divoomCreatePlaylistAlert(manager: manager, isPresented: $isShowingCreatePlaylist, onCreated: onCreate)
     }
 }
