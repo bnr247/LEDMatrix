@@ -89,9 +89,11 @@ struct DivoomFeedView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 if items.isEmpty {
+                    let loaded = await loadAnimations(for: initialItems)
+                    loadedAnimations.merge(loaded) { _, new in new }
+
                     items = initialItems
                     currentStart = initialItems.count + 1
-                    preloadAnimations(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
                     scrollPositionId = selectedItemId
@@ -119,9 +121,12 @@ struct DivoomFeedView: View {
             if fetched.isEmpty {
                 hasMorePages = false
             } else {
+                // Страница появляется в фиде только с загруженными кадрами.
+                let loaded = await loadAnimations(for: fetched)
+                loadedAnimations.merge(loaded) { _, new in new }
+
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
-                preloadAnimations(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
@@ -129,18 +134,39 @@ struct DivoomFeedView: View {
         isLoadingMore = false
     }
     
-    private func preloadAnimations(for list: [DivoomFileItem]) {
-        for item in list {
-            guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { continue }
-            Task.detached(priority: .background) {
-                // Parse or load data on background thread
-                if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
-                    await MainActor.run {
-                        self.loadedAnimations[fileId] = result.image
+    /// Грузит кадры страницы до того, как она появится в фиде, чтобы не
+    /// показывать блок пустых плейсхолдеров в случайном порядке.
+    private func loadAnimations(for list: [DivoomFileItem]) async -> [String: UIImage] {
+        let targets = list.compactMap { item -> (key: String, fileId: String)? in
+            guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { return nil }
+            return (fileId, fileId)
+        }
+        guard !targets.isEmpty else { return [:] }
+
+        var loaded: [String: UIImage] = [:]
+        let batchSize = 8
+        var index = 0
+
+        while index < targets.count {
+            let end = min(index + batchSize, targets.count)
+            let batch = targets[index..<end]
+
+            await withTaskGroup(of: (String, UIImage?).self) { group in
+                for target in batch {
+                    group.addTask {
+                        let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: target.fileId)
+                        return (target.key, result?.image)
                     }
                 }
+                for await (key, image) in group {
+                    if let image { loaded[key] = image }
+                }
             }
+
+            index = end
         }
+
+        return loaded
     }
     
     private func preloadAvatars(for list: [DivoomFileItem]) {

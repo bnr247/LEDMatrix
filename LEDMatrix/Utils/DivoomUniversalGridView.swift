@@ -239,6 +239,10 @@ struct DivoomUniversalGridView: View {
         let endNum = currentStart + pageSize - 1
         do {
             let result = try await fetchItems(currentStart, endNum, fileSortOption)
+            // Сначала грузим кадры, чтобы pageSize ячеек не появлялись пустыми.
+            let loaded = await loadAnimations(for: result.items)
+            applyLoadedAnimations(loaded)
+
             items = result.items
             isLoading = false
             
@@ -247,8 +251,6 @@ struct DivoomUniversalGridView: View {
             } else {
                 currentStart = items.count + 1
             }
-            
-            fetchAnimations(for: result.items)
         } catch {
             errorMessage = "Ошибка загрузки: \(error.localizedDescription)"
             isLoading = false
@@ -269,8 +271,10 @@ struct DivoomUniversalGridView: View {
                 let uniqueNewItems = result.items.filter { !existingIds.contains($0.id) }
                 
                 if !uniqueNewItems.isEmpty {
+                    // Добавляем страницу в сетку только с уже загруженными кадрами.
+                    let loaded = await loadAnimations(for: uniqueNewItems)
+                    applyLoadedAnimations(loaded)
                     items.append(contentsOf: uniqueNewItems)
-                    fetchAnimations(for: uniqueNewItems)
                 }
                 
                 if result.items.isEmpty {
@@ -293,6 +297,9 @@ struct DivoomUniversalGridView: View {
         
         do {
             let result = try await fetchItems(currentStart, endNum, fileSortOption)
+            let loaded = await loadAnimations(for: result.items)
+            applyLoadedAnimations(loaded)
+
             items = result.items
             
             if result.items.isEmpty {
@@ -300,23 +307,50 @@ struct DivoomUniversalGridView: View {
             } else {
                 currentStart = items.count + 1
             }
-            
-            fetchAnimations(for: result.items)
         } catch {}
     }
     
-    private func fetchAnimations(for list: [DivoomFileItem]) {
-        for item in list {
-            guard let fileId = item.FileId, !fileId.isEmpty else { continue }
-            Task.detached(priority: .background) {
-                if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
-                    await MainActor.run {
-                        self.loadedAnimations[fileId] = result.image
-                        self.firstBytes[fileId] = result.firstByte
-                        self.rawSpeeds[fileId] = result.rawSpeed
+    /// Грузит кадры страницы до того, как она появится в сетке.
+    /// Параллельность ограничена, чтобы не держать в памяти сразу слишком
+    /// много animated UIImage за раз. Порядок элементов в сетке при этом стабильный.
+    private func loadAnimations(for list: [DivoomFileItem]) async -> [String: DivoomAnimationResult] {
+        let targets = list.compactMap { item -> (key: String, fileId: String)? in
+            guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { return nil }
+            return (fileId, fileId)
+        }
+        guard !targets.isEmpty else { return [:] }
+
+        var loaded: [String: DivoomAnimationResult] = [:]
+        let batchSize = 8
+        var index = 0
+
+        while index < targets.count {
+            let end = min(index + batchSize, targets.count)
+            let batch = targets[index..<end]
+
+            await withTaskGroup(of: (String, DivoomAnimationResult?).self) { group in
+                for target in batch {
+                    group.addTask {
+                        let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: target.fileId)
+                        return (target.key, result)
                     }
                 }
+                for await (key, result) in group {
+                    if let result { loaded[key] = result }
+                }
             }
+
+            index = end
+        }
+
+        return loaded
+    }
+
+    private func applyLoadedAnimations(_ loaded: [String: DivoomAnimationResult]) {
+        for (key, result) in loaded {
+            loadedAnimations[key] = result.image
+            firstBytes[key] = result.firstByte
+            rawSpeeds[key] = result.rawSpeed
         }
     }
 }
