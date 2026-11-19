@@ -147,6 +147,24 @@ struct DivoomUserAllInfoResponse: Codable {
     let GalleryMatchName: String?
 }
 
+/// Один тэг в результатах поиска. `GalleryList` содержит несколько превью
+/// анимаций, которые Divoom отдаёт вместе с тэгом.
+struct DivoomTag: Identifiable, Codable {
+    var id: String { TagName }
+
+    let TagName: String
+    let FollowCnt: Int?
+    let GalleryCnt: Int?
+    let IsFollow: Int?
+    let GalleryList: [DivoomFileItem]?
+}
+
+struct DivoomTagResponse: Codable {
+    let ReturnCode: Int
+    let ReturnMessage: String
+    let TagList: [DivoomTag]?
+}
+
 struct DivoomPlaylistResponse: Codable {
     let ReturnCode: Int
     let ReturnMessage: String
@@ -760,5 +778,119 @@ extension MatrixManager {
         }
             
         return response
+    }
+
+    // MARK: - Поиск по тэгам
+
+    func fetchDivoomTags(tagKey: String, startNum: Int = 1, endNum: Int = 30) async throws -> [DivoomTag] {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/Tag/SearchTagMoreV2")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "UserId": session.userId,
+            "TagKeyEn": "",
+            "Command": "Tag/SearchTagMoreV2",
+            "EndNum": endNum,
+            "FileSize": 1,
+            "StartNum": startNum,
+            "TagKey": tagKey
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomTagResponse.self, from: data)
+
+        if let retryResult = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.fetchDivoomTags(tagKey: tagKey, startNum: startNum, endNum: endNum)
+        }) {
+            return retryResult
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response.TagList ?? []
+    }
+
+    func fetchDivoomTagImages(tagName: String, startNum: Int, endNum: Int, fileSort: Int = 1, refreshIndex: Int = 0) async throws -> DivoomAlbumImageListResponse {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/Tag/GetTagGalleryListV3")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "UserId": session.userId,
+            "EndNum": endNum,
+            "Command": "Tag/GetTagGalleryListV3",
+            "Version": 19,
+            "FileSize": 1,
+            "FileType": 5,
+            "StartNum": startNum,
+            "RefreshIndex": refreshIndex,
+            "FileSort": fileSort,
+            "TagName": tagName
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(DivoomAlbumImageListResponse.self, from: data)
+
+        if let retryResult = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.fetchDivoomTagImages(tagName: tagName, startNum: startNum, endNum: endNum, fileSort: fileSort, refreshIndex: refreshIndex)
+        }) {
+            return retryResult
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage])
+        }
+
+        return response
+    }
+
+    func toggleDivoomTagFollow(tagName: String, isFollow: Int) async throws {
+        let session = try await getValidDivoomSession()
+        let url = URL(string: "https://appin.divoom-gz.com/Tag/Follow")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "Token": session.token,
+            "UserId": session.userId,
+            "TagName": tagName,
+            "IsFollow": isFollow,
+            "Command": "Tag/Follow"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        struct FollowTagResponse: Codable {
+            let ReturnCode: Int
+            let ReturnMessage: String
+        }
+
+        let response = try JSONDecoder().decode(FollowTagResponse.self, from: data)
+
+        if let _ = try await handleTokenMismatchError(responseCode: response.ReturnCode, responseMessage: response.ReturnMessage, retryBlock: {
+            try await self.toggleDivoomTagFollow(tagName: tagName, isFollow: isFollow)
+        }) {
+            return
+        }
+
+        guard response.ReturnCode == 0 else {
+            throw NSError(domain: "DivoomAPI", code: response.ReturnCode, userInfo: [NSLocalizedDescriptionKey: response.ReturnMessage.isEmpty ? "Ошибка подписки на тэг" : response.ReturnMessage])
+        }
     }
 }

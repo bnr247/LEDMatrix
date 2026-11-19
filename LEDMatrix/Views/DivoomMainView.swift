@@ -33,32 +33,65 @@ struct DivoomMainView: View {
     @ObservedObject var manager: MatrixManager
     @State private var selectedSection: DivoomSection = .categories
 
+    // Поиск: значок в навбаре переключает режим, крестик возвращает
+    // к той вкладке, на которой пользователь был до входа в поиск.
+    @State private var isSearching = false
+    @State private var searchQuery = ""
+    @FocusState private var isSearchFieldFocused: Bool
+
     var body: some View {
+        Group {
+            if isSearching {
+                searchContent
+            } else {
+                tabsContent
+            }
+        }
+        .background(manager.backgroundColor)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(manager.cardBackgroundColor)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .tint(manager.accentColor)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: toggleSearch) {
+                    Image(systemName: isSearching ? "xmark" : "magnifyingglass")
+                        .font(.body)
+                        .foregroundColor(manager.appTextColor)
+                }
+                .accessibilityLabel(isSearching ? "Закрыть поиск" : "Поиск")
+            }
+        }
+    }
+
+    // MARK: - Обычные вкладки Divoom
+
+    private var tabsContent: some View {
         TabView(selection: $selectedSection) {
             DivoomCategoriesView(manager: manager)
                 .tabItem {
                     Label(DivoomSection.categories.rawValue, systemImage: DivoomSection.categories.iconName)
                 }
                 .tag(DivoomSection.categories)
-            
+
             DivoomAlbumsView(manager: manager)
                 .tabItem {
                     Label(DivoomSection.albums.rawValue, systemImage: DivoomSection.albums.iconName)
                 }
                 .tag(DivoomSection.albums)
-            
+
             DivoomLikesView(manager: manager)
                 .tabItem {
                     Label(DivoomSection.favorites.rawValue, systemImage: DivoomSection.favorites.iconName)
                 }
                 .tag(DivoomSection.favorites)
-            
+
             DivoomPlaylistsView(manager: manager)
                 .tabItem {
                     Label(DivoomSection.playlists.rawValue, systemImage: DivoomSection.playlists.iconName)
                 }
                 .tag(DivoomSection.playlists)
-            
+
             VStack(spacing: 10) {
                 Image(systemName: DivoomSection.authors.iconName)
                     .font(.system(size: 34))
@@ -77,10 +110,61 @@ struct DivoomMainView: View {
                 }
                 .tag(DivoomSection.authors)
         }
+    }
+
+    // MARK: - Режим поиска
+
+    private var searchContent: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(manager.secondaryTextColor)
+
+                TextField("Поиск по Divoom", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                    .foregroundColor(manager.appTextColor)
+                    .focused($isSearchFieldFocused)
+                    .submitLabel(.search)
+                    .onSubmit {
+                        isSearchFieldFocused = false
+                    }
+
+                if !searchQuery.isEmpty {
+                    Button(action: { searchQuery = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 15))
+                            .foregroundColor(manager.secondaryTextColor)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Очистить поиск")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(manager.backgroundColor)
+
+            Rectangle()
+                .fill(manager.dividerColor)
+                .frame(height: 0.5)
+
+            DivoomSearchView(manager: manager, query: searchQuery)
+        }
         .background(manager.backgroundColor)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(manager.cardBackgroundColor)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .tint(manager.accentColor)
+        .onAppear {
+            isSearchFieldFocused = true
+        }
+    }
+
+    private func toggleSearch() {
+        withAnimation {
+            isSearching.toggle()
+            if isSearching {
+                isSearchFieldFocused = true
+            } else {
+                searchQuery = ""
+                isSearchFieldFocused = false
+            }
+        }
     }
 }
