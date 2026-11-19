@@ -346,23 +346,20 @@ private struct DivoomTagCard: View {
                 .buttonStyle(.plain)
             }
 
-            if previewItems.isEmpty {
-                Text("Нет анимаций")
-                    .font(.caption)
-                    .foregroundColor(manager.secondaryTextColor)
-            } else {
-                HStack(spacing: 6) {
-                    ForEach(previewItems) { item in
-                        DivoomTagPreviewLink(
-                            manager: manager,
-                            tag: tag,
-                            items: previewItems,
-                            selectedItem: item,
-                            image: previewImages[item.FileId ?? ""]
-                        )
-                    }
+            DivoomPreviewThumbnails(
+                manager: manager,
+                title: "#\(tag.TagName)",
+                items: previewItems,
+                images: previewImages,
+                fetchMoreItems: { start, end in
+                    let response = try await manager.fetchDivoomTagImages(
+                        tagName: tag.TagName,
+                        startNum: start,
+                        endNum: end
+                    )
+                    return response.FileList ?? []
                 }
-            }
+            )
         }
         .padding(12)
         .background(
@@ -373,37 +370,6 @@ private struct DivoomTagCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(manager.cardBorderColor, lineWidth: 1)
         )
-    }
-}
-
-private struct DivoomTagPreviewLink: View {
-    @ObservedObject var manager: MatrixManager
-    let tag: DivoomTag
-    let items: [DivoomFileItem]
-    let selectedItem: DivoomFileItem
-    let image: UIImage?
-
-    var body: some View {
-        NavigationLink {
-            DivoomFeedView(
-                title: "#\(tag.TagName)",
-                manager: manager,
-                initialItems: items,
-                selectedItemId: selectedItem.id,
-                fetchMoreItems: { start, end in
-                    let response = try await manager.fetchDivoomTagImages(
-                        tagName: tag.TagName,
-                        startNum: start,
-                        endNum: end
-                    )
-                    return response.FileList ?? []
-                }
-            )
-        } label: {
-            AnimatedImageView(manager: manager, item: selectedItem, image: image)
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
     }
 }
 

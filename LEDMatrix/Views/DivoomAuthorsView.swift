@@ -138,6 +138,7 @@ private struct DivoomExpertCard: View {
 
     @State private var isFollowing: Bool
     @State private var fansCount: Int
+    @State private var previewImages: [String: UIImage] = [:]
 
     init(manager: MatrixManager, expert: DivoomExpert) {
         self.manager = manager
@@ -153,6 +154,10 @@ private struct DivoomExpertCard: View {
             isFollowing: $isFollowing,
             fansCount: $fansCount
         )
+    }
+
+    private var previewItems: [DivoomFileItem] {
+        Array((expert.FileList ?? []).prefix(3))
     }
 
     var body: some View {
@@ -202,6 +207,21 @@ private struct DivoomExpertCard: View {
             }
             .buttonStyle(.plain)
             .padding(.leading, 58)
+
+            DivoomPreviewThumbnails(
+                manager: manager,
+                title: expert.NickName,
+                items: previewItems,
+                images: previewImages,
+                fetchMoreItems: { start, end in
+                    let response = try await manager.fetchDivoomSomeoneImages(
+                        userId: expert.UserId,
+                        startNum: start,
+                        endNum: end
+                    )
+                    return response.FileList ?? []
+                }
+            )
         }
         .padding(12)
         .background(
@@ -212,6 +232,17 @@ private struct DivoomExpertCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(manager.cardBorderColor, lineWidth: 1)
         )
+        .task(id: expert.UserId) {
+            for item in previewItems {
+                guard let fileId = item.FileId, !fileId.isEmpty,
+                      previewImages[fileId] == nil else { continue }
+                let loaded = await Task.detached(priority: .background) {
+                    await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId)
+                }.value
+                guard !Task.isCancelled else { return }
+                previewImages[fileId] = loaded?.image
+            }
+        }
     }
 }
 
