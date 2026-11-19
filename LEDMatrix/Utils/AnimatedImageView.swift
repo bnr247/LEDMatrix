@@ -17,8 +17,11 @@ struct AnimatedImageView: View {
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
+    @State private var didRequestFullAnimation = false
 
-    private var displayedImage: UIImage? { image ?? loadedImage }
+    // Полная анимация, загруженная ячейкой, имеет приоритет над переданным
+    // первым кадром — иначе обновление картинки не будет видно.
+    private var displayedImage: UIImage? { loadedImage ?? image }
 
     init(manager: MatrixManager, item: DivoomFileItem, image: UIImage?) {
         self.manager = manager
@@ -55,7 +58,12 @@ struct AnimatedImageView: View {
                 }
             }
             .task(id: item.FileId ?? "") {
-                guard image == nil, displayedImage == nil else { return }
+                guard !didRequestFullAnimation else { return }
+                // Уже полная анимация из превью — ничего догружать не нужно.
+                if let image, image.images != nil {
+                    didRequestFullAnimation = true
+                    return
+                }
                 await loadAnimation()
             }
 
@@ -104,7 +112,9 @@ struct AnimatedImageView: View {
         isLoading = true
         defer { isLoading = false }
 
-        if let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
+        if displayedImage == nil,
+           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
+        {
             guard !Task.isCancelled else { return }
             loadedImage = firstFrame
         }
@@ -112,6 +122,7 @@ struct AnimatedImageView: View {
         if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
             guard !Task.isCancelled else { return }
             loadedImage = result.image
+            didRequestFullAnimation = true
         }
     }
 

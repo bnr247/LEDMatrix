@@ -33,6 +33,7 @@ struct DivoomFeedView: View {
     }
     
     @State private var items: [DivoomFileItem] = []
+    @State private var prefetchedAnimations: [String: UIImage] = [:]
     @State private var loadedAvatars: [String: UIImage] = [:]
     @State private var isLoadingMore = false
     @State private var hasMorePages = true
@@ -48,7 +49,7 @@ struct DivoomFeedView: View {
                         DivoomFeedItemView(
                             manager: manager,
                             item: item,
-                            animationImage: nil,
+                            animationImage: prefetchedAnimations[item.FileId ?? ""],
                             avatarImage: loadedAvatars[item.UserHeaderId ?? ""]
                         )
                         .id(item.id)
@@ -90,6 +91,7 @@ struct DivoomFeedView: View {
                 if items.isEmpty {
                     items = initialItems
                     currentStart = initialItems.count + 1
+                    prefetchFirstFrames(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
                     scrollPositionId = selectedItemId
@@ -119,6 +121,7 @@ struct DivoomFeedView: View {
             } else {
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
+                prefetchFirstFrames(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
@@ -126,6 +129,52 @@ struct DivoomFeedView: View {
         isLoadingMore = false
     }
     
+    /// Подготавливает первые кадры для нескольких следующих постов, чтобы
+    /// ячейки успевали показать картинку раньше, чем пользователь до них доскроллит.
+    private func prefetchFirstFrames(for list: [DivoomFileItem]) {
+        let targets = list.compactMap { item -> String? in
+            guard let fileId = item.FileId, !fileId.isEmpty,
+                  prefetchedAnimations[fileId] == nil else { return nil }
+            return fileId
+        }
+        guard !targets.isEmpty else { return }
+
+        Task.detached(priority: .utility) {
+            var loaded: [String: UIImage] = [:]
+            let batchSize = 12
+            var index = 0
+
+            while index < targets.count {
+                let end = min(index + batchSize, targets.count)
+                let batch = targets[index..<end]
+
+                let batchLoaded = await withTaskGroup(
+                    of: (String, UIImage?).self,
+                    returning: [String: UIImage].self
+                ) { group in
+                    for fileId in batch {
+                        group.addTask {
+                            let image = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
+                            return (fileId, image)
+                        }
+                    }
+                    var result: [String: UIImage] = [:]
+                    for await (fileId, image) in group {
+                        if let image { result[fileId] = image }
+                    }
+                    return result
+                }
+                loaded.merge(batchLoaded) { _, new in new }
+                index = end
+            }
+
+            let finalLoaded = loaded
+            await MainActor.run {
+                self.prefetchedAnimations.merge(finalLoaded) { _, new in new }
+            }
+        }
+    }
+
     private func preloadAvatars(for list: [DivoomFileItem]) {
         for item in list {
             guard let headerId = item.UserHeaderId, !headerId.isEmpty, loadedAvatars[headerId] == nil else { continue }
@@ -157,8 +206,10 @@ struct DivoomFeedItemView: View {
     @State private var toastMessage: String? = nil
     @State private var loadedAnimationImage: UIImage?
     @State private var isLoadingAnimation = false
+    @State private var didRequestFullAnimation = false
 
-    private var displayedAnimationImage: UIImage? { animationImage ?? loadedAnimationImage }
+    // Полная анимация, догруженная постом, заменяет переданный первый кадр.
+    private var displayedAnimationImage: UIImage? { loadedAnimationImage ?? animationImage }
 
     init(manager: MatrixManager, item: DivoomFileItem, animationImage: UIImage?, avatarImage: UIImage?) {
         self.manager = manager
@@ -227,7 +278,11 @@ struct DivoomFeedItemView: View {
             }
             .frame(maxWidth: .infinity)
             .task(id: item.FileId ?? "") {
-                guard animationImage == nil, displayedAnimationImage == nil else { return }
+                guard !didRequestFullAnimation else { return }
+                if let animationImage, animationImage.images != nil {
+                    didRequestFullAnimation = true
+                    return
+                }
                 await loadAnimation()
             }
             
@@ -341,7 +396,9 @@ struct DivoomFeedItemView: View {
         isLoadingAnimation = true
         defer { isLoadingAnimation = false }
 
-        if let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
+        if displayedAnimationImage == nil,
+           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
+        {
             guard !Task.isCancelled else { return }
             loadedAnimationImage = firstFrame
         }
@@ -349,6 +406,7 @@ struct DivoomFeedItemView: View {
         if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
             guard !Task.isCancelled else { return }
             loadedAnimationImage = result.image
+            didRequestFullAnimation = true
         }
     }
 
