@@ -18,6 +18,7 @@ struct AnimatedImageView: View {
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
     @State private var didRequestFullAnimation = false
+    @State private var isVisible = false
 
     // Полная анимация, загруженная ячейкой, имеет приоритет над переданным
     // первым кадром — иначе обновление картинки не будет видно.
@@ -39,7 +40,7 @@ struct AnimatedImageView: View {
             // Как в галерее iOS: квадратная миниатюра 1:1, заполняющая всю ширину колонки
             ZStack {
                 if let displayedImage {
-                    AnimatedImageRepresentable(image: displayedImage)
+                    AnimatedImageRepresentable(image: displayedImage, isAnimating: isVisible)
                         .frame(maxWidth: .infinity)
                         .aspectRatio(1, contentMode: .fit)
                         .background(Color.black)
@@ -103,6 +104,8 @@ struct AnimatedImageView: View {
         }
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
     }
 
     /// Грузит только видимую ячейку. Сначала быстрый первый кадр, затем
@@ -151,6 +154,8 @@ struct AnimatedImageView: View {
 
 struct AnimatedImageRepresentable: UIViewRepresentable {
     let image: UIImage?
+    /// Ячейки за пределами экрана не должны тратить CPU на анимацию.
+    var isAnimating: Bool = true
 
     func makeUIView(context: Context) -> UIView {
         let container = UIView()
@@ -186,31 +191,36 @@ struct AnimatedImageRepresentable: UIViewRepresentable {
             gridOverlayView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
 
-        updateImageView(imageView, with: image)
+        updateImageView(imageView, with: image, isAnimating: isAnimating)
         return container
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
         guard let imageView = uiView.subviews.first(where: { $0 is UIImageView }) as? UIImageView else { return }
-        updateImageView(imageView, with: image)
+        updateImageView(imageView, with: image, isAnimating: isAnimating)
     }
 
-    private func updateImageView(_ imageView: UIImageView, with image: UIImage?) {
+    private func updateImageView(_ imageView: UIImageView, with image: UIImage?, isAnimating: Bool) {
         // SwiftUI может вызвать updateUIView на каждом изменении скролла. если
         // картинка та же, заново ставить animationImages и startAnimating —
         // значит сбрасывать анимацию и получать подтормаживания при листании.
-        if imageView.image === image { return }
-
-        imageView.image = image
-        guard let image, let frames = image.images, !frames.isEmpty else {
-            imageView.stopAnimating()
-            imageView.animationImages = nil
-            return
+        if imageView.image !== image {
+            imageView.image = image
+            guard let image, let frames = image.images, !frames.isEmpty else {
+                imageView.stopAnimating()
+                imageView.animationImages = nil
+                return
+            }
+            imageView.animationImages = frames
+            imageView.animationDuration = image.duration
         }
 
-        imageView.animationImages = frames
-        imageView.animationDuration = image.duration
-        imageView.startAnimating()
+        guard imageView.animationImages != nil else { return }
+        if isAnimating {
+            if !imageView.isAnimating { imageView.startAnimating() }
+        } else if imageView.isAnimating {
+            imageView.stopAnimating()
+        }
     }
 }
 
