@@ -52,14 +52,6 @@ enum DivoomAnimationLoader {
         return cache
     }()
 
-    // Сырые файлы кэшируются, чтобы первый кадр и полная анимация не качали
-    // один и тот же URL дважды.
-    private static let rawDataCache: NSCache<NSString, NSData> = {
-        let cache = NSCache<NSString, NSData>()
-        cache.countLimit = 300
-        return cache
-    }()
-
     // MARK: - Публичные методы
 
     /// Быстрый статичный первый кадр — для мгновенного отображения сетки.
@@ -98,24 +90,54 @@ enum DivoomAnimationLoader {
 
     // MARK: - Загрузка и разбор
 
-    private static func fetchData(_ fileId: String, key: NSString) async -> Data? {
-        if let cached = rawDataCache.object(forKey: key) {
-            return cached as Data
-        }
+    /// Сетка, фид и видимые ячейки часто просят один и тот же fileId
+    /// одновременно. Без координатора каждый из них качал бы файл заново.
+    private actor DivoomDataFetchCoordinator {
+        // Сырые файлы кэшируются, чтобы первый кадр и полная анимация не качали
+        // один и тот же URL дважды.
+        private let rawDataCache: NSCache<NSString, NSData> = {
+            let cache = NSCache<NSString, NSData>()
+            cache.countLimit = 300
+            return cache
+        }()
+        private var inFlight: [String: Task<Data?, Never>] = [:]
 
-        guard let url = URL(string: "https://fin.divoom-gz.com/" + fileId) else { return nil }
+        func data(for fileId: String, key: NSString) async -> Data? {
+            if let cached = rawDataCache.object(forKey: key) {
+                return cached as Data
+            }
 
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard let httpResp = response as? HTTPURLResponse,
-                  httpResp.statusCode == 200,
-                  !data.isEmpty else { return nil }
+            if let existing = inFlight[fileId] {
+                return await existing.value
+            }
 
-            rawDataCache.setObject(data as NSData, forKey: key)
+            let task = Task<Data?, Never> {
+                guard let url = URL(string: "https://fin.divoom-gz.com/" + fileId) else { return nil }
+
+                do {
+                    let (data, response) = try await URLSession.shared.data(from: url)
+                    guard let httpResp = response as? HTTPURLResponse,
+                          httpResp.statusCode == 200,
+                          !data.isEmpty else { return nil }
+
+                    rawDataCache.setObject(data as NSData, forKey: key)
+                    return data
+                } catch {
+                    return nil
+                }
+            }
+
+            inFlight[fileId] = task
+            let data = await task.value
+            inFlight[fileId] = nil
             return data
-        } catch {
-            return nil
         }
+    }
+
+    private static let dataCoordinator = DivoomDataFetchCoordinator()
+
+    private static func fetchData(_ fileId: String, key: NSString) async -> Data? {
+        await dataCoordinator.data(for: fileId, key: key)
     }
 
     static func parseAnimationData(_ responseData: Data) -> DivoomAnimationResult? {

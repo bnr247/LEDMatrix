@@ -46,6 +46,7 @@ struct DivoomFeedView: View {
     @State private var lastSnappedId: String? = nil
     @State private var hapticTask: Task<Void, Never>?
     @State private var feedbackGenerator = UIImpactFeedbackGenerator(style: .rigid)
+    @State private var loadGeneration = 0
     private let pageSize = 30
     
     var body: some View {
@@ -112,9 +113,10 @@ struct DivoomFeedView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 if items.isEmpty {
+                    loadGeneration += 1
                     items = initialItems
                     currentStart = initialItems.count + 1
-                    preloadAnimations(for: initialItems)
+                    prefetchFirstFrames(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
                     isRestoringPosition = true
@@ -148,7 +150,7 @@ struct DivoomFeedView: View {
             } else {
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
-                preloadAnimations(for: fetched)
+                prefetchFirstFrames(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
@@ -156,28 +158,77 @@ struct DivoomFeedView: View {
         isLoadingMore = false
     }
     
-    private func preloadAnimations(for list: [DivoomFileItem]) {
-        for item in list {
-            guard let fileId = item.FileId, !fileId.isEmpty, loadedAnimations[fileId] == nil else { continue }
-            Task.detached(priority: .background) {
-                // Parse or load data on background thread
-                if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
-                    await MainActor.run {
-                        self.loadedAnimations[fileId] = result.image
+    /// Первые кадры постов грузятся порциями строго сверху вниз: посты
+    /// появляются сразу, а не ждут разбора всех 30 полных анимаций.
+    private func prefetchFirstFrames(for list: [DivoomFileItem]) {
+        let targets = list.enumerated().compactMap { index, item -> (order: Int, fileId: String)? in
+            guard let fileId = item.FileId, !fileId.isEmpty,
+                  loadedAnimations[fileId] == nil else { return nil }
+            return (index, fileId)
+        }
+        guard !targets.isEmpty else { return }
+
+        let generation = loadGeneration
+        Task.detached(priority: .utility) {
+            let batchSize = 6
+            var cursor = 0
+
+            while cursor < targets.count {
+                guard !Task.isCancelled else { return }
+                let end = min(cursor + batchSize, targets.count)
+                let batch = Array(targets[cursor..<end])
+                let fileIds = Dictionary(uniqueKeysWithValues: batch.map { ($0.order, $0.fileId) })
+
+                let ordered = await withTaskGroup(
+                    of: (Int, UIImage?).self,
+                    returning: [(String, UIImage)].self
+                ) { group in
+                    for target in batch {
+                        group.addTask {
+                            let image = await DivoomAnimationLoader.loadFirstFrame(from: target.fileId)
+                            return (target.order, image)
+                        }
+                    }
+
+                    var collected: [Int: UIImage] = [:]
+                    for await (order, image) in group {
+                        if let image { collected[order] = image }
+                    }
+
+                    return collected.keys.sorted().compactMap { order in
+                        guard let image = collected[order], let fileId = fileIds[order] else { return nil }
+                        return (fileId, image)
                     }
                 }
+
+                let batchLoaded = Dictionary(uniqueKeysWithValues: ordered)
+                await MainActor.run {
+                    guard generation == self.loadGeneration else { return }
+                    self.loadedAnimations.merge(batchLoaded) { _, new in new }
+                }
+                cursor = end
             }
         }
     }
     
+    /// Аватар — крошечная иконка 36pt, полный разбор сотен кадров здесь
+    /// не нужен. Берём только первый кадр.
     private func preloadAvatars(for list: [DivoomFileItem]) {
-        for item in list {
-            guard let headerId = item.UserHeaderId, !headerId.isEmpty, loadedAvatars[headerId] == nil else { continue }
-            Task.detached(priority: .background) {
-                if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: headerId) {
-                    await MainActor.run {
-                        self.loadedAvatars[headerId] = result.image
-                    }
+        let headerIds = Array(Set(list.compactMap { item -> String? in
+            guard let headerId = item.UserHeaderId, !headerId.isEmpty,
+                  loadedAvatars[headerId] == nil else { return nil }
+            return headerId
+        }))
+        guard !headerIds.isEmpty else { return }
+
+        let generation = loadGeneration
+        Task.detached(priority: .background) {
+            for headerId in headerIds {
+                guard !Task.isCancelled else { return }
+                guard let image = await DivoomAnimationLoader.loadFirstFrame(from: headerId) else { continue }
+                await MainActor.run {
+                    guard generation == self.loadGeneration else { return }
+                    self.loadedAvatars[headerId] = image
                 }
             }
         }
@@ -276,7 +327,7 @@ struct DivoomFeedItemView: View {
             // 2. Анимация поста (квадрат по ширине экрана)
             ZStack {
                 if let image = animationImage {
-                    AnimatedImageRepresentable(image: image)
+                    DivoomFullAnimationView(manager: manager, fileId: item.FileId, image: image)
                         .aspectRatio(1, contentMode: .fit)
                 } else {
                     Rectangle()

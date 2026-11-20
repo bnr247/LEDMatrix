@@ -11,10 +11,19 @@ import UIKit
 struct AnimatedImageView: View {
     @ObservedObject var manager: MatrixManager
     let item: DivoomFileItem
+    /// Быстрый первый кадр из сетки/фида. Полная анимация догружается
+    /// только для ячеек, которые realmente находятся на экране.
     let image: UIImage?
+
+    @State private var loadedImage: UIImage?
+    @State private var isLoading = false
+    @State private var didRequestFullAnimation = false
+    @State private var isVisible = false
 
     @State private var isLiked: Bool
     @State private var likeCount: Int
+
+    private var displayedImage: UIImage? { loadedImage ?? image }
 
     init(manager: MatrixManager, item: DivoomFileItem, image: UIImage?) {
         self.manager = manager
@@ -27,12 +36,36 @@ struct AnimatedImageView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Как в галерее iOS: квадратная миниатюра 1:1, заполняющая всю ширину колонки
-            AnimatedImageRepresentable(image: image)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
-                .background(Color.black)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            
+            ZStack {
+                if let displayedImage {
+                    AnimatedImageRepresentable(image: displayedImage, isAnimating: isVisible)
+                        .frame(maxWidth: .infinity)
+                        .aspectRatio(1, contentMode: .fit)
+                        .background(Color.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.15))
+                        .aspectRatio(1, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay {
+                            if isLoading {
+                                ProgressView()
+                                    .tint(manager.accentColor)
+                            }
+                        }
+                }
+            }
+            .task(id: item.FileId ?? "") {
+                guard !didRequestFullAnimation else { return }
+                // Уже полная анимация — догружать нечего.
+                if let image, image.images != nil {
+                    didRequestFullAnimation = true
+                    return
+                }
+                await loadAnimation()
+            }
+
             // Нижняя плашка (как подпись/инфо в iOS Фото)
             HStack(spacing: 0) {
                 Button(action: {
@@ -49,9 +82,9 @@ struct AnimatedImageView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                
+
                 Spacer(minLength: 0)
-                
+
                 if let commentCnt = item.CommentCnt {
                     HStack(spacing: 4) {
                         Image(systemName: "bubble.right.fill")
@@ -69,6 +102,30 @@ struct AnimatedImageView: View {
         }
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
+    }
+
+    /// Сначала показываем первый кадр (уже есть в кэше после подготовки сетки),
+    /// затем догружаем полную анимацию. Сырые данные при этом скачиваются
+    /// только один раз — `DivoomAnimationLoader` кэширует их по fileId.
+    private func loadAnimation() async {
+        guard let fileId = item.FileId, !fileId.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        if displayedImage == nil,
+           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
+        {
+            guard !Task.isCancelled else { return }
+            loadedImage = firstFrame
+        }
+
+        if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
+            guard !Task.isCancelled else { return }
+            loadedImage = result.image
+            didRequestFullAnimation = true
+        }
     }
 
     private func toggleLike() {
@@ -94,14 +151,66 @@ struct AnimatedImageView: View {
     }
 }
 
+/// Полная анимация поста в фиде: первый кадр уже передан, полная версия
+/// догружается только когда пост находится на экране.
+struct DivoomFullAnimationView: View {
+    let manager: MatrixManager
+    let fileId: String?
+    let image: UIImage?
+
+    @State private var loadedImage: UIImage?
+    @State private var didRequestFullAnimation = false
+    @State private var isVisible = false
+
+    private var displayedImage: UIImage? { loadedImage ?? image }
+
+    var body: some View {
+        ZStack {
+            if let displayedImage {
+                AnimatedImageRepresentable(image: displayedImage, isAnimating: isVisible)
+            } else {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.15))
+                    .overlay {
+                        ProgressView()
+                            .tint(manager.accentColor)
+                    }
+            }
+        }
+        .task(id: fileId ?? "") {
+            guard !didRequestFullAnimation else { return }
+            if let image, image.images != nil {
+                didRequestFullAnimation = true
+                return
+            }
+            guard let fileId, !fileId.isEmpty else { return }
+            if displayedImage == nil,
+               let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
+            {
+                guard !Task.isCancelled else { return }
+                loadedImage = firstFrame
+            }
+            if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
+                guard !Task.isCancelled else { return }
+                loadedImage = result.image
+                didRequestFullAnimation = true
+            }
+        }
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
+    }
+}
+
 struct AnimatedImageRepresentable: UIViewRepresentable {
     let image: UIImage?
+    /// Ячейки за пределами экрана не тратят CPU на анимацию.
+    var isAnimating: Bool = true
 
     func makeUIView(context: Context) -> UIView {
         let container = UIView()
         container.backgroundColor = .black
         container.clipsToBounds = true
-        
+
         let imageView = UIImageView()
         imageView.backgroundColor = .black
         imageView.contentMode = .scaleAspectFit
@@ -109,52 +218,57 @@ struct AnimatedImageRepresentable: UIViewRepresentable {
         imageView.layer.magnificationFilter = .nearest
         imageView.layer.minificationFilter = .nearest
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        
+
         container.addSubview(imageView)
-        
+
         let gridOverlayView = PixelGridView()
         gridOverlayView.backgroundColor = .clear
         gridOverlayView.isUserInteractionEnabled = false
         gridOverlayView.translatesAutoresizingMaskIntoConstraints = false
-        
+
         container.addSubview(gridOverlayView)
-        
+
         NSLayoutConstraint.activate([
             imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             imageView.topAnchor.constraint(equalTo: container.topAnchor),
             imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            
+
             gridOverlayView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             gridOverlayView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             gridOverlayView.topAnchor.constraint(equalTo: container.topAnchor),
             gridOverlayView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
-        
-        updateImageView(imageView, with: image)
+
+        updateImageView(imageView, with: image, isAnimating: isAnimating)
         return container
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
         guard let imageView = uiView.subviews.first(where: { $0 is UIImageView }) as? UIImageView else { return }
-        updateImageView(imageView, with: image)
+        updateImageView(imageView, with: image, isAnimating: isAnimating)
     }
 
-    private func updateImageView(_ imageView: UIImageView, with image: UIImage?) {
-        imageView.image = image
-        if let image = image, let frames = image.images {
-            let safeFrames = frames.compactMap { $0 }
-            if !safeFrames.isEmpty {
-                imageView.animationImages = safeFrames
-                imageView.animationDuration = image.duration
-                imageView.startAnimating()
-            } else {
+    private func updateImageView(_ imageView: UIImageView, with image: UIImage?, isAnimating: Bool) {
+        // SwiftUI вызывает updateUIView при каждом скролле. Если картинка та же,
+        // пересборка animationImages и startAnimating сбрасывают анимацию и
+        // получаются подтормаживания — этого здесь больше нет.
+        if imageView.image !== image {
+            imageView.image = image
+            guard let image, let frames = image.images, !frames.isEmpty else {
                 imageView.stopAnimating()
                 imageView.animationImages = nil
+                return
             }
-        } else {
+            imageView.animationImages = frames
+            imageView.animationDuration = image.duration
+        }
+
+        guard imageView.animationImages != nil else { return }
+        if isAnimating {
+            if !imageView.isAnimating { imageView.startAnimating() }
+        } else if imageView.isAnimating {
             imageView.stopAnimating()
-            imageView.animationImages = nil
         }
     }
 }
@@ -165,27 +279,27 @@ private class PixelGridView: UIView {
         let context = UIGraphicsGetCurrentContext()
         context?.setStrokeColor(UIColor(white: 0.3, alpha: 0.6).cgColor)
         context?.setLineWidth(0.5)
-        
+
         let cols = 16
         let rows = 16
         let dx = rect.width / CGFloat(cols)
         let dy = rect.height / CGFloat(rows)
-        
+
         for i in 1..<cols {
             let x = CGFloat(i) * dx
             context?.move(to: CGPoint(x: x, y: 0))
             context?.addLine(to: CGPoint(x: x, y: rect.height))
         }
-        
+
         for j in 1..<rows {
             let y = CGFloat(j) * dy
             context?.move(to: CGPoint(x: 0, y: y))
             context?.addLine(to: CGPoint(x: rect.width, y: y))
         }
-        
+
         context?.strokePath()
     }
-    
+
     override func layoutSubviews() {
         super.layoutSubviews()
         setNeedsDisplay()
