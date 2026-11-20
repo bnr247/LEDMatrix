@@ -52,28 +52,7 @@ struct TextControlView: View {
                     .opacity(isTextEmpty ? 0.45 : 1)
                     .accessibilityLabel("Отправить текст")
                 }
-                // Блок ввода оформлен как карточка «Яркость» на главном экране:
-                // фон карточки, обводка акцентом и лёгкая тень в декоративных темах.
-                .padding(.horizontal, 12)
-                .padding(.vertical, 12)
-                .if(manager.currentTheme.usesSystemAppearance) { content in
-                    content.background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(manager.cardBackgroundColor)
-                    )
-                }
-                .if(!manager.currentTheme.usesSystemAppearance) { content in
-                    content
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(manager.cardBackgroundColor)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(manager.accentColor.opacity(0.5), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
-                                )
-                        )
-                        .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
-                }
+                .padding(.vertical, 2)
             } header: {
                 Text("Сообщение")
                     .if(!manager.currentTheme.usesSystemAppearance) { content in
@@ -85,7 +64,24 @@ struct TextControlView: View {
                         content.foregroundColor(manager.secondaryTextColor)
                     }
             }
-            .listRowBackground(manager.cardBackgroundColor)
+            // Обводим только содержимое секции: заголовок «Сообщение» и
+            // описание под полем остаются снаружи, как у карточки «Яркость».
+            .listRowBackground(
+                Group {
+                    if manager.currentTheme.usesSystemAppearance {
+                        manager.cardBackgroundColor
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(manager.cardBackgroundColor)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(manager.accentColor.opacity(0.5), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                            )
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                    }
+                }
+            )
 
             Section {
                 ColorPicker("Цвет текста", selection: $manager.textColor, supportsOpacity: false)
