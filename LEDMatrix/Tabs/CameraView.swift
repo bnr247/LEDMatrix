@@ -136,9 +136,8 @@ struct CameraView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 120)
         }
-        .background(manager.backgroundColor.ignoresSafeArea())
+        .background(manager.backgroundColor.ignoresSafeArea(edges: .bottom))
         .tint(manager.accentColor)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {
@@ -150,7 +149,7 @@ struct CameraView: View {
                     .background(manager.toastBackgroundColor)
                     .cornerRadius(20)
                     .shadow(radius: 4)
-                    .padding(.bottom, 140)
+                    .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .animation(.easeInOut, value: toastMessage)
             }

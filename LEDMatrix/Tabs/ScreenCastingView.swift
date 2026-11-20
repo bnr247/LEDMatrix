@@ -103,9 +103,8 @@ struct ScreenCastingView: View {
             )
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
-            .padding(.bottom, 140)
         }
-        .background(manager.backgroundColor.ignoresSafeArea())
+        .background(manager.backgroundColor.ignoresSafeArea(edges: .bottom))
         .tint(manager.accentColor)
         .onAppear {
             Task {
