@@ -42,6 +42,7 @@ struct ScreenCastingView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 10)
             .padding(.top, 10)
             
@@ -104,7 +105,8 @@ struct ScreenCastingView: View {
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
         }
-        .background(manager.backgroundColor.ignoresSafeArea())
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
         .tint(manager.accentColor)
         .onAppear {
             Task {
