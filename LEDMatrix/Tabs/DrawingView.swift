@@ -11,7 +11,6 @@ import SwiftUI
 
 struct DrawingView: View {
     @ObservedObject var manager: MatrixManager
-    @Environment(\.dismiss) private var dismiss
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 16)
     
     enum DrawingTool {
@@ -221,31 +220,8 @@ struct DrawingView: View {
         }
         .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
-        // Возвращаем стандартный iOS NavigationBar
-        .themedNavigationTitle("Рисование", manager: manager)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    Task {
-                        await manager.stopDrawing()
-                        dismiss()
-                    }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .fontWeight(.medium)
-                        Text("Назад")
-                    }
-                }
-            }
-        }
-        .onAppear {
-            disableSwipeBack()
-        }
+        // Навигация системная: кнопка «Назад» и swipe-жест остаются стандартными.
         .onDisappear {
-            enableSwipeBack()
             Task {
                 await manager.stopDrawing()
             }
@@ -281,23 +257,6 @@ struct DrawingView: View {
                 manager.drawPixels[targetIndex] = targetColor
                 manager.sendDrawFrame()
             }
-        }
-    }
-    
-    private func disableSwipeBack() {
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let navController = windowScene.windows.first?.rootViewController?.findNavigationController()
-        {
-            navController.interactivePopGestureRecognizer?.isEnabled = false
-            navController.interactivePopGestureRecognizer?.delegate = nil
-        }
-    }
-    
-    private func enableSwipeBack() {
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let navController = windowScene.windows.first?.rootViewController?.findNavigationController()
-        {
-            navController.interactivePopGestureRecognizer?.isEnabled = true
         }
     }
 }

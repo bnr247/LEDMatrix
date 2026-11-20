@@ -985,39 +985,16 @@ extension View {
     }
 }
 
-/// Декоративные темы рисуют заголовок и кнопку «Назад» сами: системный
-/// навбар перекрашивается iOS и игнорирует UIKit appearance.
+/// Декоративные темы красят системный навбар, но оставляют системную кнопку
+/// «Назад» и swipe-жест — кастомная кнопка ломала навигацию.
 struct ThemedNavigationBarModifier: ViewModifier {
     @ObservedObject var manager: MatrixManager
     let title: Text
-    @Environment(\.presentationMode) private var presentationMode
-    @Environment(\.dismiss) private var dismiss
 
     func body(content: Content) -> some View {
         content
-            .navigationTitle("")
-            .navigationBarBackButtonHidden(presentationMode.wrappedValue.isPresented)
+            .navigationTitle(title.foregroundColor(manager.lightAccentColor))
             .tint(manager.lightAccentColor)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    title
-                        .foregroundColor(manager.lightAccentColor)
-                }
-                if presentationMode.wrappedValue.isPresented {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button {
-                            dismiss()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "chevron.backward")
-                                Text("Назад")
-                            }
-                            .foregroundColor(manager.lightAccentColor)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
             .background(UIKitThemeConfigurator(manager: manager))
     }
 }
