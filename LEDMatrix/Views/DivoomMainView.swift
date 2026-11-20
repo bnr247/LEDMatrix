@@ -120,14 +120,18 @@ struct DivoomMainView: View {
                             Button {
                                 selectedSection = section
                             } label: {
-                                VStack(spacing: 4) {
+                                VStack(spacing: 3) {
                                     Image(systemName: section.iconName)
-                                        .font(.system(size: 18, weight: section == selectedSection ? .semibold : .regular))
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .frame(width: 28, height: 22)
                                     Text(section.rawValue)
-                                        .font(.system(size: 10))
+                                        .font(.system(size: 10, weight: .medium))
+                                        .lineLimit(1)
+                                        .frame(height: 14)
                                 }
                                 .foregroundColor(section == selectedSection ? manager.accentColor : manager.lightAccentColor)
                                 .frame(maxWidth: .infinity)
+                                .frame(height: 46)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)

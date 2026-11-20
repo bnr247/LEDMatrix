@@ -45,6 +45,15 @@ struct LEDMatrixApp: App {
         navigationBar.largeTitleTextAttributes = titleAttributes(for: theme)
         navigationBar.tintColor = usesSystem ? nil : light
 
+        var backIndicator: UIImage?
+        if !usesSystem {
+            backIndicator = UIImage(systemName: "chevron.left")?
+                .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+                .withTintColor(light, renderingMode: .alwaysOriginal)
+        }
+        navigationBar.backIndicatorImage = backIndicator
+        navigationBar.backIndicatorTransitionMaskImage = backIndicator
+
         let barButton = UIBarButtonItem.appearance()
         barButton.tintColor = usesSystem ? nil : light
         let buttonTitleAttributes: [NSAttributedString.Key: Any]? = usesSystem ? nil : [.foregroundColor: light]
@@ -91,6 +100,13 @@ struct LEDMatrixApp: App {
         let accent = UIColor(MatrixManager.accentColor(for: theme))
         let card = UIColor(MatrixManager.cardBackgroundColor(for: theme))
 
+        var backIndicator: UIImage?
+        if !usesSystem {
+            backIndicator = UIImage(systemName: "chevron.left")?
+                .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+                .withTintColor(light, renderingMode: .alwaysOriginal)
+        }
+
         let windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
@@ -100,6 +116,7 @@ struct LEDMatrixApp: App {
                 view: window,
                 navigationAppearance: navigationAppearance,
                 navigationTintColor: usesSystem ? nil : light,
+                backIndicatorImage: backIndicator,
                 titleAttributes: titleAttributes(for: theme),
                 thumbColor: thumbTintColor(for: theme),
                 tabAppearance: tabAppearance,
@@ -116,6 +133,7 @@ struct LEDMatrixApp: App {
         view: UIView,
         navigationAppearance: UINavigationBarAppearance,
         navigationTintColor: UIColor?,
+        backIndicatorImage: UIImage?,
         titleAttributes: [NSAttributedString.Key: UIColor]?,
         thumbColor: UIColor?,
         tabAppearance: UITabBarAppearance,
@@ -131,6 +149,8 @@ struct LEDMatrixApp: App {
             navigationBar.titleTextAttributes = titleAttributes
             navigationBar.largeTitleTextAttributes = titleAttributes
             navigationBar.tintColor = navigationTintColor
+            navigationBar.backIndicatorImage = backIndicatorImage
+            navigationBar.backIndicatorTransitionMaskImage = backIndicatorImage
         }
         if let slider = view as? UISlider {
             slider.thumbTintColor = thumbColor
@@ -155,6 +175,7 @@ struct LEDMatrixApp: App {
                 view: subview,
                 navigationAppearance: navigationAppearance,
                 navigationTintColor: navigationTintColor,
+                backIndicatorImage: backIndicatorImage,
                 titleAttributes: titleAttributes,
                 thumbColor: thumbColor,
                 tabAppearance: tabAppearance,

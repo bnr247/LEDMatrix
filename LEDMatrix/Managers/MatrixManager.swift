@@ -985,16 +985,25 @@ extension View {
     }
 }
 
-/// Декоративные темы красят системный навбар, но оставляют системную кнопку
-/// «Назад» и swipe-жест — кастомная кнопка ломала навигацию.
+/// Системный `.navigationTitle` перекрашивается iOS в белый, поэтому заголовок
+/// рисуется отдельным `.principal`-элементом. Кнопка «Назад» и swipe-жест
+/// остаются системными — кастомная кнопка ломала навигацию.
 struct ThemedNavigationBarModifier: ViewModifier {
     @ObservedObject var manager: MatrixManager
     let title: Text
 
     func body(content: Content) -> some View {
         content
-            .navigationTitle(title.foregroundColor(manager.lightAccentColor))
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .tint(manager.lightAccentColor)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    title
+                        .foregroundColor(manager.lightAccentColor)
+                        .fixedSize()
+                }
+            }
             .background(UIKitThemeConfigurator(manager: manager))
     }
 }
@@ -1044,6 +1053,22 @@ struct UIKitThemeConfigurator: UIViewControllerRepresentable {
         func applyTheme() {
             let theme = manager.currentTheme
             LEDMatrixApp.applyThemeAppearance(theme)
+
+            // Прямо красим навбар, который содержит текущий экран: SwiftUI
+            // пересоздаёт его после appearance-прокси и сбрасывает tint.
+            if let bar = navigationController?.navigationBar {
+                let light = UIColor(MatrixManager.lightAccentColor(for: theme))
+                bar.tintColor = theme.usesSystemAppearance ? nil : light
+                var chevron: UIImage?
+                if !theme.usesSystemAppearance {
+                    chevron = UIImage(systemName: "chevron.left")?
+                        .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+                        .withTintColor(light, renderingMode: .alwaysOriginal)
+                }
+                bar.backIndicatorImage = chevron
+                bar.backIndicatorTransitionMaskImage = chevron
+            }
+
             Task { @MainActor in
                 LEDMatrixApp.refreshExistingControls(for: theme)
             }
