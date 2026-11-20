@@ -58,7 +58,7 @@ struct DivoomMainView: View {
         .background(manager.backgroundColor)
         .navigationBarTitleDisplayMode(.inline)
         .themedToolbarBackground(manager)
-        .tint(manager.accentColor)
+        .tint(manager.currentTheme.usesSystemAppearance ? Color.accentColor : manager.lightAccentColor)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if isSearching {

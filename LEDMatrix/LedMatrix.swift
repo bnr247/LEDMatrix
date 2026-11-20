@@ -14,8 +14,7 @@ struct LEDMatrixApp: App {
         WindowGroup {
             MainScreenView(manager: manager)
                 // Системная тема не переопределяет tint — берём дефолт iOS.
-                .tint(manager.currentTheme.usesSystemAppearance ? Color.accentColor : manager.accentColor)
-                // `nil` для системной темы означает следовать настройкам iOS.
+                .tint(manager.currentTheme.usesSystemAppearance ? Color.accentColor : manager.lightAccentColor)
                 .preferredColorScheme(manager.currentTheme.colorScheme)
                 .onAppear {
                     Self.applyThemeAppearance(manager.currentTheme)
@@ -28,54 +27,68 @@ struct LEDMatrixApp: App {
         }
     }
 
-    /// Единая точка настройки UIKit-аппеаранса. В декоративных темах
-    /// заголовки и контролы красятся акцентом — без белого.
-    /// Системная тема сбрасывает все значения к дефолтам iOS.
+    /// Единая точка настройки UIKit-аппеаранса.
+    /// Декоративные темы красят навигацию, таббар и кнопки светлым акцентом,
+    /// системная тема возвращает стандартные appearance-объекты iOS.
     private static func applyThemeAppearance(_ theme: AppTheme) {
-        let navigationBar = UINavigationBar.appearance()
-        let attributes = titleAttributes(for: theme)
+        let usesSystem = theme.usesSystemAppearance
+        let light = UIColor(MatrixManager.lightAccentColor(for: theme))
+        let secondary = UIColor(MatrixManager.secondaryTextColor(for: theme))
 
-        navigationBar.titleTextAttributes = attributes
-        navigationBar.largeTitleTextAttributes = attributes
-        navigationBar.tintColor = theme.usesSystemAppearance ? nil : UIColor(MatrixManager.accentColor(for: theme))
+        let navigationBar = UINavigationBar.appearance()
+        let navigationAppearance = navigationBarAppearance(for: theme)
+        navigationBar.standardAppearance = navigationAppearance
+        navigationBar.compactAppearance = navigationAppearance
+        navigationBar.scrollEdgeAppearance = navigationAppearance
+        navigationBar.titleTextAttributes = titleAttributes(for: theme)
+        navigationBar.largeTitleTextAttributes = titleAttributes(for: theme)
+        navigationBar.tintColor = usesSystem ? nil : light
+
+        let barButton = UIBarButtonItem.appearance()
+        barButton.tintColor = usesSystem ? nil : light
+        let buttonTitleAttributes: [NSAttributedString.Key: Any]? = usesSystem ? nil : [.foregroundColor: light]
+        barButton.setTitleTextAttributes(buttonTitleAttributes, for: .normal)
+        barButton.setTitleTextAttributes(buttonTitleAttributes, for: .highlighted)
+        barButton.setTitleTextAttributes(buttonTitleAttributes, for: .disabled)
+
         UISwitch.appearance().thumbTintColor = thumbTintColor(for: theme)
         UISlider.appearance().thumbTintColor = thumbTintColor(for: theme)
 
-        let usesSystem = theme.usesSystemAppearance
-        let accent = UIColor(MatrixManager.accentColor(for: theme))
-        let secondary = UIColor(MatrixManager.secondaryTextColor(for: theme))
-        let card = UIColor(MatrixManager.cardBackgroundColor(for: theme))
-
         let tabBar = UITabBar.appearance()
-        tabBar.tintColor = usesSystem ? nil : accent
+        let tabAppearance = tabBarAppearance(for: theme)
+        tabBar.standardAppearance = tabAppearance
+        if #available(iOS 15.0, *) {
+            tabBar.scrollEdgeAppearance = tabAppearance
+        }
+        tabBar.tintColor = usesSystem ? nil : light
         tabBar.unselectedItemTintColor = usesSystem ? nil : secondary
-        tabBar.barTintColor = usesSystem ? nil : card
-        tabBar.backgroundColor = usesSystem ? nil : card
+        tabBar.barTintColor = usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme))
+        tabBar.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme))
         tabBar.isTranslucent = usesSystem
         UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: secondary], for: .normal)
-        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: accent], for: .selected)
+        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: light], for: .selected)
 
         let alertView = UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self])
+        let accent = UIColor(MatrixManager.accentColor(for: theme))
         alertView.tintColor = usesSystem ? nil : accent
-        alertView.backgroundColor = usesSystem ? nil : card
-        UILabel.appearance(whenContainedInInstancesOf: [UIAlertController.self]).textColor = usesSystem ? nil : accent
+        alertView.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme))
+        UILabel.appearance(whenContainedInInstancesOf: [UIAlertController.self]).textColor = usesSystem ? nil : light
         let alertField = UITextField.appearance(whenContainedInInstancesOf: [UIAlertController.self])
-        alertField.textColor = usesSystem ? nil : accent
+        alertField.textColor = usesSystem ? nil : light
         alertField.tintColor = usesSystem ? nil : accent
         alertField.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.fieldBackgroundColor(for: theme))
         UIButton.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = usesSystem ? nil : accent
     }
 
     /// Appearance proxy не перекрашивает уже созданные UINavigationBar,
-    /// UISlider, UISwitch и UITabBar — обновляем их напрямую при смене темы.
+    /// UITabBar, UISlider и UISwitch — обновляем их напрямую при смене темы.
     @MainActor
     private static func refreshExistingControls(for theme: AppTheme) {
-        let attributes = titleAttributes(for: theme)
-        let thumbColor = thumbTintColor(for: theme)
         let usesSystem = theme.usesSystemAppearance
-        let tabAccentColor = UIColor(MatrixManager.accentColor(for: theme))
-        let tabSecondaryColor = UIColor(MatrixManager.secondaryTextColor(for: theme))
-        let tabBackgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
+        let navigationAppearance = navigationBarAppearance(for: theme)
+        let tabAppearance = tabBarAppearance(for: theme)
+        let light = UIColor(MatrixManager.lightAccentColor(for: theme))
+        let secondary = UIColor(MatrixManager.secondaryTextColor(for: theme))
 
         let windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -84,11 +97,14 @@ struct LEDMatrixApp: App {
         for window in windows {
             refresh(
                 view: window,
-                attributes: attributes,
-                thumbColor: thumbColor,
-                tabAccentColor: usesSystem ? nil : tabAccentColor,
-                tabSecondaryColor: usesSystem ? nil : tabSecondaryColor,
-                tabBackgroundColor: usesSystem ? nil : tabBackgroundColor,
+                navigationAppearance: navigationAppearance,
+                navigationTintColor: usesSystem ? nil : light,
+                titleAttributes: titleAttributes(for: theme),
+                thumbColor: thumbTintColor(for: theme),
+                tabAppearance: tabAppearance,
+                tabSelectedColor: usesSystem ? nil : light,
+                tabSecondaryColor: usesSystem ? nil : secondary,
+                tabBackgroundColor: usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme)),
                 usesSystemAppearance: usesSystem
             )
         }
@@ -97,16 +113,23 @@ struct LEDMatrixApp: App {
     @MainActor
     private static func refresh(
         view: UIView,
-        attributes: [NSAttributedString.Key: UIColor]?,
+        navigationAppearance: UINavigationBarAppearance,
+        navigationTintColor: UIColor?,
+        titleAttributes: [NSAttributedString.Key: UIColor]?,
         thumbColor: UIColor?,
-        tabAccentColor: UIColor?,
+        tabAppearance: UITabBarAppearance,
+        tabSelectedColor: UIColor?,
         tabSecondaryColor: UIColor?,
         tabBackgroundColor: UIColor?,
         usesSystemAppearance: Bool
     ) {
         if let navigationBar = view as? UINavigationBar {
-            navigationBar.titleTextAttributes = attributes
-            navigationBar.largeTitleTextAttributes = attributes
+            navigationBar.standardAppearance = navigationAppearance
+            navigationBar.compactAppearance = navigationAppearance
+            navigationBar.scrollEdgeAppearance = navigationAppearance
+            navigationBar.titleTextAttributes = titleAttributes
+            navigationBar.largeTitleTextAttributes = titleAttributes
+            navigationBar.tintColor = navigationTintColor
         }
         if let slider = view as? UISlider {
             slider.thumbTintColor = thumbColor
@@ -115,7 +138,11 @@ struct LEDMatrixApp: App {
             toggle.thumbTintColor = thumbColor
         }
         if let tabBar = view as? UITabBar {
-            tabBar.tintColor = tabAccentColor
+            tabBar.standardAppearance = tabAppearance
+            if #available(iOS 15.0, *) {
+                tabBar.scrollEdgeAppearance = tabAppearance
+            }
+            tabBar.tintColor = tabSelectedColor
             tabBar.unselectedItemTintColor = tabSecondaryColor
             tabBar.barTintColor = tabBackgroundColor
             tabBar.backgroundColor = tabBackgroundColor
@@ -125,14 +152,72 @@ struct LEDMatrixApp: App {
         for subview in view.subviews {
             refresh(
                 view: subview,
-                attributes: attributes,
+                navigationAppearance: navigationAppearance,
+                navigationTintColor: navigationTintColor,
+                titleAttributes: titleAttributes,
                 thumbColor: thumbColor,
-                tabAccentColor: tabAccentColor,
+                tabAppearance: tabAppearance,
+                tabSelectedColor: tabSelectedColor,
                 tabSecondaryColor: tabSecondaryColor,
                 tabBackgroundColor: tabBackgroundColor,
                 usesSystemAppearance: usesSystemAppearance
             )
         }
+    }
+
+    private static func navigationBarAppearance(for theme: AppTheme) -> UINavigationBarAppearance {
+        let appearance = UINavigationBarAppearance()
+
+        guard !theme.usesSystemAppearance else {
+            appearance.configureWithDefaultBackground()
+            return appearance
+        }
+
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
+        let titleColor = UIColor(MatrixManager.accentColor(for: theme))
+        appearance.titleTextAttributes = [.foregroundColor: titleColor]
+        appearance.largeTitleTextAttributes = [.foregroundColor: titleColor]
+
+        let buttonColor = UIColor(MatrixManager.lightAccentColor(for: theme))
+        let buttons = UIBarButtonItemAppearance()
+        let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: buttonColor]
+        buttons.normal.titleTextAttributes = attributes
+        buttons.highlighted.titleTextAttributes = attributes
+        buttons.disabled.titleTextAttributes = [.foregroundColor: buttonColor.withAlphaComponent(0.5)]
+        appearance.buttonAppearance = buttons
+        appearance.backButtonAppearance = buttons
+        appearance.doneButtonAppearance = buttons
+
+        return appearance
+    }
+
+    private static func tabBarAppearance(for theme: AppTheme) -> UITabBarAppearance {
+        let appearance = UITabBarAppearance()
+
+        guard !theme.usesSystemAppearance else {
+            appearance.configureWithDefaultBackground()
+            return appearance
+        }
+
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
+
+        let item = UITabBarItemAppearance()
+        let selected = UIColor(MatrixManager.lightAccentColor(for: theme))
+        let normal = UIColor(MatrixManager.secondaryTextColor(for: theme))
+        item.normal.titleTextAttributes = [.foregroundColor: normal]
+        item.selected.titleTextAttributes = [.foregroundColor: selected]
+        item.normal.iconColor = normal
+        item.selected.iconColor = selected
+        item.focused.titleTextAttributes = [.foregroundColor: selected]
+        item.focused.iconColor = selected
+
+        appearance.stackedLayoutAppearance = item
+        appearance.inlineLayoutAppearance = item
+        appearance.compactInlineLayoutAppearance = item
+
+        return appearance
     }
 
     private static func titleAttributes(for theme: AppTheme) -> [NSAttributedString.Key: UIColor]? {
