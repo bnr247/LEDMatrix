@@ -158,55 +158,43 @@ struct DivoomFeedView: View {
         isLoadingMore = false
     }
     
-    /// Первые кадры постов грузятся порциями строго сверху вниз: посты
-    /// появляются сразу, а не ждут разбора всех 30 полных анимаций.
+    /// Посты добавляются в список сразу. Первые кадры приходят по одному и
+    /// сразу подставляются в ячейку — нет ожидания всей пачки из 30 анимаций.
     private func prefetchFirstFrames(for list: [DivoomFileItem]) {
-        let targets = list.enumerated().compactMap { index, item -> (order: Int, fileId: String)? in
+        let targets = list.compactMap { item -> String? in
             guard let fileId = item.FileId, !fileId.isEmpty,
                   loadedAnimations[fileId] == nil else { return nil }
-            return (index, fileId)
+            return fileId
         }
         guard !targets.isEmpty else { return }
 
         let generation = loadGeneration
         Task.detached(priority: .utility) {
-            let batchSize = 6
-            var cursor = 0
+            await withTaskGroup(of: (String, UIImage?).self) { group in
+                var iterator = targets.makeIterator()
 
-            while cursor < targets.count {
-                guard !Task.isCancelled else { return }
-                let end = min(cursor + batchSize, targets.count)
-                let batch = Array(targets[cursor..<end])
-                let fileIds = Dictionary(uniqueKeysWithValues: batch.map { ($0.order, $0.fileId) })
+                func scheduleNext() {
+                    guard let fileId = iterator.next() else { return }
+                    group.addTask {
+                        (fileId, await DivoomAnimationLoader.loadFirstFrame(from: fileId))
+                    }
+                }
 
-                let ordered = await withTaskGroup(
-                    of: (Int, UIImage?).self,
-                    returning: [(String, UIImage)].self
-                ) { group in
-                    for target in batch {
-                        group.addTask {
-                            let image = await DivoomAnimationLoader.loadFirstFrame(from: target.fileId)
-                            return (target.order, image)
+                for _ in 0..<min(6, targets.count) { scheduleNext() }
+
+                for await (fileId, image) in group {
+                    guard !Task.isCancelled else {
+                        group.cancelAll()
+                        return
+                    }
+                    if let image {
+                        await MainActor.run {
+                            guard generation == self.loadGeneration else { return }
+                            self.loadedAnimations[fileId] = image
                         }
                     }
-
-                    var collected: [Int: UIImage] = [:]
-                    for await (order, image) in group {
-                        if let image { collected[order] = image }
-                    }
-
-                    return collected.keys.sorted().compactMap { order in
-                        guard let image = collected[order], let fileId = fileIds[order] else { return nil }
-                        return (fileId, image)
-                    }
+                    scheduleNext()
                 }
-
-                let batchLoaded = Dictionary(uniqueKeysWithValues: ordered)
-                await MainActor.run {
-                    guard generation == self.loadGeneration else { return }
-                    self.loadedAnimations.merge(batchLoaded) { _, new in new }
-                }
-                cursor = end
             }
         }
     }
@@ -223,12 +211,30 @@ struct DivoomFeedView: View {
 
         let generation = loadGeneration
         Task.detached(priority: .background) {
-            for headerId in headerIds {
-                guard !Task.isCancelled else { return }
-                guard let image = await DivoomAnimationLoader.loadFirstFrame(from: headerId) else { continue }
-                await MainActor.run {
-                    guard generation == self.loadGeneration else { return }
-                    self.loadedAvatars[headerId] = image
+            await withTaskGroup(of: (String, UIImage?).self) { group in
+                var iterator = headerIds.makeIterator()
+
+                func scheduleNext() {
+                    guard let headerId = iterator.next() else { return }
+                    group.addTask {
+                        (headerId, await DivoomAnimationLoader.loadFirstFrame(from: headerId))
+                    }
+                }
+
+                for _ in 0..<min(4, headerIds.count) { scheduleNext() }
+
+                for await (headerId, image) in group {
+                    guard !Task.isCancelled else {
+                        group.cancelAll()
+                        return
+                    }
+                    if let image {
+                        await MainActor.run {
+                            guard generation == self.loadGeneration else { return }
+                            self.loadedAvatars[headerId] = image
+                        }
+                    }
+                    scheduleNext()
                 }
             }
         }

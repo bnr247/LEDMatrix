@@ -32,24 +32,17 @@ struct DivoomUniversalGridView: View {
     @State private var currentStart = 1
     private let pageSize = 30
         
-    // Первые кадры текущей страницы — ячейки показывают их сразу, полная
-    // анимация догружается только для видимых ячеек.
+    // Ячейки добавляются сразу после metadata. Первые кадры приходят
+    // порциями и вставляются по мере готовности — никто не ждёт все 30 файлов.
     @State private var revealedImages: [String: UIImage] = [:]
-    // Следующая страница подготавливается заранее, пока пользователь листает текущую.
-    @State private var prefetchedItems: [DivoomFileItem] = []
-    @State private var prefetchedImages: [String: UIImage] = [:]
-    @State private var prefetchedNextStart = 1
-    @State private var prefetchedRawItems: [DivoomFileItem] = []
-    @State private var prefetchedRawStart = 1
-    @State private var isRevealingCurrentPage = false
-    @State private var isPrefetching = false
-    @State private var isAwaitingNextPage = false
-    @State private var prefetchGeneration = 0
+    @State private var loadGeneration = 0
+    @State private var isFetchingPage = false
+    @State private var scrollTracker = GridScrollTracker()
     private let nearEndThreshold = 15
+    private let maxConcurrentFirstFrames = 6
         
     @State private var isShowingSettingsSheet = false
     @State private var scrollPositionId: String? = nil
-    @State private var scrollTracker = GridScrollTracker()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -173,13 +166,10 @@ struct DivoomUniversalGridView: View {
                                     .onAppear {
                                         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
                                         scrollTracker.lastVisibleIndex = index
-                                        // Половина страницы — начинаем грузить следующую заранее.
-                                        if index >= items.count / 2 {
-                                            Task { await prefetchNextPage() }
-                                        }
-                                        // Почти конец — подключаем уже подготовленную страницу.
+                                        // Половина страницы — подгружаем metadata следующей,
+                                        // но показываем её сразу, не дожидаясь кадров.
                                         if index >= items.count - nearEndThreshold {
-                                            Task { await ensureNextPage() }
+                                            Task { await loadNextPage() }
                                         }
                                     }
                                 }
@@ -273,46 +263,35 @@ struct DivoomUniversalGridView: View {
     // MARK: - Загрузка данных
 
     private func loadInitialItems() async {
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
         errorMessage = nil
-        prefetchGeneration += 1
-        let generation = prefetchGeneration
-
         currentStart = 1
         hasMorePages = true
         items.removeAll()
         revealedImages.removeAll()
-        prefetchedItems.removeAll()
-        prefetchedImages.removeAll()
-        prefetchedRawItems.removeAll()
-        isRevealingCurrentPage = false
-        isPrefetching = false
-        isAwaitingNextPage = false
+        isFetchingPage = false
+        isLoadingMore = false
+        scrollTracker.lastVisibleIndex = 0
 
         do {
-            let result = try await fetchItems(currentStart, currentStart + pageSize - 1, fileSortOption)
-            guard generation == prefetchGeneration else { return }
+            let result = try await fetchItems(1, pageSize, fileSortOption)
+            guard generation == loadGeneration else { return }
 
+            // Метаданные сразу идут в UI. Картинки появятся по мере загрузки.
             items = result.items
-            isLoading = false
+            currentStart = 1 + result.items.count
             applyPageSize(result)
+            isLoading = false
 
             if !result.items.isEmpty {
-                currentStart = 1 + result.items.count
-                // Сначала быстрые первые кадры текущей страницы порциями сверху вниз.
-                isRevealingCurrentPage = true
                 Task {
-                    await loadFirstFramesProgressively(for: result.items, generation: generation)
-                    guard generation == prefetchGeneration else { return }
-                    isRevealingCurrentPage = false
-                    await preparePrefetchedFrames(generation: generation)
-                }
-                if hasMorePages {
-                    Task { await prefetchNextPage(generation: generation) }
+                    await revealFirstFrames(for: result.items, generation: generation)
                 }
             }
         } catch {
-            guard generation == prefetchGeneration else { return }
+            guard generation == loadGeneration else { return }
             errorMessage = "Ошибка загрузки: \(error.localizedDescription)"
             isLoading = false
         }
@@ -327,273 +306,86 @@ struct DivoomUniversalGridView: View {
         }
     }
 
-    /// Сначала берём только метаданные следующей страницы — это дешёвый запрос.
-    /// Кадры не грузим, пока не закончили порции текущей страницы.
-    private func prefetchNextPage(generation: Int? = nil) async {
-        let gen = generation ?? prefetchGeneration
-        guard !isPrefetching, hasMorePages, prefetchedItems.isEmpty, prefetchedRawItems.isEmpty else { return }
-        isPrefetching = true
+    /// Metadata следующей страницы вставляем в сетку сразу после ответа.
+    /// Первые кадры грузятся отдельной задачей и появляются постепенно —
+    /// пользователь не ждёт, пока скачаются все 30 файлов.
+    private func loadNextPage() async {
+        guard !isFetchingPage, hasMorePages, !isLoading else { return }
+        isFetchingPage = true
+        isLoadingMore = true
+        defer {
+            isFetchingPage = false
+            isLoadingMore = false
+        }
 
+        let generation = loadGeneration
         let start = currentStart
         let result: (items: [DivoomFileItem], curListNum: Int)
         do {
             result = try await fetchItems(start, start + pageSize - 1, fileSortOption)
         } catch {
-            if gen == prefetchGeneration { isPrefetching = false }
             return
         }
-        guard gen == prefetchGeneration else { return }
+        guard generation == loadGeneration else { return }
 
         if result.items.isEmpty {
             hasMorePages = false
-            isPrefetching = false
             return
         }
 
-        let existing = Set(items.map(\.id)).union(prefetchedItems.map(\.id))
+        let existing = Set(items.map(\.id))
         let unique = result.items.filter { !existing.contains($0.id) }
-        let nextStart = start + result.items.count
-        let isLastPage = (result.curListNum > 0 ? result.curListNum : result.items.count) < pageSize
-
-        if unique.isEmpty {
-            if isLastPage { hasMorePages = false }
-        } else if isRevealingCurrentPage {
-            prefetchedRawItems = unique
-            prefetchedRawStart = nextStart
-            if isLastPage { hasMorePages = false }
-        } else {
-            let images = await loadFirstFrames(for: unique)
-            guard gen == prefetchGeneration else { return }
-            // Снимаем флаг до вставки: applyPrefetched может сразу запланировать
-            // следующую страницу, и она не должна быть пропущена.
-            isPrefetching = false
-            applyPrefetched(unique, images: images, nextStart: nextStart, generation: gen)
-            if isLastPage { hasMorePages = false }
-            return
+        if !unique.isEmpty {
+            items.append(contentsOf: unique)
+            Task {
+                await revealFirstFrames(for: unique, generation: generation)
+            }
         }
-        isPrefetching = false
-    }
-
-    /// Кадры следующей страницы грузятся только после текущей — так сеть не
-    /// делится между тем, что видит пользователь, и тем, что пока скрыто.
-    private func preparePrefetchedFrames(generation: Int) async {
-        guard generation == prefetchGeneration,
-              !prefetchedRawItems.isEmpty,
-              prefetchedItems.isEmpty,
-              !isPrefetching else { return }
-
-        let raw = prefetchedRawItems
-        let nextStart = prefetchedRawStart
-        isPrefetching = true
-
-        let images = await loadFirstFrames(for: raw)
-        guard generation == prefetchGeneration else { return }
-        isPrefetching = false
-        applyPrefetched(raw, images: images, nextStart: nextStart, generation: generation)
-    }
-
-    private func applyPrefetched(_ itemsToApply: [DivoomFileItem], images: [String: UIImage], nextStart: Int, generation: Int) {
-        prefetchedItems = itemsToApply
-        prefetchedImages = images
-        prefetchedNextStart = nextStart
-        prefetchedRawItems.removeAll()
-
-        // Пользователь уже дошёл до конца, но предзагрузка была ещё не готова.
-        let shouldAppend = isAwaitingNextPage || scrollTracker.lastVisibleIndex >= items.count - nearEndThreshold
-        if shouldAppend {
-            isAwaitingNextPage = false
-            _ = appendPrefetchedPage()
-        }
-
-        Task { await prefetchNextPage(generation: generation) }
-    }
-
-    /// Если следующая страница уже подготовлена — вставляем её без ожидания.
-    private func appendPrefetchedPage() -> Bool {
-        guard !prefetchedItems.isEmpty else { return false }
-
-        let page = prefetchedItems
-        let images = prefetchedImages
-        let nextStart = prefetchedNextStart
-        let generation = prefetchGeneration
-
-        items.append(contentsOf: page)
-        revealedImages.merge(images) { _, new in new }
-        prefetchedItems.removeAll()
-        prefetchedImages.removeAll()
-        currentStart = nextStart
-        isAwaitingNextPage = false
-
-        Task { await prefetchNextPage(generation: generation) }
-        return true
-    }
-
-    private func ensureNextPage() async {
-        if appendPrefetchedPage() { return }
-
-        isAwaitingNextPage = true
-        if isPrefetching { return }
-        await loadMoreItems()
-    }
-
-    private func loadMoreItems() async {
-        guard !isLoadingMore, !isPrefetching, hasMorePages, prefetchedItems.isEmpty else { return }
-        isLoadingMore = true
-        defer { isLoadingMore = false }
-
-        let generation = prefetchGeneration
-        let start = currentStart
-        do {
-            let result = try await fetchItems(start, start + pageSize - 1, fileSortOption)
-            guard generation == prefetchGeneration else { return }
-
-            if result.items.isEmpty {
-                hasMorePages = false
-                return
-            }
-
-            let existing = Set(items.map(\.id)).union(prefetchedItems.map(\.id))
-            let unique = result.items.filter { !existing.contains($0.id) }
-            let images = await loadFirstFrames(for: unique)
-            guard generation == prefetchGeneration else { return }
-
-            if !unique.isEmpty {
-                items.append(contentsOf: unique)
-                revealedImages.merge(images) { _, new in new }
-            }
-            currentStart = start + result.items.count
-            applyPageSize(result)
-            isAwaitingNextPage = false
-            if hasMorePages {
-                Task { await prefetchNextPage(generation: generation) }
-            }
-        } catch {}
+        currentStart = start + result.items.count
+        applyPageSize(result)
     }
 
     private func refreshItems() async {
-        isLoading = true
-        prefetchGeneration += 1
-        let generation = prefetchGeneration
-
-        currentStart = 1
-        hasMorePages = true
-        items.removeAll()
-        revealedImages.removeAll()
-        prefetchedItems.removeAll()
-        prefetchedImages.removeAll()
-        prefetchedRawItems.removeAll()
-        isRevealingCurrentPage = false
-        isPrefetching = false
-        isAwaitingNextPage = false
-
-        do {
-            let result = try await fetchItems(currentStart, currentStart + pageSize - 1, fileSortOption)
-            guard generation == prefetchGeneration else { return }
-
-            items = result.items
-            applyPageSize(result)
-
-            if !result.items.isEmpty {
-                currentStart = 1 + result.items.count
-                isRevealingCurrentPage = true
-                Task {
-                    await loadFirstFramesProgressively(for: result.items, generation: generation)
-                    guard generation == prefetchGeneration else { return }
-                    isRevealingCurrentPage = false
-                    await preparePrefetchedFrames(generation: generation)
-                }
-                if hasMorePages {
-                    Task { await prefetchNextPage(generation: generation) }
-                }
-            }
-        } catch {}
-        isLoading = false
+        await loadInitialItems()
     }
 
-    /// Показываем текущую страницу сразу, но подгружаем её первые кадры
-    /// небольшими порциями строго сверху вниз — без ожидания всех 30 файлов.
-    private func loadFirstFramesProgressively(for list: [DivoomFileItem], generation: Int) async {
-        let targets = list.enumerated().compactMap { index, item -> (order: Int, fileId: String)? in
+    /// Потоковая загрузка первых кадров: как только один файл готов — он сразу
+    /// появляется в ячейке, и на его место берётся следующий. Одновременно
+    /// в полёте не больше `maxConcurrentFirstFrames` запросов.
+    private func revealFirstFrames(for list: [DivoomFileItem], generation: Int) async {
+        let targets = list.compactMap { item -> String? in
             guard let fileId = item.FileId, !fileId.isEmpty,
                   revealedImages[fileId] == nil else { return nil }
-            return (index, fileId)
+            return fileId
         }
         guard !targets.isEmpty else { return }
 
-        let batchSize = 4
-        var cursor = 0
+        await withTaskGroup(of: (String, UIImage?).self) { group in
+            var iterator = targets.makeIterator()
 
-        while cursor < targets.count {
-            let end = min(cursor + batchSize, targets.count)
-            let batch = Array(targets[cursor..<end])
-            let fileIds = Dictionary(uniqueKeysWithValues: batch.map { ($0.order, $0.fileId) })
+            func scheduleNext() {
+                guard let fileId = iterator.next() else { return }
+                group.addTask {
+                    (fileId, await DivoomAnimationLoader.loadFirstFrame(from: fileId))
+                }
+            }
 
-            let ordered = await withTaskGroup(
-                of: (Int, UIImage?).self,
-                returning: [(String, UIImage)].self
-            ) { group in
-                for target in batch {
-                    group.addTask {
-                        let image = await DivoomAnimationLoader.loadFirstFrame(from: target.fileId)
-                        return (target.order, image)
+            for _ in 0..<min(maxConcurrentFirstFrames, targets.count) {
+                scheduleNext()
+            }
+
+            for await (fileId, image) in group {
+                guard generation == loadGeneration else {
+                    group.cancelAll()
+                    return
+                }
+                if let image {
+                    await MainActor.run {
+                        revealedImages[fileId] = image
                     }
                 }
-
-                var collected: [Int: UIImage] = [:]
-                for await (order, image) in group {
-                    if let image { collected[order] = image }
-                }
-
-                return collected.keys.sorted().compactMap { order in
-                    guard let image = collected[order], let fileId = fileIds[order] else { return nil }
-                    return (fileId, image)
-                }
+                scheduleNext()
             }
-
-            guard generation == prefetchGeneration else { return }
-            for (fileId, image) in ordered {
-                revealedImages[fileId] = image
-            }
-            cursor = end
         }
-    }
-
-    /// Быстрая загрузка первых кадров для скрытой следующей страницы.
-    private func loadFirstFrames(for list: [DivoomFileItem]) async -> [String: UIImage] {
-        let targets = list.compactMap { item -> String? in
-            guard let fileId = item.FileId, !fileId.isEmpty, revealedImages[fileId] == nil else { return nil }
-            return fileId
-        }
-        guard !targets.isEmpty else { return [:] }
-
-        var loaded: [String: UIImage] = [:]
-        let batchSize = 12
-        var index = 0
-
-        while index < targets.count {
-            let end = min(index + batchSize, targets.count)
-            let batch = targets[index..<end]
-
-            let batchLoaded = await withTaskGroup(
-                of: (String, UIImage?).self,
-                returning: [String: UIImage].self
-            ) { group in
-                for fileId in batch {
-                    group.addTask {
-                        let image = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
-                        return (fileId, image)
-                    }
-                }
-                var result: [String: UIImage] = [:]
-                for await (fileId, image) in group {
-                    if let image { result[fileId] = image }
-                }
-                return result
-            }
-            loaded.merge(batchLoaded) { _, new in new }
-            index = end
-        }
-
-        return loaded
     }
 }

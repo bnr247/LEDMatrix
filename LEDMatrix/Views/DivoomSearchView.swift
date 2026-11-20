@@ -253,9 +253,9 @@ private struct DivoomTagSearchResults: View {
                       previewImages[fileId] == nil else { continue }
 
                 Task.detached(priority: .background) {
-                    if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
+                    if let image = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
                         await MainActor.run {
-                            self.previewImages[fileId] = result.image
+                            self.previewImages[fileId] = image
                         }
                     }
                 }

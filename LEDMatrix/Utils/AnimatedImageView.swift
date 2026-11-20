@@ -8,16 +8,45 @@
 import SwiftUI
 import UIKit
 
+/// Ограничитель параллельного разбора полных анимаций. При быстром скролле
+/// не разворачиваем десятки 600-кадровых анимаций одновременно — только те
+/// ячейки, которые реально находятся на экране.
+private actor DivoomFullAnimationLimiter {
+    static let shared = DivoomFullAnimationLimiter()
+    private let limit = 2
+    private var active = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func acquire() async {
+        if active < limit {
+            active += 1
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func release() {
+        if waiters.isEmpty {
+            active = max(0, active - 1)
+        } else {
+            let next = waiters.removeFirst()
+            next.resume()
+        }
+    }
+}
+
 struct AnimatedImageView: View {
     @ObservedObject var manager: MatrixManager
     let item: DivoomFileItem
-    /// Быстрый первый кадр из сетки/фида. Полная анимация догружается
-    /// только для ячеек, которые realmente находятся на экране.
+    /// Быстрый первый кадр из сетки. Полная анимация догружается только
+    /// для ячейки, которая находится на экране.
     let image: UIImage?
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
-    @State private var didRequestFullAnimation = false
+    @State private var fullLoadTask: Task<Void, Never>?
     @State private var isVisible = false
 
     @State private var isLiked: Bool
@@ -56,15 +85,6 @@ struct AnimatedImageView: View {
                         }
                 }
             }
-            .task(id: item.FileId ?? "") {
-                guard !didRequestFullAnimation else { return }
-                // Уже полная анимация — догружать нечего.
-                if let image, image.images != nil {
-                    didRequestFullAnimation = true
-                    return
-                }
-                await loadAnimation()
-            }
 
             // Нижняя плашка (как подпись/инфо в iOS Фото)
             HStack(spacing: 0) {
@@ -102,29 +122,44 @@ struct AnimatedImageView: View {
         }
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: 6))
-        .onAppear { isVisible = true }
-        .onDisappear { isVisible = false }
+        .onAppear {
+            isVisible = true
+            beginFullAnimationIfNeeded()
+        }
+        .onDisappear {
+            isVisible = false
+            fullLoadTask?.cancel()
+            fullLoadTask = nil
+        }
     }
 
-    /// Сначала показываем первый кадр (уже есть в кэше после подготовки сетки),
-    /// затем догружаем полную анимацию. Сырые данные при этом скачиваются
-    /// только один раз — `DivoomAnimationLoader` кэширует их по fileId.
-    private func loadAnimation() async {
-        guard let fileId = item.FileId, !fileId.isEmpty else { return }
-        isLoading = true
-        defer { isLoading = false }
+    /// Первый кадр уже показан сеткой. Полную анимацию грузим только когда
+    /// ячейка появилась на экране, и отменяем задачу при уходе с экрана.
+    private func beginFullAnimationIfNeeded() {
+        guard fullLoadTask == nil,
+              displayedImage?.images == nil,
+              let fileId = item.FileId, !fileId.isEmpty else { return }
 
-        if displayedImage == nil,
-           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
-        {
-            guard !Task.isCancelled else { return }
-            loadedImage = firstFrame
+        fullLoadTask = Task { @MainActor in
+            await DivoomFullAnimationLimiter.shared.acquire()
+            await performFullLoad(fileId: fileId)
+            await DivoomFullAnimationLimiter.shared.release()
+        }
+    }
+
+    @MainActor
+    private func performFullLoad(fileId: String) async {
+        if displayedImage == nil {
+            if let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
+                guard !Task.isCancelled else { return }
+                loadedImage = firstFrame
+            }
         }
 
         if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
             guard !Task.isCancelled else { return }
             loadedImage = result.image
-            didRequestFullAnimation = true
+            isLoading = false
         }
     }
 
@@ -159,7 +194,7 @@ struct DivoomFullAnimationView: View {
     let image: UIImage?
 
     @State private var loadedImage: UIImage?
-    @State private var didRequestFullAnimation = false
+    @State private var fullLoadTask: Task<Void, Never>?
     @State private var isVisible = false
 
     private var displayedImage: UIImage? { loadedImage ?? image }
@@ -177,27 +212,37 @@ struct DivoomFullAnimationView: View {
                     }
             }
         }
-        .task(id: fileId ?? "") {
-            guard !didRequestFullAnimation else { return }
-            if let image, image.images != nil {
-                didRequestFullAnimation = true
-                return
-            }
-            guard let fileId, !fileId.isEmpty else { return }
-            if displayedImage == nil,
-               let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId)
-            {
-                guard !Task.isCancelled else { return }
-                loadedImage = firstFrame
-            }
-            if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
-                guard !Task.isCancelled else { return }
-                loadedImage = result.image
-                didRequestFullAnimation = true
+        .onAppear {
+            isVisible = true
+            guard fullLoadTask == nil,
+                  displayedImage?.images == nil,
+                  let fileId, !fileId.isEmpty else { return }
+
+            fullLoadTask = Task { @MainActor in
+                await DivoomFullAnimationLimiter.shared.acquire()
+                await performFullLoad(fileId: fileId)
+                await DivoomFullAnimationLimiter.shared.release()
             }
         }
-        .onAppear { isVisible = true }
-        .onDisappear { isVisible = false }
+        .onDisappear {
+            isVisible = false
+            fullLoadTask?.cancel()
+            fullLoadTask = nil
+        }
+    }
+
+    @MainActor
+    private func performFullLoad(fileId: String) async {
+        if displayedImage == nil,
+           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
+            guard !Task.isCancelled else { return }
+            loadedImage = firstFrame
+        }
+
+        if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
+            guard !Task.isCancelled else { return }
+            loadedImage = result.image
+        }
     }
 }
 

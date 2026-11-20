@@ -37,6 +37,16 @@ private struct ParsedAnimationData {
 }
 
 enum DivoomAnimationLoader {
+    // Ключ/IV разбираются один раз при старте, а не для каждого файла.
+    private static let aesKey = Data([
+        0x37, 0x38, 0x68, 0x72, 0x65, 0x79, 0x32, 0x33,
+        0x79, 0x32, 0x38, 0x6F, 0x67, 0x73, 0x38, 0x39
+    ])
+    private static let aesIV = Data([
+        0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+        0x39, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36
+    ])
+
     // Сетка и фид часто показывают одни и те же анимации. Кэш с ограниченным
     // числом записей убирает повторную загрузку и дублирование кадров в памяти.
     private static let cache: NSCache<NSString, DivoomAnimationCacheEntry> = {
@@ -190,14 +200,16 @@ enum DivoomAnimationLoader {
         )
     }
 
-    /// Разбирает только первый кадр — без создания UIImage.animatedImage.
+    /// Разбирает только первый кадр — без создания UIImage.animatedImage и
+    /// без разворачивания всей анимации (scroll-формат может содержать
+    /// тысячи кадров, а для превью нужен один).
     static func parseFirstFrameData(_ responseData: Data) -> UIImage? {
-        guard let parsed = parseFrames(from: responseData),
+        guard let parsed = parseFrames(from: responseData, firstFrameOnly: true),
               let firstFrame = parsed.frames.first else { return nil }
         return createImage(from: firstFrame)
     }
 
-    private static func parseFrames(from responseData: Data) -> ParsedAnimationData? {
+    private static func parseFrames(from responseData: Data, firstFrameOnly: Bool = false) -> ParsedAnimationData? {
         guard !responseData.isEmpty else { return nil }
 
         let firstByte = responseData[0]
@@ -263,13 +275,7 @@ enum DivoomAnimationLoader {
 
         let processedPayload: Data
         if isEncrypted {
-            let keyHex = "37386872657932337932386F67733839"
-            let ivHex = "31323334353637383930313233343536"
-
-            if let keyData = hexToData(keyHex),
-               let ivData = hexToData(ivHex),
-               let decrypted = aes128Decrypt(data: payloadData, key: keyData, iv: ivData)
-            {
+            if let decrypted = aes128Decrypt(data: payloadData, key: aesKey, iv: aesIV) {
                 processedPayload = decrypted
             } else {
                 processedPayload = payloadData
@@ -281,7 +287,19 @@ enum DivoomAnimationLoader {
         let framesData: [Data]
         if fileType == 0x0c {
             let direction = responseData.count > 1 ? responseData[1] : 0x02
-            framesData = generateSeamlessScrollFrames(from: processedPayload, direction: direction)
+            if firstFrameOnly {
+                guard let first = firstScrollFrame(from: processedPayload, direction: direction) else { return nil }
+                framesData = [first]
+            } else {
+                framesData = generateSeamlessScrollFrames(from: processedPayload, direction: direction, maxFrames: 600)
+            }
+        } else if firstFrameOnly {
+            let frameSize = 768
+            var first = Data(processedPayload.prefix(frameSize))
+            if first.count < frameSize {
+                first.append(Data(repeating: 0, count: frameSize - first.count))
+            }
+            framesData = [first]
         } else {
             let frameSize = 768
             var workingPayload = processedPayload
@@ -289,8 +307,10 @@ enum DivoomAnimationLoader {
                 workingPayload.append(Data(repeating: 0, count: frameSize - workingPayload.count))
             }
 
-            let totalFrames = workingPayload.count / frameSize
+            // Больше 600 кадров никогда не показывается — не строим лишние.
+            let totalFrames = min(workingPayload.count / frameSize, 600)
             var extracted: [Data] = []
+            extracted.reserveCapacity(max(1, totalFrames))
             for i in 0..<max(1, totalFrames) {
                 let start = i * frameSize
                 let end = start + frameSize
@@ -317,7 +337,34 @@ enum DivoomAnimationLoader {
         )
     }
 
-    private static func generateSeamlessScrollFrames(from payload: Data, direction: UInt8) -> [Data] {
+    /// Первый кадр scroll-анимации без генерации остальных кадров.
+    private static func firstScrollFrame(from payload: Data, direction: UInt8) -> Data? {
+        let width = 16
+        let height = 16
+        let bytesPerPixel = 3
+        let rowStride = width * bytesPerPixel
+        let frameSize = rowStride * height
+
+        guard payload.count >= frameSize else { return nil }
+
+        if direction == 0x02 {
+            let totalRows = payload.count / rowStride
+            guard totalRows >= height else { return nil }
+        } else if direction == 0x01 {
+            guard payload.count / frameSize > 0 else { return nil }
+        } else {
+            guard payload.count / frameSize > 0 else { return nil }
+        }
+
+        if direction == 0x02 {
+            return Data(payload[0..<frameSize])
+        }
+        return Data(payload.prefix(frameSize))
+    }
+
+    /// Генерируем не больше `maxFrames` кадров: остальные никогда не показываются,
+    /// а тратить на них время и память при каждом превью бессмысленно.
+    private static func generateSeamlessScrollFrames(from payload: Data, direction: UInt8, maxFrames: Int) -> [Data] {
         let width = 16
         let height = 16
         let bytesPerPixel = 3
@@ -325,13 +372,14 @@ enum DivoomAnimationLoader {
         let rowStride = width * bytesPerPixel
 
         var frames: [Data] = []
+        frames.reserveCapacity(maxFrames)
         guard payload.count >= rowStride * height else { return [] }
 
         if direction == 0x02 {
             let totalRows = payload.count / rowStride
             guard totalRows >= height else { return [] }
 
-            for startRow in 0..<totalRows {
+            for startRow in 0..<min(totalRows, maxFrames) {
                 var frameData = Data(count: frameSize)
                 frameData.withUnsafeMutableBytes { destBytes in
                     guard let destBase = destBytes.baseAddress else { return }
@@ -354,7 +402,7 @@ enum DivoomAnimationLoader {
             guard numBlocks > 0 else { return [] }
             let totalWidthInPixels = numBlocks * width
 
-            for startCol in 0..<totalWidthInPixels {
+            for startCol in 0..<min(totalWidthInPixels, maxFrames) {
                 var frameData = Data(count: frameSize)
                 frameData.withUnsafeMutableBytes { destBytes in
                     guard let destBase = destBytes.baseAddress else { return }
@@ -384,7 +432,7 @@ enum DivoomAnimationLoader {
             }
         } else {
             let totalFrames = payload.count / frameSize
-            for i in 0..<totalFrames {
+            for i in 0..<min(totalFrames, maxFrames) {
                 let start = i * frameSize
                 let end = start + frameSize
                 if end <= payload.count {
@@ -438,62 +486,44 @@ enum DivoomAnimationLoader {
     private static func createImage(from frameData: Data) -> UIImage? {
         let width = 16
         let height = 16
+        let pixelCount = width * height
 
-        guard frameData.count >= width * height * 3 else { return nil }
+        guard frameData.count >= pixelCount * 3 else { return nil }
 
-        var rgbBytes = [UInt8](repeating: 0, count: width * height * 4)
+        var rgbBytes = [UInt8](repeating: 0, count: pixelCount * 4)
 
         frameData.withUnsafeBytes { srcPtr in
             guard let srcBase = srcPtr.baseAddress else { return }
-            for y in 0..<height {
-                for x in 0..<width {
-                    let srcX = x
-                    let srcY = y
+            for pixelIndex in 0..<pixelCount {
+                let byteOffset = pixelIndex * 3
+                let destOffset = pixelIndex * 4
 
-                    let pixelIndex = srcY * width + srcX
-                    let byteOffset = pixelIndex * 3
-
-                    guard byteOffset + 2 < frameData.count else { continue }
-
-                    let r = srcBase.load(fromByteOffset: byteOffset, as: UInt8.self)
-                    let g = srcBase.load(fromByteOffset: byteOffset + 1, as: UInt8.self)
-                    let b = srcBase.load(fromByteOffset: byteOffset + 2, as: UInt8.self)
-
-                    let destOffset = (y * width + x) * 4
-                    rgbBytes[destOffset] = r
-                    rgbBytes[destOffset + 1] = g
-                    rgbBytes[destOffset + 2] = b
-                    rgbBytes[destOffset + 3] = 255
-                }
+                rgbBytes[destOffset] = srcBase.load(fromByteOffset: byteOffset, as: UInt8.self)
+                rgbBytes[destOffset + 1] = srcBase.load(fromByteOffset: byteOffset + 1, as: UInt8.self)
+                rgbBytes[destOffset + 2] = srcBase.load(fromByteOffset: byteOffset + 2, as: UInt8.self)
+                rgbBytes[destOffset + 3] = 255
             }
         }
 
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        // CGContext на каждый кадр создавал 600 контекстов и копий буфера.
+        // CGDataProvider строит CGImage сразу из RGBA-данных — заметно быстрее.
+        guard let provider = CGDataProvider(data: Data(rgbBytes) as CFData) else { return nil }
 
-        guard let context = CGContext(
-            data: &rgbBytes,
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        guard let cgImage = CGImage(
             width: width,
             height: height,
             bitsPerComponent: 8,
+            bitsPerPixel: 32,
             bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo.rawValue
-        ), let cgImage = context.makeImage() else { return nil }
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: bitmapInfo,
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        ) else { return nil }
 
         return UIImage(cgImage: cgImage, scale: 1, orientation: .up)
-    }
-
-    private static func hexToData(_ hex: String) -> Data? {
-        var data = Data()
-        var index = hex.startIndex
-        while index < hex.endIndex {
-            let nextIndex = hex.index(index, offsetBy: 2, limitedBy: hex.endIndex) ?? hex.endIndex
-            let byteString = hex[index..<nextIndex]
-            guard let num = UInt8(byteString, radix: 16) else { return nil }
-            data.append(num)
-            index = nextIndex
-        }
-        return data
     }
 }

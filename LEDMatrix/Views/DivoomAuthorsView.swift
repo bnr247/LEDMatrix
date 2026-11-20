@@ -263,14 +263,25 @@ private struct DivoomExpertCard: View {
                 .stroke(manager.cardBorderColor, lineWidth: 1)
         )
         .task(id: expert.UserId) {
-            for item in previewItems {
+            // Три маленьких превью: достаточно первого кадра. Полную анимацию
+            // догрузит AnimatedImageView только для видимых ячеек.
+            let fileIds = previewItems.compactMap { item -> String? in
                 guard let fileId = item.FileId, !fileId.isEmpty,
-                      previewImages[fileId] == nil else { continue }
-                let loaded = await Task.detached(priority: .background) {
-                    await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId)
-                }.value
-                guard !Task.isCancelled else { return }
-                previewImages[fileId] = loaded?.image
+                      previewImages[fileId] == nil else { return nil }
+                return fileId
+            }
+            guard !fileIds.isEmpty else { return }
+
+            await withTaskGroup(of: (String, UIImage?).self) { group in
+                for fileId in fileIds {
+                    group.addTask {
+                        (fileId, await DivoomAnimationLoader.loadFirstFrame(from: fileId))
+                    }
+                }
+                for await (fileId, image) in group {
+                    guard !Task.isCancelled, let image else { continue }
+                    previewImages[fileId] = image
+                }
             }
         }
     }
@@ -491,11 +502,10 @@ struct DivoomUserAvatarView: View {
         .task(id: headId) {
             image = nil
             guard let headId = headId, !headId.isEmpty else { return }
-            let loaded = await Task.detached(priority: .background) {
-                await DivoomAnimationLoader.loadAndCreateAnimation(from: headId)
-            }.value
+            // Иконка 48pt: первый кадр вместо разбора сотен кадров.
+            let loaded = await DivoomAnimationLoader.loadFirstFrame(from: headId)
             guard !Task.isCancelled else { return }
-            image = loaded?.image
+            image = loaded
         }
     }
 }
