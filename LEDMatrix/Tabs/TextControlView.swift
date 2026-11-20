@@ -52,7 +52,28 @@ struct TextControlView: View {
                     .opacity(isTextEmpty ? 0.45 : 1)
                     .accessibilityLabel("Отправить текст")
                 }
-                .padding(.vertical, 2)
+                // Блок ввода оформлен как карточка «Яркость» на главном экране:
+                // фон карточки, обводка акцентом и лёгкая тень в декоративных темах.
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .if(manager.currentTheme.usesSystemAppearance) { content in
+                    content.background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(manager.cardBackgroundColor)
+                    )
+                }
+                .if(!manager.currentTheme.usesSystemAppearance) { content in
+                    content
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(manager.cardBackgroundColor)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(manager.accentColor.opacity(0.5), lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
+                                )
+                        )
+                        .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
+                }
             } header: {
                 Text("Сообщение")
                     .if(!manager.currentTheme.usesSystemAppearance) { content in
