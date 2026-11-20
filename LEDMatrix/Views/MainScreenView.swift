@@ -402,6 +402,9 @@ struct DeviceManagementSheet: View {
                     Button("Закрыть") {
                         dismiss()
                     }
+                    .if(!manager.currentTheme.usesSystemAppearance) { content in
+                        content.foregroundColor(manager.lightAccentColor)
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -409,6 +412,9 @@ struct DeviceManagementSheet: View {
                         Task { await manager.checkAllSavedDevicesReachability() }
                     }) {
                         Image(systemName: "arrow.clockwise")
+                            .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                content.foregroundColor(manager.lightAccentColor)
+                            }
                     }
                 }
             }
