@@ -616,11 +616,11 @@ extension MatrixManager {
         case .system:
             return .secondary
         case .dark:
-            return Color(hex: "9BD49B")
+            return Color(hex: "5FBF5F")
         case .neon:
-            return Color(hex: "8FD8E6")
+            return Color(hex: "61B9CC")
         case .amber:
-            return Color(hex: "C99A55")
+            return Color(hex: "B07C36")
         }
     }
 
