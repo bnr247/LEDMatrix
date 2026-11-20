@@ -933,10 +933,8 @@ extension View {
     func themedNavigationTitle(_ title: LocalizedStringKey, manager: MatrixManager) -> some View {
         if manager.currentTheme.usesSystemAppearance {
             self.navigationTitle(title)
-                .background(UIKitThemeConfigurator(manager: manager))
         } else {
-            self.navigationTitle(Text(title).foregroundColor(manager.lightAccentColor))
-                .background(UIKitThemeConfigurator(manager: manager))
+            self.modifier(ThemedNavigationBarModifier(manager: manager, title: Text(title)))
         }
     }
 
@@ -944,10 +942,8 @@ extension View {
     func themedNavigationTitle(_ title: String, manager: MatrixManager) -> some View {
         if manager.currentTheme.usesSystemAppearance {
             self.navigationTitle(title)
-                .background(UIKitThemeConfigurator(manager: manager))
         } else {
-            self.navigationTitle(Text(verbatim: title).foregroundColor(manager.lightAccentColor))
-                .background(UIKitThemeConfigurator(manager: manager))
+            self.modifier(ThemedNavigationBarModifier(manager: manager, title: Text(verbatim: title)))
         }
     }
 
@@ -986,6 +982,43 @@ extension View {
                 .toolbarBackground(manager.matrixPanelColor, for: .navigationBar)
                 .toolbarBackground(.visible, for: .navigationBar)
         }
+    }
+}
+
+/// Декоративные темы рисуют заголовок и кнопку «Назад» сами: системный
+/// навбар перекрашивается iOS и игнорирует UIKit appearance.
+struct ThemedNavigationBarModifier: ViewModifier {
+    @ObservedObject var manager: MatrixManager
+    let title: Text
+    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content
+            .navigationTitle("")
+            .navigationBarBackButtonHidden(presentationMode.wrappedValue.isPresented)
+            .tint(manager.lightAccentColor)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    title
+                        .foregroundColor(manager.lightAccentColor)
+                }
+                if presentationMode.wrappedValue.isPresented {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.backward")
+                                Text("Назад")
+                            }
+                            .foregroundColor(manager.lightAccentColor)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .background(UIKitThemeConfigurator(manager: manager))
     }
 }
 

@@ -95,38 +95,65 @@ struct DivoomMainView: View {
     // MARK: - Обычные вкладки Divoom
 
     private var tabsContent: some View {
-        TabView(selection: $selectedSection) {
-            DivoomCategoriesView(manager: manager)
-                .tabItem {
-                    Label(DivoomSection.categories.rawValue, systemImage: DivoomSection.categories.iconName)
+        Group {
+            if manager.currentTheme.usesSystemAppearance {
+                TabView(selection: $selectedSection) {
+                    ForEach(DivoomSection.allCases) { section in
+                        tabContent(for: section)
+                            .tabItem {
+                                Label(section.rawValue, systemImage: section.iconName)
+                            }
+                            .tag(section)
+                    }
                 }
-                .tag(DivoomSection.categories)
+            } else {
+                VStack(spacing: 0) {
+                    tabContent(for: selectedSection)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            DivoomAlbumsView(manager: manager)
-                .tabItem {
-                    Label(DivoomSection.albums.rawValue, systemImage: DivoomSection.albums.iconName)
-                }
-                .tag(DivoomSection.albums)
+                    Rectangle()
+                        .fill(manager.dividerColor)
+                        .frame(height: 0.5)
 
-            DivoomLikesView(manager: manager)
-                .tabItem {
-                    Label(DivoomSection.favorites.rawValue, systemImage: DivoomSection.favorites.iconName)
+                    HStack(spacing: 0) {
+                        ForEach(DivoomSection.allCases) { section in
+                            Button {
+                                selectedSection = section
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: section.iconName)
+                                        .font(.system(size: 18, weight: section == selectedSection ? .semibold : .regular))
+                                    Text(section.rawValue)
+                                        .font(.system(size: 10))
+                                }
+                                .foregroundColor(section == selectedSection ? manager.accentColor : manager.lightAccentColor)
+                                .frame(maxWidth: .infinity)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                    .background(manager.cardBackgroundColor.ignoresSafeArea(edges: .bottom))
                 }
-                .tag(DivoomSection.favorites)
-
-            DivoomPlaylistsView(manager: manager, refreshTrigger: playlistsRefreshTrigger)
-                .tabItem {
-                    Label(DivoomSection.playlists.rawValue, systemImage: DivoomSection.playlists.iconName)
-                }
-                .tag(DivoomSection.playlists)
-
-            DivoomAuthorsView(manager: manager)
-                .tabItem {
-                    Label(DivoomSection.authors.rawValue, systemImage: DivoomSection.authors.iconName)
-                }
-                .tag(DivoomSection.authors)
+            }
         }
-        .background(UIKitThemeConfigurator(manager: manager))
+    }
+
+    @ViewBuilder
+    private func tabContent(for section: DivoomSection) -> some View {
+        switch section {
+        case .categories:
+            DivoomCategoriesView(manager: manager)
+        case .albums:
+            DivoomAlbumsView(manager: manager)
+        case .favorites:
+            DivoomLikesView(manager: manager)
+        case .playlists:
+            DivoomPlaylistsView(manager: manager, refreshTrigger: playlistsRefreshTrigger)
+        case .authors:
+            DivoomAuthorsView(manager: manager)
+        }
     }
 
     // MARK: - Режим поиска
