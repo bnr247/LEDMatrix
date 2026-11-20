@@ -558,11 +558,11 @@ extension MatrixManager {
         case .system:
             return .primary
         case .dark:
-            return Color(hex: "7EE37E") // Светло-зелёный OLED, но не белый
+            return Color(hex: "A6E6A6") // Насыщенный светло-зелёный OLED
         case .neon:
-            return Color(hex: "67D8F0") // Светло-циановый неон, но не белый
+            return Color(hex: "A8E6F2") // Насыщенный светло-циановый неон
         case .amber:
-            return Color(hex: "FFC266") // Светлый янтарь, но не белый
+            return Color(hex: "FFD9A0") // Разогретый янтарь
         }
     }
 
