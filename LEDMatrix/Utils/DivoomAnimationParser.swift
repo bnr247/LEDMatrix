@@ -64,6 +64,22 @@ enum DivoomAnimationLoader {
 
     // MARK: - Публичные методы
 
+    /// Уже готовая полная анимация. Используется при возврате в сетку/фид,
+    /// чтобы не ставить задачу в очередь и не пересоздавать UIImage повторно.
+    static func cachedAnimation(for fileId: String) -> UIImage? {
+        let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanId.isEmpty else { return nil }
+        return cache.object(forKey: cleanId as NSString)?.result.image
+    }
+
+    /// Первый кадр из кэша — чтобы фид не показывал плейсхолдер, если сетка
+    /// ещё не успела отдать кадр в `initialImages`.
+    static func cachedFirstFrame(for fileId: String) -> UIImage? {
+        let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanId.isEmpty else { return nil }
+        return firstFrameCache.object(forKey: cleanId as NSString)?.image
+    }
+
     /// Быстрый статичный первый кадр — для мгновенного отображения сетки.
     static func loadFirstFrame(from fileId: String) async -> UIImage? {
         let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)

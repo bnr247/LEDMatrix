@@ -144,6 +144,7 @@ struct DivoomUniversalGridView: View {
                                         title: title,
                                         manager: manager,
                                         initialItems: items,
+                                        initialImages: revealedImages,
                                         selectedItemId: item.id,
                                         fetchMoreItems: { start, end in
                                             let result = try await fetchItems(start, end, fileSortOption)

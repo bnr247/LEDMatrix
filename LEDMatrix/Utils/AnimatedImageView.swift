@@ -140,6 +140,13 @@ struct AnimatedImageView: View {
               displayedImage?.images == nil,
               let fileId = item.FileId, !fileId.isEmpty else { return }
 
+        // Возврат из фида: анимация уже в кэше — показываем её мгновенно,
+        // без новой задачи и без повторного разбора.
+        if let cached = DivoomAnimationLoader.cachedAnimation(for: fileId) {
+            loadedImage = cached
+            return
+        }
+
         fullLoadTask = Task { @MainActor in
             await DivoomFullAnimationLimiter.shared.acquire()
             await performFullLoad(fileId: fileId)
@@ -217,6 +224,11 @@ struct DivoomFullAnimationView: View {
             guard fullLoadTask == nil,
                   displayedImage?.images == nil,
                   let fileId, !fileId.isEmpty else { return }
+
+            if let cached = DivoomAnimationLoader.cachedAnimation(for: fileId) {
+                loadedImage = cached
+                return
+            }
 
             fullLoadTask = Task { @MainActor in
                 await DivoomFullAnimationLimiter.shared.acquire()

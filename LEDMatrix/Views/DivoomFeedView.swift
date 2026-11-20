@@ -13,6 +13,9 @@ struct DivoomFeedView: View {
     @ObservedObject var manager: MatrixManager
     
     let initialItems: [DivoomFileItem]
+    /// Уже загруженные сеткой первые кадры — фид должен показывать их сразу,
+    /// а не начинать загрузку заново с плейсхолдеров.
+    let initialImages: [String: UIImage]
     let selectedItemId: String
     let fetchMoreItems: (_ startNum: Int, _ endNum: Int) async throws -> [DivoomFileItem]
     let onScrollPositionChanged: ((String?) -> Void)? // <--- Добавлено
@@ -21,6 +24,7 @@ struct DivoomFeedView: View {
         title: String,
         manager: MatrixManager,
         initialItems: [DivoomFileItem],
+        initialImages: [String: UIImage] = [:],
         selectedItemId: String,
         fetchMoreItems: @escaping (_ startNum: Int, _ endNum: Int) async throws -> [DivoomFileItem],
         onScrollPositionChanged: ((String?) -> Void)? = nil
@@ -28,6 +32,7 @@ struct DivoomFeedView: View {
         self.title = title
         self.manager = manager
         self.initialItems = initialItems
+        self.initialImages = initialImages
         self.selectedItemId = selectedItemId
         self.fetchMoreItems = fetchMoreItems
         self.onScrollPositionChanged = onScrollPositionChanged
@@ -114,6 +119,15 @@ struct DivoomFeedView: View {
             .task {
                 if items.isEmpty {
                     loadGeneration += 1
+                    // Кадры из сетки уже готовы: посты отображаются сразу,
+                    // повторно качать и разбирать их не нужно.
+                    var images = initialImages
+                    for item in initialItems {
+                        guard let fileId = item.FileId, images[fileId] == nil,
+                              let cached = DivoomAnimationLoader.cachedFirstFrame(for: fileId) else { continue }
+                        images[fileId] = cached
+                    }
+                    loadedAnimations = images
                     items = initialItems
                     currentStart = initialItems.count + 1
                     prefetchFirstFrames(for: initialItems)

@@ -50,6 +50,10 @@ private struct DivoomPreviewThumbnailSlot: View {
                         title: title,
                         manager: manager,
                         initialItems: initialItems,
+                        initialImages: {
+                            guard let fileId = item.FileId, let image else { return [:] }
+                            return [fileId: image]
+                        }(),
                         selectedItemId: item.id,
                         fetchMoreItems: fetchMoreItems
                     )
