@@ -33,7 +33,8 @@ struct LEDMatrixApp: App {
     private static func applyThemeAppearance(_ theme: AppTheme) {
         let usesSystem = theme.usesSystemAppearance
         let light = UIColor(MatrixManager.lightAccentColor(for: theme))
-        let secondary = UIColor(MatrixManager.secondaryTextColor(for: theme))
+        let accent = UIColor(MatrixManager.accentColor(for: theme))
+        let card = UIColor(MatrixManager.cardBackgroundColor(for: theme))
 
         let navigationBar = UINavigationBar.appearance()
         let navigationAppearance = navigationBarAppearance(for: theme)
@@ -60,18 +61,17 @@ struct LEDMatrixApp: App {
         if #available(iOS 15.0, *) {
             tabBar.scrollEdgeAppearance = tabAppearance
         }
-        tabBar.tintColor = usesSystem ? nil : light
-        tabBar.unselectedItemTintColor = usesSystem ? nil : secondary
-        tabBar.barTintColor = usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme))
-        tabBar.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme))
+        tabBar.tintColor = usesSystem ? nil : accent
+        tabBar.unselectedItemTintColor = usesSystem ? nil : light
+        tabBar.barTintColor = usesSystem ? nil : card
+        tabBar.backgroundColor = usesSystem ? nil : card
         tabBar.isTranslucent = usesSystem
-        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: secondary], for: .normal)
-        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: light], for: .selected)
+        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: light], for: .normal)
+        UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: accent], for: .selected)
 
         let alertView = UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self])
-        let accent = UIColor(MatrixManager.accentColor(for: theme))
         alertView.tintColor = usesSystem ? nil : accent
-        alertView.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme))
+        alertView.backgroundColor = usesSystem ? nil : card
         UILabel.appearance(whenContainedInInstancesOf: [UIAlertController.self]).textColor = usesSystem ? nil : light
         let alertField = UITextField.appearance(whenContainedInInstancesOf: [UIAlertController.self])
         alertField.textColor = usesSystem ? nil : light
@@ -88,7 +88,8 @@ struct LEDMatrixApp: App {
         let navigationAppearance = navigationBarAppearance(for: theme)
         let tabAppearance = tabBarAppearance(for: theme)
         let light = UIColor(MatrixManager.lightAccentColor(for: theme))
-        let secondary = UIColor(MatrixManager.secondaryTextColor(for: theme))
+        let accent = UIColor(MatrixManager.accentColor(for: theme))
+        let card = UIColor(MatrixManager.cardBackgroundColor(for: theme))
 
         let windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -102,9 +103,9 @@ struct LEDMatrixApp: App {
                 titleAttributes: titleAttributes(for: theme),
                 thumbColor: thumbTintColor(for: theme),
                 tabAppearance: tabAppearance,
-                tabSelectedColor: usesSystem ? nil : light,
-                tabSecondaryColor: usesSystem ? nil : secondary,
-                tabBackgroundColor: usesSystem ? nil : UIColor(MatrixManager.cardBackgroundColor(for: theme)),
+                tabSelectedColor: usesSystem ? nil : accent,
+                tabUnselectedColor: usesSystem ? nil : light,
+                tabBackgroundColor: usesSystem ? nil : card,
                 usesSystemAppearance: usesSystem
             )
         }
@@ -119,7 +120,7 @@ struct LEDMatrixApp: App {
         thumbColor: UIColor?,
         tabAppearance: UITabBarAppearance,
         tabSelectedColor: UIColor?,
-        tabSecondaryColor: UIColor?,
+        tabUnselectedColor: UIColor?,
         tabBackgroundColor: UIColor?,
         usesSystemAppearance: Bool
     ) {
@@ -143,7 +144,7 @@ struct LEDMatrixApp: App {
                 tabBar.scrollEdgeAppearance = tabAppearance
             }
             tabBar.tintColor = tabSelectedColor
-            tabBar.unselectedItemTintColor = tabSecondaryColor
+            tabBar.unselectedItemTintColor = tabUnselectedColor
             tabBar.barTintColor = tabBackgroundColor
             tabBar.backgroundColor = tabBackgroundColor
             tabBar.isTranslucent = usesSystemAppearance
@@ -158,7 +159,7 @@ struct LEDMatrixApp: App {
                 thumbColor: thumbColor,
                 tabAppearance: tabAppearance,
                 tabSelectedColor: tabSelectedColor,
-                tabSecondaryColor: tabSecondaryColor,
+                tabUnselectedColor: tabUnselectedColor,
                 tabBackgroundColor: tabBackgroundColor,
                 usesSystemAppearance: usesSystemAppearance
             )
@@ -167,15 +168,11 @@ struct LEDMatrixApp: App {
 
     private static func navigationBarAppearance(for theme: AppTheme) -> UINavigationBarAppearance {
         let appearance = UINavigationBarAppearance()
+        appearance.configureWithDefaultBackground()
 
-        guard !theme.usesSystemAppearance else {
-            appearance.configureWithDefaultBackground()
-            return appearance
-        }
+        guard !theme.usesSystemAppearance else { return appearance }
 
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
-        let titleColor = UIColor(MatrixManager.accentColor(for: theme))
+        let titleColor = UIColor(MatrixManager.lightAccentColor(for: theme))
         appearance.titleTextAttributes = [.foregroundColor: titleColor]
         appearance.largeTitleTextAttributes = [.foregroundColor: titleColor]
 
@@ -194,18 +191,15 @@ struct LEDMatrixApp: App {
 
     private static func tabBarAppearance(for theme: AppTheme) -> UITabBarAppearance {
         let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
 
-        guard !theme.usesSystemAppearance else {
-            appearance.configureWithDefaultBackground()
-            return appearance
-        }
+        guard !theme.usesSystemAppearance else { return appearance }
 
-        appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
 
         let item = UITabBarItemAppearance()
-        let selected = UIColor(MatrixManager.lightAccentColor(for: theme))
-        let normal = UIColor(MatrixManager.secondaryTextColor(for: theme))
+        let selected = UIColor(MatrixManager.accentColor(for: theme))
+        let normal = UIColor(MatrixManager.lightAccentColor(for: theme))
         item.normal.titleTextAttributes = [.foregroundColor: normal]
         item.selected.titleTextAttributes = [.foregroundColor: selected]
         item.normal.iconColor = normal
@@ -222,7 +216,7 @@ struct LEDMatrixApp: App {
 
     private static func titleAttributes(for theme: AppTheme) -> [NSAttributedString.Key: UIColor]? {
         guard !theme.usesSystemAppearance else { return nil }
-        return [.foregroundColor: UIColor(MatrixManager.accentColor(for: theme))]
+        return [.foregroundColor: UIColor(MatrixManager.lightAccentColor(for: theme))]
     }
 
     private static func thumbTintColor(for theme: AppTheme) -> UIColor? {

@@ -927,6 +927,26 @@ extension View {
         }
     }
 
+    /// Заголовок экрана: системная тема остаётся нативной, декоративные
+    /// красят заголовок светлым акцентом.
+    @ViewBuilder
+    func themedNavigationTitle(_ title: LocalizedStringKey, manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self.navigationTitle(title)
+        } else {
+            self.navigationTitle(Text(title).foregroundColor(manager.lightAccentColor))
+        }
+    }
+
+    @ViewBuilder
+    func themedNavigationTitle(_ title: String, manager: MatrixManager) -> some View {
+        if manager.currentTheme.usesSystemAppearance {
+            self.navigationTitle(title)
+        } else {
+            self.navigationTitle(Text(verbatim: title).foregroundColor(manager.lightAccentColor))
+        }
+    }
+
     /// Заголовки секций в системной теме остаются нативными (secondary).
     @ViewBuilder
     func themedSectionHeader(_ manager: MatrixManager) -> some View {

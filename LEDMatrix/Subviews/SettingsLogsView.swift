@@ -49,7 +49,7 @@ struct SettingsLogsView: View {
                 : manager.matrixPanelColor)
             .ignoresSafeArea()
         )
-        .navigationTitle("Вывод устройства")
+        .themedNavigationTitle("Вывод устройства", manager: manager)
         .navigationBarTitleDisplayMode(.inline)
         .themedDarkToolbar(manager)
         .tint(manager.accentColor)

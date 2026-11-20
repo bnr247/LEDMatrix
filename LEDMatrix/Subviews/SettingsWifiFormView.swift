@@ -64,7 +64,7 @@ struct SettingsWifiFormView: View {
             .listRowBackground(Color.clear)
         }
         .themedForm(manager)
-        .navigationTitle("Настройки WiFi")
+        .themedNavigationTitle("Настройки WiFi", manager: manager)
         // Принудительно сбрасываем статус успеха при изменении текста в полях, чтобы кнопка снова ожила
         .onChange(of: manager.localWifiSsid) { _, _ in manager.isSaveSuccess = false }
         .onChange(of: manager.localWifiPassword) { _, _ in manager.isSaveSuccess = false }

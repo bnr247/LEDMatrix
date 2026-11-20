@@ -82,7 +82,7 @@ struct SettingsInfoFormView: View {
                 secondaryButton: .cancel(Text("Отмена"))
             )
         }
-        .navigationTitle("Информация об устройстве")
+        .themedNavigationTitle("Информация об устройстве", manager: manager)
     }
 
     private func row(title: LocalizedStringKey, value: String) -> some View {

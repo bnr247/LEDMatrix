@@ -29,7 +29,7 @@ struct DivoomLikesView: View {
                 sendLikesCommand(sort: sort)
             }
         )
-        .navigationTitle("Избранное")
+        .themedNavigationTitle("Избранное", manager: manager)
         .themedToolbarBackground(manager)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Избранное", isPresented: $isShowingAlert) {

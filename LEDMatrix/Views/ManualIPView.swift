@@ -35,6 +35,6 @@ struct ManualIPView: View {
             .listRowBackground(manager.cardBackgroundColor)
         }
         .themedForm(manager)
-        .navigationTitle("Ручное подключение")
+        .themedNavigationTitle("Ручное подключение", manager: manager)
     }
 }

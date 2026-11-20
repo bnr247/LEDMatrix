@@ -137,7 +137,7 @@ struct SettingsGeneralFormView: View {
             .listRowBackground(manager.cardBackgroundColor)
         }
         .themedForm(manager)
-        .navigationTitle("Общие настройки")
+        .themedNavigationTitle("Общие настройки", manager: manager)
     }
 }
 

@@ -31,7 +31,7 @@ struct DivoomPlaylistDetailView: View {
                 sendPlaylistCommand(sort: sort)
             }
         )
-        .navigationTitle(playlist.Name)
+        .themedNavigationTitle(playlist.Name, manager: manager)
         .themedToolbarBackground(manager)
         .navigationBarTitleDisplayMode(.inline)
                 .alert("Плейлисты", isPresented: $isShowingAlert) {

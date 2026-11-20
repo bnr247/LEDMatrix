@@ -108,7 +108,7 @@ struct DivoomFeedView: View {
             .onAppear { feedbackGenerator.prepare() }
             .background(manager.backgroundColor)
             .ignoresSafeArea(edges: .bottom)
-            .navigationTitle(title)
+            .themedNavigationTitle(title, manager: manager)
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 if items.isEmpty {
@@ -378,7 +378,7 @@ struct DivoomFeedItemView: View {
                     }
                 }
                 .themedForm(manager)
-                .navigationTitle("Выберите плейлист")
+                .themedNavigationTitle("Выберите плейлист", manager: manager)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

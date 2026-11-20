@@ -363,7 +363,7 @@ struct DivoomUserGalleryView: View {
             )
         }
         .background(manager.backgroundColor)
-        .navigationTitle(resolvedDisplayName)
+        .themedNavigationTitle(resolvedDisplayName, manager: manager)
         .navigationBarTitleDisplayMode(.inline)
         .themedToolbarBackground(manager)
         .task {

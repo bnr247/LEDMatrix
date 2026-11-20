@@ -234,7 +234,7 @@ struct MainScreenView: View {
                     Spacer()
                 }
             }
-            .navigationTitle("LED Matrix")
+            .themedNavigationTitle("LED Matrix", manager: manager)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -266,13 +266,13 @@ struct MainScreenView: View {
                         CameraView(manager: manager)
                     }
                 }
-                .navigationTitle(feature.title)
+                .themedNavigationTitle(feature.title, manager: manager)
                 .navigationBarTitleDisplayMode(.inline)
             }
             .sheet(isPresented: $isShowingSettings) {
                 NavigationStack {
                     SettingsView(manager: manager)
-                        .navigationTitle("Настройки")
+                        .themedNavigationTitle("Настройки", manager: manager)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .confirmationAction) {
@@ -393,7 +393,7 @@ struct DeviceManagementSheet: View {
                 .listRowBackground(manager.cardBackgroundColor)
             }
             .themedForm(manager)
-            .navigationTitle("Устройства")
+            .themedNavigationTitle("Устройства", manager: manager)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

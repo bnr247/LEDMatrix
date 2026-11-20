@@ -32,7 +32,7 @@ struct DivoomAlbumDetailView: View {
                let _ = sendAlbumCommand(sort: sort)
             }
         )
-        .navigationTitle(album.AlbumName)
+        .themedNavigationTitle(album.AlbumName, manager: manager)
         .themedToolbarBackground(manager)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Альбомы", isPresented: $isShowingAlert) {

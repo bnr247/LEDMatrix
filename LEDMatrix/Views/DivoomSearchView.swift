@@ -509,7 +509,7 @@ struct DivoomTagDetailView: View {
             )
         }
         .background(manager.backgroundColor)
-        .navigationTitle("#\(tag.TagName)")
+        .themedNavigationTitle("#\(tag.TagName)", manager: manager)
         .navigationBarTitleDisplayMode(.inline)
         .themedToolbarBackground(manager)
     }

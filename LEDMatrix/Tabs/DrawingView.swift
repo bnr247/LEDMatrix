@@ -222,7 +222,7 @@ struct DrawingView: View {
         .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
         // Возвращаем стандартный iOS NavigationBar
-        .navigationTitle("Рисование")
+        .themedNavigationTitle("Рисование", manager: manager)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
