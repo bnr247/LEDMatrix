@@ -30,7 +30,7 @@ struct ScreenCastingView: View {
                         }
                     }
                     .padding(16)
-                    .background(manager.matrixPanelColor)
+                    .background(manager.cardBackgroundColor)
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
@@ -39,7 +39,7 @@ struct ScreenCastingView: View {
                     .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                 }
                 .frame(width: size, height: size)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
             .aspectRatio(1, contentMode: .fit)
             .padding(.horizontal, 10)
@@ -104,7 +104,7 @@ struct ScreenCastingView: View {
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
         }
-        .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
+        .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
         .onAppear {
             Task {

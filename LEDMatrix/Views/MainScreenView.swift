@@ -233,6 +233,8 @@ struct MainScreenView: View {
                     
                     Spacer()
                 }
+                // Отступ от навбара, чтобы «Устройство» не прилипало к нему
+                .padding(.top, 16)
             }
             .themedNavigationTitle("LED Matrix", manager: manager)
             .navigationBarTitleDisplayMode(.inline)

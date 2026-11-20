@@ -36,7 +36,7 @@ struct CameraView: View {
                         }
                     }
                     .padding(16)
-                    .background(manager.matrixPanelColor)
+                    .background(manager.cardBackgroundColor)
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
@@ -45,7 +45,7 @@ struct CameraView: View {
                     .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                 }
                 .frame(width: size, height: size)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // Накладываем белый экран поверх сетки с плавным затуханием
                 .overlay(
                     Rectangle()
@@ -137,7 +137,7 @@ struct CameraView: View {
             }
             .padding(.horizontal, 20)
         }
-        .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
+        .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {
