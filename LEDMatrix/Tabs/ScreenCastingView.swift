@@ -17,34 +17,36 @@ struct ScreenCastingView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: currentSpacing), count: 16)
         
         VStack(spacing: 12) {
-            // Квадратная сетка 16x16 вверху экрана
-            GeometryReader { geometry in
-                let size = min(geometry.size.width, geometry.size.height)
-                
-                VStack {
-                    LazyVGrid(columns: columns, spacing: currentSpacing) {
-                        ForEach(0 ..< 256, id: \.self) { index in
-                            Rectangle()
-                                .fill(manager.screenPixels[index])
-                                .aspectRatio(1, contentMode: .fit)
+            // Квадрат по ширине: сетка не должна растягиваться на всю высоту,
+            // иначе параметры и кнопка уезжают вниз с пустотой посередине.
+            Color.clear
+                .padding(.horizontal, 10)
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    GeometryReader { geometry in
+                        let size = min(geometry.size.width, geometry.size.height)
+
+                        VStack {
+                            LazyVGrid(columns: columns, spacing: currentSpacing) {
+                                ForEach(0 ..< 256, id: \.self) { index in
+                                    Rectangle()
+                                        .fill(manager.screenPixels[index])
+                                        .aspectRatio(1, contentMode: .fit)
+                                }
+                            }
+                            .padding(16)
+                            .background(manager.cardBackgroundColor)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(manager.cardBorderColor, lineWidth: 1)
+                            )
+                            .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                         }
+                        .frame(width: size, height: size)
                     }
-                    .padding(16)
-                    .background(manager.cardBackgroundColor)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(manager.cardBorderColor, lineWidth: 1)
-                    )
-                    .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                 }
-                .frame(width: size, height: size)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
-            .aspectRatio(1, contentMode: .fit)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, 10)
-            .padding(.top, 10)
+                .padding(.top, 10)
             
             // Чекбоксы управления просмотром
             VStack(spacing: 8) {
@@ -104,6 +106,8 @@ struct ScreenCastingView: View {
             )
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())

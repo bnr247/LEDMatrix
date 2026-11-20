@@ -244,8 +244,10 @@ struct LEDMatrixApp: App {
         return [.foregroundColor: UIColor(MatrixManager.lightAccentColor(for: theme))]
     }
 
+    /// Ползунки и «пилюли» тумблеров — светлый акцент. Заливка включённого
+    /// тумблера и полоса слайдера задаются `.tint(accentColor)` в SwiftUI.
     private static func thumbTintColor(for theme: AppTheme) -> UIColor? {
         guard !theme.usesSystemAppearance else { return nil }
-        return UIColor(MatrixManager.accentColor(for: theme))
+        return UIColor(MatrixManager.lightAccentColor(for: theme))
     }
 }
