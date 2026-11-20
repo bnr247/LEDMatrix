@@ -857,7 +857,7 @@ extension View {
         } else {
             self
                 .scrollContentBackground(.hidden)
-                .background(manager.backgroundColor.ignoresSafeArea(edges: .bottom))
+                .background(manager.backgroundColor.ignoresSafeArea())
                 .foregroundColor(manager.appTextColor)
                 .tint(manager.accentColor)
         }

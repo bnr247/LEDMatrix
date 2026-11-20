@@ -193,6 +193,10 @@ struct LEDMatrixApp: App {
 
         guard !theme.usesSystemAppearance else { return appearance }
 
+        // Явно задаём фон навбара: без него полупрозрачный дефолтный фон
+        // показывает чёрный фон контента, и навбар выглядит чёрным.
+        appearance.backgroundColor = UIColor(MatrixManager.cardBackgroundColor(for: theme))
+
         let titleColor = UIColor(MatrixManager.lightAccentColor(for: theme))
         appearance.titleTextAttributes = [.foregroundColor: titleColor]
         appearance.largeTitleTextAttributes = [.foregroundColor: titleColor]

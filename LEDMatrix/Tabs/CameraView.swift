@@ -137,7 +137,7 @@ struct CameraView: View {
             }
             .padding(.horizontal, 20)
         }
-        .background(manager.backgroundColor.ignoresSafeArea(edges: .bottom))
+        .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {
