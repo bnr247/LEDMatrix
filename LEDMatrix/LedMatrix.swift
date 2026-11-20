@@ -78,14 +78,14 @@ struct LEDMatrixApp: App {
         UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: light], for: .normal)
         UITabBarItem.appearance().setTitleTextAttributes(usesSystem ? nil : [.foregroundColor: accent], for: .selected)
 
-        let alertView = UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self])
-        alertView.tintColor = usesSystem ? nil : accent
-        alertView.backgroundColor = usesSystem ? nil : card
+        // Диалоги оставляем нативными: трогаем только текст и tint.
+        // Задавать backgroundColor через UIView.appearance внутри UIAlertController
+        // нельзя — он закрашивает служебный фон алерта и прямоугольник
+        // вылезает за скруглённую системную подложку.
         UILabel.appearance(whenContainedInInstancesOf: [UIAlertController.self]).textColor = usesSystem ? nil : light
         let alertField = UITextField.appearance(whenContainedInInstancesOf: [UIAlertController.self])
         alertField.textColor = usesSystem ? nil : light
         alertField.tintColor = usesSystem ? nil : accent
-        alertField.backgroundColor = usesSystem ? nil : UIColor(MatrixManager.fieldBackgroundColor(for: theme))
         UIButton.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = usesSystem ? nil : accent
     }
 
