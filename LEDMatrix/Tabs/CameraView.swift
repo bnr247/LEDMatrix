@@ -22,43 +22,35 @@ struct CameraView: View {
         let currentSpacing: CGFloat = manager.showCameraGrid ? 2 : 0
         let columns = Array(repeating: GridItem(.flexible(), spacing: currentSpacing), count: 16)
         
-        VStack(spacing: 16) {
-            // Квадрат по ширине: сетка не должна растягиваться на всю высоту,
-            // иначе параметры и кнопки уезжают вниз с пустотой посередине.
-            Color.clear
-                .padding(.horizontal, 10)
-                .aspectRatio(1, contentMode: .fit)
-                .overlay {
-                    GeometryReader { geometry in
-                        let size = min(geometry.size.width, geometry.size.height)
+        GeometryReader { screen in
+            let side = min(screen.size.width - 40, screen.size.height - 260)
 
-                        VStack {
-                            LazyVGrid(columns: columns, spacing: currentSpacing) {
-                                ForEach(0 ..< 256, id: \.self) { index in
-                                    Rectangle()
-                                        .fill(manager.cameraPixels[index])
-                                        .aspectRatio(1, contentMode: .fit)
-                                }
-                            }
-                            .padding(16)
-                            .background(manager.cardBackgroundColor)
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(manager.cardBorderColor, lineWidth: 1)
-                            )
-                            .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
-                        }
-                        .frame(width: size, height: size)
-                        .overlay(
+            VStack(spacing: 16) {
+                // Сетка 16x16 строго квадратная, размер считается от ширины экрана
+                VStack {
+                    LazyVGrid(columns: columns, spacing: currentSpacing) {
+                        ForEach(0 ..< 256, id: \.self) { index in
                             Rectangle()
-                                .fill(Color.white)
-                                .cornerRadius(10)
-                                .opacity(flashOpacity)
-                        )
+                                .fill(manager.cameraPixels[index])
+                                .aspectRatio(1, contentMode: .fit)
+                        }
                     }
+                    .padding(16)
+                    .background(manager.cardBackgroundColor)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(manager.cardBorderColor, lineWidth: 1)
+                    )
+                    .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 2)
                 }
-                .padding(.top, 10)
+                .frame(width: side, height: side)
+                .overlay(
+                    Rectangle()
+                        .fill(Color.white)
+                        .cornerRadius(10)
+                        .opacity(flashOpacity)
+                )
             
             // Тумблеры управления
             VStack(spacing: 8) {
@@ -139,9 +131,11 @@ struct CameraView: View {
             }
             .padding(.horizontal, 20)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.top, 12)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
         .tint(manager.accentColor)
         .overlay(alignment: .bottom) {
