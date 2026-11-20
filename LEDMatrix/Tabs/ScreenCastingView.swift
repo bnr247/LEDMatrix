@@ -104,7 +104,7 @@ struct ScreenCastingView: View {
             .disabled(manager.isScreenLoading || manager.isScreenLiveActive)
             .padding(.horizontal, 20)
         }
-        .background(manager.backgroundColor.ignoresSafeArea())
+        .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
         .tint(manager.accentColor)
         .onAppear {
             Task {
