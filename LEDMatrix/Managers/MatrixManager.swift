@@ -558,11 +558,11 @@ extension MatrixManager {
         case .system:
             return .primary
         case .dark:
-            return Color(hex: "A6E6A6") // Насыщенный светло-зелёный OLED
+            return Color(hex: "7EE37E") // Светло-зелёный OLED, но не белый
         case .neon:
-            return Color(hex: "A8E6F2") // Насыщенный светло-циановый неон
+            return Color(hex: "67D8F0") // Светло-циановый неон, но не белый
         case .amber:
-            return Color(hex: "FFD9A0") // Разогретый янтарь
+            return Color(hex: "FFC266") // Светлый янтарь, но не белый
         }
     }
 
@@ -933,8 +933,10 @@ extension View {
     func themedNavigationTitle(_ title: LocalizedStringKey, manager: MatrixManager) -> some View {
         if manager.currentTheme.usesSystemAppearance {
             self.navigationTitle(title)
+                .background(UIKitThemeConfigurator(manager: manager))
         } else {
             self.navigationTitle(Text(title).foregroundColor(manager.lightAccentColor))
+                .background(UIKitThemeConfigurator(manager: manager))
         }
     }
 
@@ -942,8 +944,10 @@ extension View {
     func themedNavigationTitle(_ title: String, manager: MatrixManager) -> some View {
         if manager.currentTheme.usesSystemAppearance {
             self.navigationTitle(title)
+                .background(UIKitThemeConfigurator(manager: manager))
         } else {
             self.navigationTitle(Text(verbatim: title).foregroundColor(manager.lightAccentColor))
+                .background(UIKitThemeConfigurator(manager: manager))
         }
     }
 
@@ -981,6 +985,58 @@ extension View {
                 .toolbarColorScheme(.dark, for: .navigationBar)
                 .toolbarBackground(manager.matrixPanelColor, for: .navigationBar)
                 .toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+}
+
+/// Принудительно применяет UIKit-аппеаранс после того, как SwiftUI создал
+/// UINavigationBar/UITabBar. Appearance-прокси и `themedForm` не перекрашивают
+/// уже созданные бары, поэтому configurator вызывается на появлении экрана.
+struct UIKitThemeConfigurator: UIViewControllerRepresentable {
+    @ObservedObject var manager: MatrixManager
+
+    func makeUIViewController(context: Context) -> ThemeConfiguratorViewController {
+        ThemeConfiguratorViewController(manager: manager)
+    }
+
+    func updateUIViewController(_ uiViewController: ThemeConfiguratorViewController, context: Context) {
+        uiViewController.manager = manager
+        uiViewController.applyTheme()
+    }
+
+    final class ThemeConfiguratorViewController: UIViewController {
+        var manager: MatrixManager
+        private var didApplyAfterLayout = false
+
+        init(manager: MatrixManager) {
+            self.manager = manager
+            super.init(nibName: nil, bundle: nil)
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            didApplyAfterLayout = false
+            applyTheme()
+            DispatchQueue.main.async { self.applyTheme() }
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            guard !didApplyAfterLayout else { return }
+            didApplyAfterLayout = true
+            DispatchQueue.main.async { self.applyTheme() }
+        }
+
+        func applyTheme() {
+            let theme = manager.currentTheme
+            LEDMatrixApp.applyThemeAppearance(theme)
+            Task { @MainActor in
+                LEDMatrixApp.refreshExistingControls(for: theme)
+            }
         }
     }
 }

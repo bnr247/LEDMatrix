@@ -126,6 +126,7 @@ struct DivoomMainView: View {
                 }
                 .tag(DivoomSection.authors)
         }
+        .background(UIKitThemeConfigurator(manager: manager))
     }
 
     // MARK: - Режим поиска

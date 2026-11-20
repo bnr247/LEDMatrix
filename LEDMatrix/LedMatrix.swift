@@ -30,7 +30,7 @@ struct LEDMatrixApp: App {
     /// Единая точка настройки UIKit-аппеаранса.
     /// Декоративные темы красят навигацию, таббар и кнопки светлым акцентом,
     /// системная тема возвращает стандартные appearance-объекты iOS.
-    private static func applyThemeAppearance(_ theme: AppTheme) {
+    static func applyThemeAppearance(_ theme: AppTheme) {
         let usesSystem = theme.usesSystemAppearance
         let light = UIColor(MatrixManager.lightAccentColor(for: theme))
         let accent = UIColor(MatrixManager.accentColor(for: theme))
@@ -83,7 +83,7 @@ struct LEDMatrixApp: App {
     /// Appearance proxy не перекрашивает уже созданные UINavigationBar,
     /// UITabBar, UISlider и UISwitch — обновляем их напрямую при смене темы.
     @MainActor
-    private static func refreshExistingControls(for theme: AppTheme) {
+    static func refreshExistingControls(for theme: AppTheme) {
         let usesSystem = theme.usesSystemAppearance
         let navigationAppearance = navigationBarAppearance(for: theme)
         let tabAppearance = tabBarAppearance(for: theme)
