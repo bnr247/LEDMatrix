@@ -23,9 +23,9 @@ struct CameraView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: currentSpacing), count: 16)
         
         GeometryReader { screen in
-            let side = min(screen.size.width - 40, screen.size.height - 260)
+            let side = min(screen.size.width - 40, screen.size.height - 340)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 24) {
                 // Сетка 16x16 строго квадратная, размер считается от ширины экрана
                 VStack {
                     LazyVGrid(columns: columns, spacing: currentSpacing) {
@@ -64,7 +64,7 @@ struct CameraView: View {
             .padding(.horizontal, 20)
             
             // Панель кнопок управления трансляцией и снимками
-            VStack(spacing: 12) {
+            VStack(spacing: 24) {
                 Button(action: {
                     isStreaming.toggle()
                     if isStreaming {
@@ -96,13 +96,17 @@ struct CameraView: View {
                         cameraController.switchCamera()
                         manager.isUsingFrontCamera.toggle()
                     }) {
-                        Label("Переключить", systemImage: "camera.rotate.fill")
-                            .bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                        VStack(spacing: 12) {
+                            Image(systemName: "camera.rotate.fill")
+                                .font(.system(size: 28))
+                            Text("Переключить")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 110)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(manager.accentColor)
+                    .themedActionButton(manager, isEnabled: isStreaming)
                     .disabled(!isStreaming)
                     
                     Button(action: {
@@ -119,13 +123,17 @@ struct CameraView: View {
                             showToast(message: "Сохранено в галерею")
                         }
                     }) {
-                        Label("Снимок", systemImage: "camera.circle.fill")
-                            .bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                        VStack(spacing: 12) {
+                            Image(systemName: "camera.circle.fill")
+                                .font(.system(size: 28))
+                            Text("Снимок")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 110)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(manager.accentColor)
+                    .themedActionButton(manager, isEnabled: isStreaming)
                     .disabled(!isStreaming)
                 }
             }
@@ -136,7 +144,7 @@ struct CameraView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 12)
         }
-        .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
+        .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
         .overlay(alignment: .bottom) {
             if let message = toastMessage {

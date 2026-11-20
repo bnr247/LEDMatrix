@@ -17,9 +17,9 @@ struct ScreenCastingView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: currentSpacing), count: 16)
         
         GeometryReader { screen in
-            let side = min(screen.size.width - 40, screen.size.height - 240)
+            let side = min(screen.size.width - 40, screen.size.height - 300)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 24) {
                 // Сетка 16x16 строго квадратная, размер считается от ширины экрана
                 VStack {
                     LazyVGrid(columns: columns, spacing: currentSpacing) {
@@ -104,7 +104,7 @@ struct ScreenCastingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 12)
         }
-        .background((manager.currentTheme.usesSystemAppearance ? manager.backgroundColor : manager.cardBackgroundColor).ignoresSafeArea())
+        .background(manager.backgroundColor.ignoresSafeArea())
         .tint(manager.accentColor)
         .onAppear {
             Task {
