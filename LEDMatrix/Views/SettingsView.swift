@@ -64,7 +64,7 @@ struct SettingsView: View {
                         .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsWifiFormView(manager: manager)) {
-                    Label("Настройки Wifi", systemImage: "wifi")
+                    Label("Настройки Wi-Fi", systemImage: "wifi")
                         .foregroundColor(manager.appTextColor)
                 }
                 NavigationLink(destination: SettingsDivoomFormView(manager: manager)) {

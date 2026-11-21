@@ -63,7 +63,7 @@ struct SettingsInfoFormView: View {
                 Button(action: {
                     activeAction = .resetWifi
                 }) {
-                    Label("Сброс WiFi", systemImage: "wifi")
+                    Label("Сброс Wi-Fi", systemImage: "wifi")
                 }
                 .foregroundStyle(manager.warningColor)
 
@@ -125,7 +125,7 @@ enum DeviceAction: Identifiable {
     var title: String {
         switch self {
         case .restart: return "Перезагрузка"
-        case .resetWifi: return "Сброс настроек WiFi"
+        case .resetWifi: return "Сброс настроек Wi-Fi"
         case .resetSettings: return "Сброс всех настроек"
         case .factoryReset: return "Factory reset"
         }
@@ -134,7 +134,7 @@ enum DeviceAction: Identifiable {
     var message: String {
         switch self {
         case .restart: return "Вы уверены, что хотите перезагрузить устройство?"
-        case .resetWifi: return "Вы уверены, что хотите сбросить настройки WiFi?"
+        case .resetWifi: return "Вы уверены, что хотите сбросить настройки Wi-Fi?"
         case .resetSettings: return "Это действие удалит настройки устройства без возможности восстановления. Настройки WiFi затронуты не будут"
         case .factoryReset: return "Это действие удалит все настройки и сбросит устройство до исходного состояния"
         }
