@@ -78,6 +78,12 @@ struct MatrixSettings: Codable {
     var rtcTemperature: Double?
     var timeFormat: Int = 24
     var timeAutoSync: Bool = true
+    var failureBrownout: Int = 0
+    var failurePanic: Int = 0
+    var failureWatchdog: Int = 0
+    var lastFailure: String = "none"
+    var lastFailureTime: Int = 0
+    var settingsBackupAvailable: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case brightnessPercent = "brightness"
@@ -128,6 +134,12 @@ struct MatrixSettings: Codable {
         case rtcTemperature = "rtc_temperature"
         case timeFormat = "time_format"
         case timeAutoSync = "time_auto_sync"
+        case failureBrownout = "failure_brownout"
+        case failurePanic = "failure_panic"
+        case failureWatchdog = "failure_watchdog"
+        case lastFailure = "last_failure"
+        case lastFailureTime = "last_failure_time"
+        case settingsBackupAvailable = "settings_backup_available"
     }
 
     var animationType: AnimationType? {
@@ -212,6 +224,27 @@ struct MatrixSettings: Codable {
     var formattedRtcTemperature: String {
         guard let temperature = rtcTemperature else { return "—" }
         return String(format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), temperature)
+    }
+
+    var lastFailureName: String {
+        switch lastFailure {
+        case "brownout": return "Просадка питания"
+        case "panic": return "Паника / исключение"
+        case "watchdog": return "Watchdog"
+        default: return "Нет"
+        }
+    }
+
+    var formattedLastFailureTime: String {
+        guard lastFailureTime > 0 else { return "—" }
+        let date = Date(timeIntervalSince1970: TimeInterval(lastFailureTime))
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd.MM.yyyy HH:mm:ss"
+        return formatter.string(from: date)
+    }
+
+    var settingsBackupStatus: String {
+        settingsBackupAvailable ? "Доступна" : "Отсутствует"
     }
 
     var formattedUptime: String {

@@ -15,19 +15,34 @@ struct SettingsInfoFormView: View {
 
     var body: some View {
         Form {
-            Section {
+            Section("Об устройстве")  {
                 row(title: "Имя хоста", value: manager.settings.hostName)
                 row(title: "IP адрес", value: manager.settings.ipAddress)
                 row(title: "MAC адрес", value: manager.settings.macAddress)
                 row(title: "Версия HW", value: manager.settings.hwVersion)
                 row(title: "Версия FW", value: manager.settings.fwVersion)
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+                Section("Загрузка") {
                 row(title: "Запусков", value: "\(manager.settings.bootCount)")
                 row(title: "Последний старт", value: manager.settings.formattedBootTime)
                 row(title: "Время работы", value: manager.settings.formattedUptime)
                 row(title: "Перезапущено", value: "\(manager.settings.resetReason) (\(manager.settings.resetReasonName))")
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+                Section("RTC") {
                 row(title: "RTC", value: manager.settings.rtcStatus)
                 row(title: "Время RTC", value: manager.settings.formattedRtcTime)
                 row(title: "Температура, °C", value: manager.settings.formattedRtcTemperature)
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+            Section("Диагностика") {
+                row(title: "Отказов: brownout", value: "\(manager.settings.failureBrownout)")
+                row(title: "Отказов: panic", value: "\(manager.settings.failurePanic)")
+                row(title: "Отказов: watchdog", value: "\(manager.settings.failureWatchdog)")
+                row(title: "Последний отказ", value: manager.settings.lastFailureName)
+                row(title: "Время отказа", value: manager.settings.formattedLastFailureTime)
+                row(title: "Резервная копия настроек", value: manager.settings.settingsBackupStatus)
             }
             .listRowBackground(manager.cardBackgroundColor)
             Section {
