@@ -7,6 +7,9 @@
     "#%@" : {
 
     },
+    "%@" : {
+
+    },
     "%lld" : {
 
     },
@@ -71,7 +74,14 @@
 
     },
     "Live-режим" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live mode"
+          }
+        }
+      }
     },
     "Lv.%lld" : {
 
@@ -95,7 +105,10 @@
     "OK" : {
 
     },
-    "Score: %@" : {
+    "RTC" : {
+
+    },
+    "Score: " : {
 
     },
     "SSID" : {
@@ -114,26 +127,85 @@
         }
       }
     },
+    "Автоматически" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        }
+      }
+    },
     "Авторы" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creators"
+          }
+        }
+      }
     },
     "Авторы не найдены" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creators not found"
+          }
+        }
+      }
     },
     "Альбом" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Album"
+          }
+        }
+      }
     },
     "Альбомы" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albums"
+          }
+        }
+      }
     },
     "Анимации (сек.)" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Animations (sec)"
+          }
+        }
+      }
     },
-    "Анимации: %@" : {
-
+    "Анимации: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Animations"
+          }
+        }
+      }
     },
     "Анимация" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Animation"
+          }
+        }
+      }
     },
     "Бегущая строка" : {
       "localizations" : {
@@ -152,10 +224,24 @@
       }
     },
     "Введите запрос и нажмите «Поиск»" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter your query and click \"Search\""
+          }
+        }
+      }
     },
     "Введите название нового плейлиста" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New playlst name"
+          }
+        }
+      }
     },
     "Введите сообщение..." : {
       "localizations" : {
@@ -206,42 +292,104 @@
       }
     },
     "Вид и сортировка" : {
-
-    },
-    "Внешний вид" : {
-
-    },
-    "Внешний вид часов" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clock appearance"
+            "value" : "Sorting"
           }
-        },
-        "ru" : {
+        }
+      }
+    },
+    "Внешний вид" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Внешний вид часов"
+            "value" : "Appearance"
           }
         }
       }
     },
     "Воспроизвести" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play"
+          }
+        }
+      }
+    },
+    "Время" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        }
+      }
+    },
+    "Время RTC" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RTC Time"
+          }
+        }
+      }
     },
     "Время на экране" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On screen"
+          }
+        }
+      }
     },
     "Время работы" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uptime"
+          }
+        }
+      }
+    },
+    "Время синхронизируется с интернетом. Отключите, чтобы задать дату и время вручную." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The time is synchronized with a server. Disable to set the date and time manually."
+          }
+        }
+      }
     },
     "Вспышка" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flash"
+          }
+        }
+      }
     },
     "Вы действительно хотите удалить это устройство?" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to delete this device?"
+          }
+        }
+      }
     },
     "Вы действительно хотите установить выбранный файл прошивки?\n\nФайл: %@" : {
       "localizations" : {
@@ -260,19 +408,54 @@
       }
     },
     "Вы уверены, что хотите удалить плейлист «%@»?" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Are you sure you want to delete playlist «%@»?"
+          }
+        }
+      }
     },
     "Выберите плейлист" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose playlist"
+          }
+        }
+      }
     },
     "Вывод устройства" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device output"
+          }
+        }
+      }
     },
     "Выйти" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit"
+          }
+        }
+      }
     },
     "Готово" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
     },
     "Данные для подключения" : {
       "localizations" : {
@@ -286,6 +469,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Данные для подключения"
+          }
+        }
+      }
+    },
+    "Дата" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date"
+          }
+        }
+      }
+    },
+    "Дата и время" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date and Time"
           }
         }
       }
@@ -339,31 +542,94 @@
       }
     },
     "Загрузка авторов..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading"
+          }
+        }
+      }
     },
     "Загрузка альбомов..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading albums…"
+          }
+        }
+      }
     },
     "Загрузка вывода..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading log…"
+          }
+        }
+      }
     },
     "Загрузка галереи..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading gallery…"
+          }
+        }
+      }
     },
     "Загрузка плейлистов..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading playlists…"
+          }
+        }
+      }
     },
     "Загрузка тэгов..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading tags…"
+          }
+        }
+      }
     },
     "Закрыть" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
     },
     "Закрыть поиск" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close search"
+          }
+        }
+      }
     },
     "Заливка" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fill"
+          }
+        }
+      }
     },
     "Запись во флэш-память устройства..." : {
       "localizations" : {
@@ -398,7 +664,14 @@
       }
     },
     "Избранное" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Likes"
+          }
+        }
+      }
     },
     "Имя хоста" : {
       "localizations" : {
@@ -433,31 +706,94 @@
       }
     },
     "Камера" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera"
+          }
+        }
+      }
     },
     "Категории" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Categories"
+          }
+        }
+      }
     },
     "Кисть" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brush"
+          }
+        }
+      }
     },
     "Классическая бегущая строка на всю матрицу." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Classic full screen mode"
+          }
+        }
+      }
     },
     "Колонки" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Columns"
+          }
+        }
+      }
     },
     "Ластик" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eraser"
+          }
+        }
+      }
     },
     "Лог" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log"
+          }
+        }
+      }
     },
     "Минута 1" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minute 1"
+          }
+        }
+      }
     },
     "Минута 2" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minute 2"
+          }
+        }
+      }
     },
     "Мои устройства" : {
       "localizations" : {
@@ -476,10 +812,14 @@
       }
     },
     "Нажмите на цифру, разделитель или фон, чтобы выбрать элемент для изменения цвета" : {
-
-    },
-    "Назад" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click on a number, separator, or background to change color"
+          }
+        }
+      }
     },
     "Название матрицы (например, Гостиная)" : {
       "localizations" : {
@@ -498,21 +838,11 @@
       }
     },
     "Название плейлиста" : {
-
-    },
-    "Название устройства" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Device name"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Название устройства"
+            "value" : "Playlist name"
           }
         }
       }
@@ -554,12 +884,12 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wifi Settings"
+            "value" : "Wi-Fi Settings"
           }
         },
         "ru" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Настройки WiFi"
           }
         }
@@ -570,19 +900,26 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wifi Settings"
+            "value" : "Wi-Fi Settings"
           }
         },
         "ru" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Настройки WiFi"
           }
         }
       }
     },
     "Настройки галереи" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gallery settings "
+          }
+        }
+      }
     },
     "Настройки устройства" : {
       "localizations" : {
@@ -617,10 +954,24 @@
       }
     },
     "Начать" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
     },
     "Начать трансляцию" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start cast"
+          }
+        }
+      }
     },
     "Не удалось прочитать файл" : {
       "localizations" : {
@@ -655,22 +1006,64 @@
       }
     },
     "Нет" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
+          }
+        }
+      }
     },
     "Нет плейлистов" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No playlists"
+          }
+        }
+      }
     },
     "Нет устройств" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No devices"
+          }
+        }
+      }
     },
     "Нет элементов" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty"
+          }
+        }
+      }
     },
     "Новое название" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New name"
+          }
+        }
+      }
     },
     "Новые" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New"
+          }
+        }
+      }
     },
     "Новые устройства не найдены" : {
       "localizations" : {
@@ -689,7 +1082,14 @@
       }
     },
     "Новый плейлист" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New playlist"
+          }
+        }
+      }
     },
     "Ночь" : {
       "localizations" : {
@@ -707,25 +1107,15 @@
         }
       }
     },
-    "Об устройстве" : {
-      "extractionState" : "stale",
+    "Обмен цветом" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "About"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Об устройстве"
+            "value" : "Color swap"
           }
         }
       }
-    },
-    "Обмен цветом" : {
-
     },
     "Обновить" : {
       "localizations" : {
@@ -744,7 +1134,14 @@
       }
     },
     "Обновить кадр" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refresh"
+          }
+        }
+      }
     },
     "Обновление завершено! Устройство перезагружается..." : {
       "localizations" : {
@@ -794,23 +1191,6 @@
         }
       }
     },
-    "Общие" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "General"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Общие"
-          }
-        }
-      }
-    },
     "Общие настройки" : {
       "localizations" : {
         "en" : {
@@ -828,10 +1208,24 @@
       }
     },
     "Основные" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
     },
     "Остановить трансляцию" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop cast"
+          }
+        }
+      }
     },
     "Отмена" : {
       "localizations" : {
@@ -866,30 +1260,34 @@
       }
     },
     "Отображать на весь экран" : {
-
-    },
-    "Отображение" : {
-
-    },
-    "Отправить" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Send"
+            "value" : "Full screen"
           }
-        },
-        "ru" : {
+        }
+      }
+    },
+    "Отображение" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отправить"
+            "value" : "Appearance"
           }
         }
       }
     },
     "Отправить текст" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send text"
+          }
+        }
+      }
     },
     "Отправка пакетов данных..." : {
       "localizations" : {
@@ -908,10 +1306,24 @@
       }
     },
     "Очистить" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
     },
     "Очистить поиск" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear search"
+          }
+        }
+      }
     },
     "Ошибка (%lld): %@" : {
       "localizations" : {
@@ -946,33 +1358,44 @@
       }
     },
     "Ошибка сохранения" : {
-
-    },
-    "Ошибка: разрешены только файлы с расширением .bin" : {
-
-    },
-    "Ошибка: файл не является валидной прошивкой ESP32" : {
-
-    },
-    "Панель управления" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Control panel"
+            "value" : "Error while saving"
           }
-        },
-        "ru" : {
+        }
+      }
+    },
+    "Ошибка: разрешены только файлы с расширением .bin" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Панель управления"
+            "value" : "Error: only .bin files allowed"
+          }
+        }
+      }
+    },
+    "Ошибка: файл не является валидной прошивкой ESP32" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error: the file is not a valid ESP32 firmware"
           }
         }
       }
     },
     "Параметры" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parameters"
+          }
+        }
+      }
     },
     "Параметры матрицы" : {
       "localizations" : {
@@ -1023,10 +1446,24 @@
       }
     },
     "Перезапущено" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart code"
+          }
+        }
+      }
     },
     "Переименовать" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
+          }
+        }
+      }
     },
     "Переименовать устройство" : {
       "localizations" : {
@@ -1045,19 +1482,54 @@
       }
     },
     "Переключить" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change"
+          }
+        }
+      }
     },
     "Плейлист" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist"
+          }
+        }
+      }
     },
     "Плейлисты" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists"
+          }
+        }
+      }
     },
     "Повторить" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
     },
     "Повторить попытку" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
     },
     "Повторов: %lld" : {
       "localizations" : {
@@ -1092,16 +1564,44 @@
       }
     },
     "Подписан" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Following"
+          }
+        }
+      }
     },
     "Подписаться" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follow"
+          }
+        }
+      }
     },
-    "Подписки: %@" : {
-
+    "Подписки: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follows"
+          }
+        }
+      }
     },
-    "Подписчики: %@" : {
-
+    "Подписчики: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Followers"
+          }
+        }
+      }
     },
     "Подтвердить" : {
       "localizations" : {
@@ -1120,63 +1620,144 @@
       }
     },
     "Поиск" : {
-
-    },
-    "Поиск по Divoom" : {
-
-    },
-    "Поиск устройств LedMatrix..." : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Searching LedMatrix devices…"
+            "value" : "Search"
           }
-        },
-        "ru" : {
+        }
+      }
+    },
+    "Поиск по Divoom" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поиск устройств LedMatrix..."
+            "value" : "Search Divoom"
           }
         }
       }
     },
     "Поиск устройств..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching devices…"
+          }
+        }
+      }
     },
     "Показывать разделитель" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show divider"
+          }
+        }
+      }
     },
     "Показывать циферблат на устройстве" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show clockface"
+          }
+        }
+      }
     },
     "Полный сброс" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Factory reset"
+          }
+        }
+      }
     },
     "Помехи" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Static"
+          }
+        }
+      }
     },
     "Популярные" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hot"
+          }
+        }
+      }
     },
     "Последний старт" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last boot"
+          }
+        }
+      }
     },
     "Предпросмотр" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        }
+      }
     },
     "Радуга" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rainbow"
+          }
+        }
+      }
     },
     "Раздел" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section"
+          }
+        }
+      }
     },
     "Раздел в разработке" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Under development"
+          }
+        }
+      }
     },
     "Режим" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode"
+          }
+        }
+      }
     },
     "Режим экрана" : {
       "localizations" : {
@@ -1195,7 +1776,14 @@
       }
     },
     "Рисование" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drawing"
+          }
+        }
+      }
     },
     "Ручное подключение" : {
       "localizations" : {
@@ -1246,36 +1834,54 @@
       }
     },
     "Сетка" : {
-
-    },
-    "Скорость" : {
-
-    },
-    "Скорость эффекта" : {
-
-    },
-    "Скорость: %lld" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speed: %lld"
+            "value" : "Grid"
           }
-        },
-        "ru" : {
+        }
+      }
+    },
+    "Скорость" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скорость: %lld"
+            "value" : "Speed"
+          }
+        }
+      }
+    },
+    "Скорость эффекта" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effect speed"
           }
         }
       }
     },
     "Слайд" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slide"
+          }
+        }
+      }
     },
     "Случайный цвет" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Random color"
+          }
+        }
+      }
     },
     "Смешанный" : {
       "localizations" : {
@@ -1294,16 +1900,44 @@
       }
     },
     "Снимок" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take picture"
+          }
+        }
+      }
     },
     "Сообщение" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message"
+          }
+        }
+      }
     },
     "Сортировка" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorting"
+          }
+        }
+      }
     },
     "Сортировка:" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorting:"
+          }
+        }
+      }
     },
     "Сохранить" : {
       "localizations" : {
@@ -1338,30 +1972,34 @@
       }
     },
     "Спектр" : {
-
-    },
-    "Список устройств" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Device list"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Список устройств"
+            "value" : "Spectrum"
           }
         }
       }
     },
     "Стандартный" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
+          }
+        }
+      }
     },
     "Стирает нарисованное" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erases pixels"
+          }
+        }
+      }
     },
     "Текст" : {
       "localizations" : {
@@ -1380,16 +2018,54 @@
       }
     },
     "Текст идёт по непрозрачной полосе в центре матрицы, а вокруг виден фон часов или анимации." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The text is showing in window"
+          }
+        }
+      }
     },
     "Текст появится на матрице после нажатия кнопки отправки." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The text will appear on the matrix once the send button is pressed."
+          }
+        }
+      }
     },
     "Тема оформления" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color theme"
+          }
+        }
+      }
+    },
+    "Температура, °C" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperature, °C"
+          }
+        }
+      }
     },
     "Тип анимации" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Animation type"
+          }
+        }
+      }
     },
     "Только анимация" : {
       "localizations" : {
@@ -1424,16 +2100,44 @@
       }
     },
     "Тэги не найдены" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tags found"
+          }
+        }
+      }
     },
     "Удаление плейлиста" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete playlist"
+          }
+        }
+      }
     },
     "Удаление устройства" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove device"
+          }
+        }
+      }
     },
     "Удалить" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
     },
     "Установить прошивку (.bin)" : {
       "localizations" : {
@@ -1452,7 +2156,14 @@
       }
     },
     "Устройства" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Devices"
+          }
+        }
+      }
     },
     "Устройства в сети" : {
       "localizations" : {
@@ -1471,7 +2182,14 @@
       }
     },
     "Устройство" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device"
+          }
+        }
+      }
     },
     "Устройство не выбрано" : {
       "localizations" : {
@@ -1490,7 +2208,14 @@
       }
     },
     "Устройство переименовано" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Device renamed"
+          }
+        }
+      }
     },
     "Учетные данные Divoom" : {
       "localizations" : {
@@ -1525,41 +2250,21 @@
       }
     },
     "Цвет заливки" : {
-
-    },
-    "Цвет кисти" : {
-
-    },
-    "Цвет минут" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Minutes color"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Цвет минут"
+            "value" : "Fill color"
           }
         }
       }
     },
-    "Цвет разделителя" : {
-      "extractionState" : "stale",
+    "Цвет кисти" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Colon color"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Цвет разделителя"
+            "value" : "Brush color"
           }
         }
       }
@@ -1596,48 +2301,35 @@
         }
       }
     },
-    "Цвет часов" : {
-      "extractionState" : "stale",
+    "Цвет: " : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hours color"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Цвет часов"
-          }
-        }
-      }
-    },
-    "Цвет: %@" : {
-
-    },
-    "Цветовая гамма часов" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clock color palette"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Цветовая гамма часов"
+            "value" : "Color: "
           }
         }
       }
     },
     "Час 1" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hour 1"
+          }
+        }
+      }
     },
     "Час 2" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hour 2"
+          }
+        }
+      }
     },
     "Часы" : {
       "localizations" : {
@@ -1656,65 +2348,61 @@
       }
     },
     "Часы (сек.)" : {
-
-    },
-    "Шрифт" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Font"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Шрифт"
+            "value" : "Clock (seconds)"
           }
         }
       }
     },
     "Экран" : {
-
-    },
-    "Элементов в ряду:" : {
-
-    },
-    "Элементов: %lld" : {
-
-    },
-    "Эффект" : {
-
-    },
-    "Яркость: %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brightness: %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Яркость: %@"
+            "value" : "Screen"
           }
         }
       }
     },
-    "Яркость: %lld" : {
+    "Элементов в ряду:" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brightness: %lld"
+            "value" : "Animations in row:"
           }
-        },
-        "ru" : {
+        }
+      }
+    },
+    "Элементов: " : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Яркость: %lld"
+            "value" : "Objects:"
+          }
+        }
+      }
+    },
+    "Эффект" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effect"
+          }
+        }
+      }
+    },
+    "Яркость: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brightness: "
           }
         }
       }

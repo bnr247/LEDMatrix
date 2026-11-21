@@ -25,6 +25,9 @@ struct SettingsInfoFormView: View {
                 row(title: "Последний старт", value: manager.settings.formattedBootTime)
                 row(title: "Время работы", value: manager.settings.formattedUptime)
                 row(title: "Перезапущено", value: "\(manager.settings.resetReason) (\(manager.settings.resetReasonName))")
+                row(title: "RTC", value: manager.settings.rtcStatus)
+                row(title: "Время RTC", value: manager.settings.formattedRtcTime)
+                row(title: "Температура, °C", value: manager.settings.formattedRtcTemperature)
             }
             .listRowBackground(manager.cardBackgroundColor)
             Section {

@@ -5,7 +5,10 @@
 //  Created by Stanislav Leonov on 07.11.2026.
 //
 
+import OSLog
 import SwiftUI
+
+private let divoomGridPerfLog = Logger(subsystem: "com.stanislavleonov.LedMatrix", category: "divoom.grid")
 
 /// Скролл-позиция нужна только внутренней логике пагинации. Храним её в
 /// reference-типе, чтобы обновление индекса не перерисовывало всю сетку.
@@ -32,14 +35,14 @@ struct DivoomUniversalGridView: View {
     @State private var currentStart = 1
     private let pageSize = 30
         
-    // Ячейки добавляются сразу после metadata. Первые кадры приходят
-    // порциями и вставляются по мере готовности — никто не ждёт все 30 файлов.
-    @State private var revealedImages: [String: UIImage] = [:]
+    // Ячейки добавляются сразу после metadata. Полные анимации приходят
+    // порциями и вставляются по мере готовности — никто не ждёт все 30 файлов
+    // и не видит статичную заглушку вместо анимации.
+    @State private var loadedAnimations: [String: UIImage] = [:]
     @State private var loadGeneration = 0
     @State private var isFetchingPage = false
     @State private var scrollTracker = GridScrollTracker()
     private let nearEndThreshold = 15
-    private let maxConcurrentFirstFrames = 6
         
     @State private var isShowingSettingsSheet = false
     @State private var scrollPositionId: String? = nil
@@ -144,7 +147,7 @@ struct DivoomUniversalGridView: View {
                                         title: title,
                                         manager: manager,
                                         initialItems: items,
-                                        initialImages: revealedImages,
+                                        initialImages: loadedAnimations,
                                         selectedItemId: item.id,
                                         fetchMoreItems: { start, end in
                                             let result = try await fetchItems(start, end, fileSortOption)
@@ -159,7 +162,7 @@ struct DivoomUniversalGridView: View {
                                         AnimatedImageView(
                                             manager: manager,
                                             item: item,
-                                            image: revealedImages[item.FileId ?? ""]
+                                            image: loadedAnimations[item.FileId ?? ""]
                                         )
                                     }
                                     .buttonStyle(.plain)
@@ -168,7 +171,7 @@ struct DivoomUniversalGridView: View {
                                         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
                                         scrollTracker.lastVisibleIndex = index
                                         // Половина страницы — подгружаем metadata следующей,
-                                        // но показываем её сразу, не дожидаясь кадров.
+                                        // но показываем metadata сразу, не дожидаясь анимаций.
                                         if index >= items.count - nearEndThreshold {
                                             Task { await loadNextPage() }
                                         }
@@ -271,13 +274,16 @@ struct DivoomUniversalGridView: View {
         currentStart = 1
         hasMorePages = true
         items.removeAll()
-        revealedImages.removeAll()
+        loadedAnimations.removeAll()
         isFetchingPage = false
         isLoadingMore = false
         scrollTracker.lastVisibleIndex = 0
 
         do {
+            let fetchStarted = Date()
             let result = try await fetchItems(1, pageSize, fileSortOption)
+            let fetchMs = Int(Date().timeIntervalSince(fetchStarted) * 1000)
+            divoomGridPerfLog.debug("metadata initial fetch=\(fetchMs)ms count=\(result.items.count)")
             guard generation == loadGeneration else { return }
 
             // Метаданные сразу идут в UI. Картинки появятся по мере загрузки.
@@ -288,7 +294,7 @@ struct DivoomUniversalGridView: View {
 
             if !result.items.isEmpty {
                 Task {
-                    await revealFirstFrames(for: result.items, generation: generation)
+                    await revealAnimations(for: result.items, generation: generation)
                 }
             }
         } catch {
@@ -298,17 +304,17 @@ struct DivoomUniversalGridView: View {
         }
     }
 
-    /// `CurListNum` — число элементов в текущем ответе. Если его нет,
-    /// ориентируемся на фактически полученный массив.
+    /// Короткая страница — норма для галереи: часть элементов может быть
+    /// недоступна, но нумерация `StartNum` продолжается. Останавливаемся только когда
+    /// сервер вернул пустой ответ.
     private func applyPageSize(_ result: (items: [DivoomFileItem], curListNum: Int)) {
-        let pageCount = result.curListNum > 0 ? result.curListNum : result.items.count
-        if result.items.isEmpty || pageCount < pageSize {
+        if result.items.isEmpty {
             hasMorePages = false
         }
     }
 
     /// Metadata следующей страницы вставляем в сетку сразу после ответа.
-    /// Первые кадры грузятся отдельной задачей и появляются постепенно —
+    /// Анимации грузятся отдельной задачей и появляются постепенно —
     /// пользователь не ждёт, пока скачаются все 30 файлов.
     private func loadNextPage() async {
         guard !isFetchingPage, hasMorePages, !isLoading else { return }
@@ -323,7 +329,10 @@ struct DivoomUniversalGridView: View {
         let start = currentStart
         let result: (items: [DivoomFileItem], curListNum: Int)
         do {
+            let fetchStarted = Date()
             result = try await fetchItems(start, start + pageSize - 1, fileSortOption)
+            let fetchMs = Int(Date().timeIntervalSince(fetchStarted) * 1000)
+            divoomGridPerfLog.debug("metadata next start=\(start) fetch=\(fetchMs)ms count=\(result.items.count)")
         } catch {
             return
         }
@@ -339,7 +348,7 @@ struct DivoomUniversalGridView: View {
         if !unique.isEmpty {
             items.append(contentsOf: unique)
             Task {
-                await revealFirstFrames(for: unique, generation: generation)
+                await revealAnimations(for: unique, generation: generation)
             }
         }
         currentStart = start + result.items.count
@@ -350,16 +359,31 @@ struct DivoomUniversalGridView: View {
         await loadInitialItems()
     }
 
-    /// Потоковая загрузка первых кадров: как только один файл готов — он сразу
-    /// появляется в ячейке, и на его место берётся следующий. Одновременно
-    /// в полёте не больше `maxConcurrentFirstFrames` запросов.
-    private func revealFirstFrames(for list: [DivoomFileItem], generation: Int) async {
+    /// Сразу грузим полную анимацию и показываем ячейку, как только она готова.
+    /// Никакого промежуточного статичного кадра: metadata появляется мгновенно,
+    /// анимации — по мере загрузки, без ожидания всей страницы.
+    private func revealAnimations(for list: [DivoomFileItem], generation: Int) async {
         let targets = list.compactMap { item -> String? in
             guard let fileId = item.FileId, !fileId.isEmpty,
-                  revealedImages[fileId] == nil else { return nil }
+                  loadedAnimations[fileId] == nil else { return nil }
             return fileId
         }
         guard !targets.isEmpty else { return }
+
+        let uniqueTargetCount = Set(targets).count
+        divoomGridPerfLog.debug("animations start items=\(list.count) targets=\(targets.count) unique=\(uniqueTargetCount) missingFileId=\(list.count - targets.count)")
+        let batchStarted = Date()
+        defer {
+            let totalMs = Int(Date().timeIntervalSince(batchStarted) * 1000)
+            let missing = list.filter { item in
+                guard let fileId = item.FileId, !fileId.isEmpty else { return true }
+                return loadedAnimations[fileId] == nil
+            }
+            let missingIds = missing.compactMap(\.FileId).prefix(5)
+            divoomGridPerfLog.debug(
+                "animations batch count=\(targets.count) loaded=\(loadedAnimations.count) missing=\(missing.count) ids=\(missingIds) total=\(totalMs)ms"
+            )
+        }
 
         await withTaskGroup(of: (String, UIImage?).self) { group in
             var iterator = targets.makeIterator()
@@ -367,11 +391,12 @@ struct DivoomUniversalGridView: View {
             func scheduleNext() {
                 guard let fileId = iterator.next() else { return }
                 group.addTask {
-                    (fileId, await DivoomAnimationLoader.loadFirstFrame(from: fileId))
+                    let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId)
+                    return (fileId, result?.image)
                 }
             }
 
-            for _ in 0..<min(maxConcurrentFirstFrames, targets.count) {
+            for _ in 0..<min(DivoomAnimationLoader.animationFetchConcurrency, targets.count) {
                 scheduleNext()
             }
 
@@ -382,7 +407,7 @@ struct DivoomUniversalGridView: View {
                 }
                 if let image {
                     await MainActor.run {
-                        revealedImages[fileId] = image
+                        loadedAnimations[fileId] = image
                     }
                 }
                 scheduleNext()

@@ -5,16 +5,19 @@
 //  Created by Stanislav Leonov on 07.11.2026.
 //
 
+import OSLog
 import SwiftUI
 import UIKit
+
+private let divoomFeedPerfLog = Logger(subsystem: "com.stanislavleonov.LedMatrix", category: "divoom.feed")
 
 struct DivoomFeedView: View {
     let title: String
     @ObservedObject var manager: MatrixManager
     
     let initialItems: [DivoomFileItem]
-    /// Уже загруженные сеткой первые кадры — фид должен показывать их сразу,
-    /// а не начинать загрузку заново с плейсхолдеров.
+    /// Уже загруженные сеткой полные анимации — фид показывает их сразу,
+    /// а не начинает загрузку заново с плейсхолдеров.
     let initialImages: [String: UIImage]
     let selectedItemId: String
     let fetchMoreItems: (_ startNum: Int, _ endNum: Int) async throws -> [DivoomFileItem]
@@ -119,18 +122,24 @@ struct DivoomFeedView: View {
             .task {
                 if items.isEmpty {
                     loadGeneration += 1
-                    // Кадры из сетки уже готовы: посты отображаются сразу,
+                    // Анимации из сетки уже готовы: посты отображаются сразу,
                     // повторно качать и разбирать их не нужно.
                     var images = initialImages
+                    let passedCount = images.count
+                    var cacheHits = 0
                     for item in initialItems {
                         guard let fileId = item.FileId, images[fileId] == nil,
-                              let cached = DivoomAnimationLoader.cachedFirstFrame(for: fileId) else { continue }
+                              let cached = DivoomAnimationLoader.cachedAnimation(for: fileId) else { continue }
                         images[fileId] = cached
+                        cacheHits += 1
                     }
+                    divoomFeedPerfLog.debug(
+                        "init items=\(initialItems.count) passed=\(passedCount) cacheHits=\(cacheHits) missing=\(initialItems.count - images.count)"
+                    )
                     loadedAnimations = images
                     items = initialItems
                     currentStart = initialItems.count + 1
-                    prefetchFirstFrames(for: initialItems)
+                    prefetchAnimations(for: initialItems)
                     preloadAvatars(for: initialItems)
                     
                     isRestoringPosition = true
@@ -164,7 +173,7 @@ struct DivoomFeedView: View {
             } else {
                 items.append(contentsOf: fetched)
                 currentStart += fetched.count
-                prefetchFirstFrames(for: fetched)
+                prefetchAnimations(for: fetched)
                 preloadAvatars(for: fetched)
             }
         } catch {}
@@ -172,9 +181,10 @@ struct DivoomFeedView: View {
         isLoadingMore = false
     }
     
-    /// Посты добавляются в список сразу. Первые кадры приходят по одному и
-    /// сразу подставляются в ячейку — нет ожидания всей пачки из 30 анимаций.
-    private func prefetchFirstFrames(for list: [DivoomFileItem]) {
+    /// Посты добавляются в список сразу. Полные анимации приходят по одной и
+    /// сразу подставляются в ячейку — нет ожидания всей пачки и нет
+    /// промежуточного статичного кадра вместо анимации.
+    private func prefetchAnimations(for list: [DivoomFileItem]) {
         let targets = list.compactMap { item -> String? in
             guard let fileId = item.FileId, !fileId.isEmpty,
                   loadedAnimations[fileId] == nil else { return nil }
@@ -183,6 +193,8 @@ struct DivoomFeedView: View {
         guard !targets.isEmpty else { return }
 
         let generation = loadGeneration
+        let started = Date()
+        let concurrency = DivoomAnimationLoader.animationFetchConcurrency
         Task.detached(priority: .utility) {
             await withTaskGroup(of: (String, UIImage?).self) { group in
                 var iterator = targets.makeIterator()
@@ -190,11 +202,12 @@ struct DivoomFeedView: View {
                 func scheduleNext() {
                     guard let fileId = iterator.next() else { return }
                     group.addTask {
-                        (fileId, await DivoomAnimationLoader.loadFirstFrame(from: fileId))
+                        let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId)
+                        return (fileId, result?.image)
                     }
                 }
 
-                for _ in 0..<min(6, targets.count) { scheduleNext() }
+                for _ in 0..<min(concurrency, targets.count) { scheduleNext() }
 
                 for await (fileId, image) in group {
                     guard !Task.isCancelled else {
@@ -209,6 +222,17 @@ struct DivoomFeedView: View {
                     }
                     scheduleNext()
                 }
+            }
+            let totalMs = Int(Date().timeIntervalSince(started) * 1000)
+            await MainActor.run {
+                let missing = list.filter { item in
+                    guard let fileId = item.FileId, !fileId.isEmpty else { return true }
+                    return loadedAnimations[fileId] == nil
+                }
+                let missingIds = missing.compactMap(\.FileId).prefix(5)
+                divoomFeedPerfLog.debug(
+                    "animations batch count=\(targets.count) loaded=\(loadedAnimations.count) missing=\(missing.count) ids=\(missingIds) total=\(totalMs)ms"
+                )
             }
         }
     }

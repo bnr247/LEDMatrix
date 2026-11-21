@@ -654,7 +654,7 @@ extension MatrixManager {
         }
     }
 
-    /// Обводка карточек. В системной теме её нет вовсе.
+    /// Обводка карточек. В системной теме её нет
     var cardBorderColor: Color {
         switch currentTheme {
         case .system:

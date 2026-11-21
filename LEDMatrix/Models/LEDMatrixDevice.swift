@@ -72,6 +72,12 @@ struct MatrixSettings: Codable {
     var resetReason: Int = -1
     var resetReasonName: String = ""
     var uptime: Int = 0
+    var rtcAvailable: Bool = false
+    var rtcValid: Bool = false
+    var rtcTime: String = ""
+    var rtcTemperature: Double?
+    var timeFormat: Int = 24
+    var timeAutoSync: Bool = true
 
     enum CodingKeys: String, CodingKey {
         case brightnessPercent = "brightness"
@@ -116,6 +122,12 @@ struct MatrixSettings: Codable {
         case resetReason = "reset_reason"
         case resetReasonName = "reset_reason_name"
         case uptime
+        case rtcAvailable = "rtc_available"
+        case rtcValid = "rtc_valid"
+        case rtcTime = "rtc_time"
+        case rtcTemperature = "rtc_temperature"
+        case timeFormat = "time_format"
+        case timeAutoSync = "time_auto_sync"
     }
 
     var animationType: AnimationType? {
@@ -175,6 +187,31 @@ struct MatrixSettings: Codable {
 
     var divoomPasswordSet: Bool {
         !divoomPassword.isEmpty
+    }
+
+    var rtcStatus: String {
+        guard rtcAvailable, rtcValid, !rtcTime.isEmpty,
+              rtcTime.lowercased() != "invalid" else { return "Ошибка" }
+        return "OK"
+    }
+
+    var formattedRtcTime: String {
+        guard rtcAvailable, rtcValid, !rtcTime.isEmpty,
+              rtcTime.lowercased() != "invalid" else { return "—" }
+        return rtcTime
+    }
+
+    /// Время DS3231 в виде Date для пикеров даты и времени.
+    var rtcTimeDate: Date {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.date(from: rtcTime) ?? Date()
+    }
+
+    var formattedRtcTemperature: String {
+        guard let temperature = rtcTemperature else { return "—" }
+        return String(format: "%.1f", locale: Locale(identifier: "en_US_POSIX"), temperature)
     }
 
     var formattedUptime: String {

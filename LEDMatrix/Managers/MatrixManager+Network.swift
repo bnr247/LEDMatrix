@@ -46,9 +46,38 @@ extension MatrixManager {
         }
     }
     
-    /// Подтягивает MAC из /settings, если он ещё неизвестен. MAC нужен для
-    /// basic auth, а /settings доступен без авторизации, поэтому защищённый
-    /// запрос всегда можно подготовить корректно.
+    /// Обновляет все параметры экрана «Дата и время» перед его открытием.
+    /// Запрос идёт без кэша: иначе пикеры и переключатель показывают снимок,
+    /// сделанный при запуске приложения, а не текущие настройки устройства.
+    func refreshDateTimeSettings() async {
+        guard let device = selectedDevice,
+              let url = URL(string: "http://\(device.ipAddress)/settings") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("close", forHTTPHeaderField: "Connection")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 3.0
+        addBasicAuthHeader(to: &request)
+
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            config.urlCache = nil
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
+            guard let httpResp = response as? HTTPURLResponse,
+                  httpResp.statusCode == 200 else { return }
+            let decoded = try JSONDecoder().decode(MatrixSettings.self, from: data)
+            settings.rtcAvailable = decoded.rtcAvailable
+            settings.rtcValid = decoded.rtcValid
+            settings.rtcTime = decoded.rtcTime
+            settings.rtcTemperature = decoded.rtcTemperature
+            settings.timeFormat = decoded.timeFormat
+            settings.timeAutoSync = decoded.timeAutoSync
+        } catch {
+            print("❌ Ошибка обновления настроек даты и времени: \(error)")
+        }
+    }
+
     func ensureDeviceMacAddress(for device: LEDMatrixDevice) async {
         guard settings.macAddress.isEmpty else { return }
         guard let url = URL(string: "http://\(device.ipAddress)/settings") else { return }
@@ -391,6 +420,31 @@ extension MatrixManager {
         try? await self.sendCommand(endpoint: "cmd", params: ["animation_display_seconds": seconds])
     }
     
+    func updateTimeFormat(_ format: Int) async {
+        guard format == 12 || format == 24 else { return }
+        settings.timeFormat = format
+        try? await self.sendCommand(endpoint: "cmd", params: ["time_format": format])
+    }
+    
+    func setTimeAutoSync(_ enabled: Bool) async {
+        settings.timeAutoSync = enabled
+        try? await self.sendCommand(endpoint: "cmd", params: ["time_auto_sync": enabled])
+    }
+    
+    func setDeviceDateTime(_ date: Date) async {
+        let dateString = deviceDateString(date)
+        let timeString = deviceTimeString(date)
+        settings.rtcTime = "\(dateString) \(timeString):00"
+        do {
+            try await self.sendCommand(endpoint: "cmd", params: [
+                "date": dateString,
+                "time": timeString
+            ])
+        } catch {
+            print("❌ Ошибка установки даты и времени: \(error)")
+        }
+    }
+    
     func updateAnimationType(_ animationType: AnimationType) async throws {
         settings.animationType = animationType
         try await self.sendCommand(endpoint: "cmd", params: animationType.parameters)
@@ -421,6 +475,53 @@ extension MatrixManager {
                     try? await self.sendCommand(endpoint: "cmd", params: ["night_start": timeString])
                 }
             }
+        )
+    }
+    
+    var deviceTimeBinding: Binding<Date> {
+        Binding(
+            get: { self.settings.rtcTimeDate },
+            set: { newDate in
+                let calendar = Calendar.current
+                let dateParts = calendar.dateComponents([.year, .month, .day], from: self.settings.rtcTimeDate)
+                let timeParts = calendar.dateComponents([.hour, .minute], from: newDate)
+                var components = dateParts
+                components.hour = timeParts.hour
+                components.minute = timeParts.minute
+                components.second = 0
+                let combined = calendar.date(from: components) ?? newDate
+                Task { await self.setDeviceDateTime(combined) }
+            }
+        )
+    }
+    
+    var deviceDateBinding: Binding<Date> {
+        Binding(
+            get: { self.settings.rtcTimeDate },
+            set: { newDate in
+                let calendar = Calendar.current
+                let timeParts = calendar.dateComponents([.hour, .minute], from: self.settings.rtcTimeDate)
+                var components = calendar.dateComponents([.year, .month, .day], from: newDate)
+                components.hour = timeParts.hour
+                components.minute = timeParts.minute
+                components.second = 0
+                let combined = calendar.date(from: components) ?? newDate
+                Task { await self.setDeviceDateTime(combined) }
+            }
+        )
+    }
+    
+    var timeFormatBinding: Binding<Int> {
+        Binding(
+            get: { self.settings.timeFormat },
+            set: { newValue in Task { await self.updateTimeFormat(newValue) } }
+        )
+    }
+    
+    var timeAutoSyncBinding: Binding<Bool> {
+        Binding(
+            get: { self.settings.timeAutoSync },
+            set: { newValue in Task { await self.setTimeAutoSync(newValue) } }
         )
     }
     
@@ -516,6 +617,20 @@ extension MatrixManager {
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+    
+    private func deviceDateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.string(from: date)
+    }
+    
+    private func deviceTimeString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.string(from: date)
     }
     

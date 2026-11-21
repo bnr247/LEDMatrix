@@ -7,7 +7,10 @@
 
 import CommonCrypto
 import Foundation
+import OSLog
 import UIKit
+
+private let divoomPerfLog = Logger(subsystem: "com.stanislavleonov.LedMatrix", category: "divoom.perf")
 
 struct DivoomAnimationResult {
     let image: UIImage
@@ -37,6 +40,11 @@ private struct ParsedAnimationData {
 }
 
 enum DivoomAnimationLoader {
+    /// Полный файл анимации весит ~100–250 КБ, CDN отвечает ~0.9 с на запрос.
+    /// При параллелизме 12 все 30 анимаций загружаются за ~3 с, при 6 — за ~5 с.
+    /// Держим 12: ячейки появляются по мере готовности, а не всей пачкой.
+    static let animationFetchConcurrency = 12
+
     // Ключ/IV разбираются один раз при старте, а не для каждого файла.
     private static let aesKey = Data([
         0x37, 0x38, 0x68, 0x72, 0x65, 0x79, 0x32, 0x33,
@@ -55,7 +63,8 @@ enum DivoomAnimationLoader {
         return cache
     }()
 
-    // Быстрый первый кадр для сетки: один 16x16 CGImage вместо всей анимации.
+    // Первый кадр остаётся только для мелких превью (аватары, поиск).
+    // Сетка и фид используют только полные анимации.
     private static let firstFrameCache: NSCache<NSString, DivoomFirstFrameCacheEntry> = {
         let cache = NSCache<NSString, DivoomFirstFrameCacheEntry>()
         cache.countLimit = 400
@@ -72,46 +81,86 @@ enum DivoomAnimationLoader {
         return cache.object(forKey: cleanId as NSString)?.result.image
     }
 
-    /// Первый кадр из кэша — чтобы фид не показывал плейсхолдер, если сетка
-    /// ещё не успела отдать кадр в `initialImages`.
+    /// Первый кадр из кэша — только для аватаров и поисковых превью.
+    /// Сетка и фид берут `cachedAnimation`, а не этот статичный кадр.
     static func cachedFirstFrame(for fileId: String) -> UIImage? {
         let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanId.isEmpty else { return nil }
         return firstFrameCache.object(forKey: cleanId as NSString)?.image
     }
 
-    /// Быстрый статичный первый кадр — для мгновенного отображения сетки.
+    /// Быстрый статичный первый кадр — только для аватаров и поисковых превью.
     static func loadFirstFrame(from fileId: String) async -> UIImage? {
+        let started = Date()
         let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanId.isEmpty else { return nil }
 
         let key = cleanId as NSString
         if let cached = firstFrameCache.object(forKey: key) {
+            divoomPerfLog.debug("firstFrame cacheHit id=\(cleanId, privacy: .public)")
             return cached.image
         }
 
-        guard let data = await fetchData(cleanId, key: key),
-              let image = parseFirstFrameData(data) else { return nil }
+        guard let data = await fetchData(cleanId, key: key, preview: true) else {
+            divoomPerfLog.debug("firstFrame fetchFailed id=\(cleanId, privacy: .public)")
+            return nil
+        }
+        let fetchedAt = Date()
+        guard let image = parseFirstFrameData(data) else {
+            divoomPerfLog.debug("firstFrame parseFailed id=\(cleanId, privacy: .public)")
+            return nil
+        }
 
         firstFrameCache.setObject(DivoomFirstFrameCacheEntry(image), forKey: key)
+        let fetchMs = Int(fetchedAt.timeIntervalSince(started) * 1000)
+        let parseMs = Int(Date().timeIntervalSince(fetchedAt) * 1000)
+        divoomPerfLog.debug("firstFrame id=\(cleanId, privacy: .public) bytes=\(data.count) fetch=\(fetchMs)ms parse=\(parseMs)ms")
         return image
     }
 
-    /// Полная анимация. Догружается в фоне после того, как первый кадр уже виден.
+    /// Полная анимация. Используется в сетке и фиде сразу, как только файл готов.
+    /// CDN иногда отдаёт пустой/урезанный ответ — повторяем несколько раз,
+    /// иначе одна ячейка навсегда остаётся плейсхолдером, пока другой экран
+    /// случайно не повторит запрос.
     static func loadAndCreateAnimation(from fileId: String) async -> DivoomAnimationResult? {
+        let started = Date()
         let cleanId = fileId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanId.isEmpty else { return nil }
 
         let key = cleanId as NSString
         if let cached = cache.object(forKey: key) {
+            divoomPerfLog.debug("animation cacheHit id=\(cleanId, privacy: .public)")
             return cached.result
         }
 
-        guard let data = await fetchData(cleanId, key: key),
-              let result = parseAnimationData(data) else { return nil }
+        let maxAttempts = 3
+        for attempt in 1...maxAttempts {
+            guard let data = await fetchData(cleanId, key: key) else {
+                divoomPerfLog.debug("animation fetchFailed id=\(cleanId, privacy: .public) attempt=\(attempt)")
+                if attempt < maxAttempts {
+                    try? await Task.sleep(for: .milliseconds(100 * attempt))
+                }
+                continue
+            }
+            let fetchedAt = Date()
+            if let result = parseAnimationData(data) {
+                cache.setObject(DivoomAnimationCacheEntry(result), forKey: key)
+                let fetchMs = Int(fetchedAt.timeIntervalSince(started) * 1000)
+                let parseMs = Int(Date().timeIntervalSince(fetchedAt) * 1000)
+                divoomPerfLog.debug("animation id=\(cleanId, privacy: .public) bytes=\(data.count) attempt=\(attempt) fetch=\(fetchMs)ms parse=\(parseMs)ms")
+                return result
+            }
 
-        cache.setObject(DivoomAnimationCacheEntry(result), forKey: key)
-        return result
+            divoomPerfLog.debug("animation parseFailed id=\(cleanId, privacy: .public) bytes=\(data.count) attempt=\(attempt)")
+            // Битые данные могут быть уже в rawDataCache — без очистки повтор
+            // снова достанет их оттуда и снова не разберётся.
+            await dataCoordinator.invalidate(fileId: cleanId, key: key)
+            if attempt < maxAttempts {
+                try? await Task.sleep(for: .milliseconds(100 * attempt))
+            }
+        }
+
+        return nil
     }
 
     // MARK: - Загрузка и разбор
@@ -119,8 +168,8 @@ enum DivoomAnimationLoader {
     /// Сетка, фид и видимые ячейки часто просят один и тот же fileId
     /// одновременно. Без координатора каждый из них качал бы файл заново.
     private actor DivoomDataFetchCoordinator {
-        // Сырые файлы кэшируются, чтобы первый кадр и полная анимация не качали
-        // один и тот же URL дважды.
+        // Полный файл и превью-префикс кэшируются раздельно: иначе короткий
+        // Range-ответ потом принялся бы за полную анимацию.
         private let rawDataCache: NSCache<NSString, NSData> = {
             let cache = NSCache<NSString, NSData>()
             cache.countLimit = 300
@@ -128,42 +177,55 @@ enum DivoomAnimationLoader {
         }()
         private var inFlight: [String: Task<Data?, Never>] = [:]
 
-        func data(for fileId: String, key: NSString) async -> Data? {
-            if let cached = rawDataCache.object(forKey: key) {
+        func data(for fileId: String, key: NSString, preview: Bool) async -> Data? {
+            let cacheKey: NSString = preview ? "\(key)-preview" as NSString : key
+            let flightKey = preview ? fileId + "-preview" : fileId
+
+            if let cached = rawDataCache.object(forKey: cacheKey) {
                 return cached as Data
             }
-
-            if let existing = inFlight[fileId] {
+            if let existing = inFlight[flightKey] {
                 return await existing.value
             }
 
             let task = Task<Data?, Never> {
                 guard let url = URL(string: "https://fin.divoom-gz.com/" + fileId) else { return nil }
+                var request = URLRequest(url: url)
+                if preview {
+                    // 4 байта заголовка + 768 байт кадра + запас на AES-блок.
+                    // Сервер, который понимает Range, отдаст только это.
+                    request.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
+                }
 
                 do {
-                    let (data, response) = try await URLSession.shared.data(from: url)
+                    let (data, response) = try await URLSession.shared.data(for: request)
                     guard let httpResp = response as? HTTPURLResponse,
-                          httpResp.statusCode == 200,
+                          (httpResp.statusCode == 200 || httpResp.statusCode == 206),
                           !data.isEmpty else { return nil }
 
-                    rawDataCache.setObject(data as NSData, forKey: key)
+                    rawDataCache.setObject(data as NSData, forKey: cacheKey)
                     return data
                 } catch {
                     return nil
                 }
             }
 
-            inFlight[fileId] = task
+            inFlight[flightKey] = task
             let data = await task.value
-            inFlight[fileId] = nil
+            inFlight[flightKey] = nil
             return data
+        }
+
+        func invalidate(fileId: String, key: NSString, preview: Bool = false) {
+            let cacheKey: NSString = preview ? "\(key)-preview" as NSString : key
+            rawDataCache.removeObject(forKey: cacheKey)
         }
     }
 
     private static let dataCoordinator = DivoomDataFetchCoordinator()
 
-    private static func fetchData(_ fileId: String, key: NSString) async -> Data? {
-        await dataCoordinator.data(for: fileId, key: key)
+    private static func fetchData(_ fileId: String, key: NSString, preview: Bool = false) async -> Data? {
+        await dataCoordinator.data(for: fileId, key: key, preview: preview)
     }
 
     static func parseAnimationData(_ responseData: Data) -> DivoomAnimationResult? {
@@ -286,12 +348,29 @@ enum DivoomAnimationLoader {
 
         guard responseData.count > headerLength else { return nil }
 
-        let payloadData = Data(responseData[headerLength...])
+        // Первый кадр всегда лежит в начале payload. Для превью не нужно ни
+        // копировать, ни расшифровывать весь файл: 16x16 RGB = 768 байт,
+        // AES-блок 16 байт, так что 768 байт — уже целое число блоков.
+        let previewBytes = 16 * 16 * 3
+        let payloadSlice = responseData.dropFirst(headerLength)
+        let payloadData: Data
+        if firstFrameOnly {
+            payloadData = Data(payloadSlice.prefix(previewBytes))
+        } else {
+            payloadData = Data(payloadSlice)
+        }
         guard !payloadData.isEmpty else { return nil }
 
         let processedPayload: Data
         if isEncrypted {
-            if let decrypted = aes128Decrypt(data: payloadData, key: aesKey, iv: aesIV) {
+            // CBC без PKCS7: у префикса нет финального padding-блока,
+            // поэтому обычная расшифровка с padding здесь завершилась бы ошибкой.
+            if let decrypted = aes128Decrypt(
+                data: payloadData,
+                key: aesKey,
+                iv: aesIV,
+                usePadding: !firstFrameOnly
+            ) {
                 processedPayload = decrypted
             } else {
                 processedPayload = payloadData
@@ -460,15 +539,18 @@ enum DivoomAnimationLoader {
         return frames
     }
 
-    private static func aes128Decrypt(data: Data, key: Data, iv: Data) -> Data? {
+    private static func aes128Decrypt(data: Data, key: Data, iv: Data, usePadding: Bool = true) -> Data? {
         let count = data.count
         guard count > 0, count < 10000000 else { return nil }
+        guard usePadding || count % kCCBlockSizeAES128 == 0 else { return nil }
 
         let (bufferSize, overflow) = count.addingReportingOverflow(kCCBlockSizeAES128)
         guard !overflow, bufferSize > 0 else { return nil }
 
         var decryptedData = Data(count: bufferSize)
         var numBytesDecrypted: size_t = 0
+
+        let options: CCOptions = usePadding ? CCOptions(kCCOptionPKCS7Padding) : CCOptions()
 
         let status = data.withUnsafeBytes { dataBytes in
             key.withUnsafeBytes { keyBytes in
@@ -477,7 +559,7 @@ enum DivoomAnimationLoader {
                         CCCrypt(
                             CCOperation(kCCDecrypt),
                             CCAlgorithm(kCCAlgorithmAES),
-                            CCOptions(kCCOptionPKCS7Padding),
+                            options,
                             keyBytes.baseAddress,
                             key.count,
                             ivBytes.baseAddress,

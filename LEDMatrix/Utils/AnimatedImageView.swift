@@ -40,8 +40,8 @@ private actor DivoomFullAnimationLimiter {
 struct AnimatedImageView: View {
     @ObservedObject var manager: MatrixManager
     let item: DivoomFileItem
-    /// Быстрый первый кадр из сетки. Полная анимация догружается только
-    /// для ячейки, которая находится на экране.
+    /// Уже готовая полная анимация из сетки. Пока её нет, ячейка остаётся
+    /// плейсхолдером — статичный кадр вместо анимации не показываем.
     let image: UIImage?
 
     @State private var loadedImage: UIImage?
@@ -133,8 +133,8 @@ struct AnimatedImageView: View {
         }
     }
 
-    /// Первый кадр уже показан сеткой. Полную анимацию грузим только когда
-    /// ячейка появилась на экране, и отменяем задачу при уходе с экрана.
+    /// Полную анимацию грузим только когда ячейка появилась на экране,
+    /// и отменяем задачу при уходе с экрана. Промежуточного статичного кадра нет.
     private func beginFullAnimationIfNeeded() {
         guard fullLoadTask == nil,
               displayedImage?.images == nil,
@@ -147,6 +147,7 @@ struct AnimatedImageView: View {
             return
         }
 
+        isLoading = true
         fullLoadTask = Task { @MainActor in
             await DivoomFullAnimationLimiter.shared.acquire()
             await performFullLoad(fileId: fileId)
@@ -156,17 +157,10 @@ struct AnimatedImageView: View {
 
     @MainActor
     private func performFullLoad(fileId: String) async {
-        if displayedImage == nil {
-            if let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
-                guard !Task.isCancelled else { return }
-                loadedImage = firstFrame
-            }
-        }
-
+        defer { isLoading = false }
         if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
             guard !Task.isCancelled else { return }
             loadedImage = result.image
-            isLoading = false
         }
     }
 
@@ -193,8 +187,8 @@ struct AnimatedImageView: View {
     }
 }
 
-/// Полная анимация поста в фиде: первый кадр уже передан, полная версия
-/// догружается только когда пост находится на экране.
+/// Полная анимация поста в фиде: пока она не готова, показывается плейсхолдер,
+/// а не статичный первый кадр.
 struct DivoomFullAnimationView: View {
     let manager: MatrixManager
     let fileId: String?
@@ -245,12 +239,6 @@ struct DivoomFullAnimationView: View {
 
     @MainActor
     private func performFullLoad(fileId: String) async {
-        if displayedImage == nil,
-           let firstFrame = await DivoomAnimationLoader.loadFirstFrame(from: fileId) {
-            guard !Task.isCancelled else { return }
-            loadedImage = firstFrame
-        }
-
         if let result = await DivoomAnimationLoader.loadAndCreateAnimation(from: fileId) {
             guard !Task.isCancelled else { return }
             loadedImage = result.image

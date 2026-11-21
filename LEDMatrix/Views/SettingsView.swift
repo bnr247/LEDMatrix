@@ -59,6 +59,10 @@ struct SettingsView: View {
                     Label("Основные", systemImage: "sparkles.tv")
                         .foregroundColor(manager.appTextColor)
                 }
+                NavigationLink(destination: SettingsDateTimeFormView(manager: manager)) {
+                    Label("Дата и время", systemImage: "clock")
+                        .foregroundColor(manager.appTextColor)
+                }
                 NavigationLink(destination: SettingsWifiFormView(manager: manager)) {
                     Label("Настройки Wifi", systemImage: "wifi")
                         .foregroundColor(manager.appTextColor)
@@ -176,6 +180,60 @@ struct SettingsView: View {
             }
         } message: {
             Text("Вы действительно хотите установить выбранный файл прошивки?\n\nФайл: \(selectedFileName)")
+        }
+    }
+}
+
+// MARK: - ФОРМА: ДАТА И ВРЕМЯ
+
+struct SettingsDateTimeFormView: View {
+    @ObservedObject var manager: MatrixManager
+    
+    var body: some View {
+        Form {
+            Section {
+                DatePicker(
+                    "Время",
+                    selection: manager.deviceTimeBinding,
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.compact)
+                .disabled(manager.settings.timeAutoSync)
+                
+                DatePicker(
+                    "Дата",
+                    selection: manager.deviceDateBinding,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.compact)
+                .disabled(manager.settings.timeAutoSync)
+                
+                ThemedMenuPicker(
+                    manager: manager,
+                    title: "Формат времени",
+                    options: [
+                        ThemedDropdownOption(id: 0, title: "12 часов", value: 12),
+                        ThemedDropdownOption(id: 1, title: "24 часа", value: 24)
+                    ],
+                    selection: manager.timeFormatBinding
+                )
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+            
+            Section {
+                Toggle("Автоматически", isOn: manager.timeAutoSyncBinding)
+            } footer: {
+                Text("Время синхронизируется с интернетом. Отключите, чтобы задать дату и время вручную.")
+                    .themedValueText(manager)
+            }
+            .listRowBackground(manager.cardBackgroundColor)
+        }
+        .themedForm(manager)
+        .themedNavigationTitle("Дата и время", manager: manager)
+        .onAppear {
+            Task {
+                await manager.refreshDateTimeSettings()
+            }
         }
     }
 }
