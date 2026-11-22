@@ -90,7 +90,9 @@ struct DivoomPlaylistsView: View {
                                 isShowingDeleteAlert = true
                             } label: {
                                 Label("Удалить", systemImage: "trash")
+                                    .foregroundColor(.red)
                             }
+                            .tint(.red)
                         }
                         .onAppear {
                             if playlist.id == playlists.last?.id {
@@ -134,6 +136,7 @@ struct DivoomPlaylistsView: View {
                     playlistToDelete = nil
                 }
             }
+            .tint(.red)
         } message: { playlist in
             Text("Вы уверены, что хотите удалить плейлист «\(playlist.Name)»?")
         }

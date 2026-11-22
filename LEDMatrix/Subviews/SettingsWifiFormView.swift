@@ -65,6 +65,12 @@ struct SettingsWifiFormView: View {
         }
         .themedForm(manager)
         .themedNavigationTitle("Настройки WiFi", manager: manager)
+        .task {
+            await manager.refreshSettingsFromDevice()
+            if let device = manager.selectedDevice {
+                await manager.fetchWifiSettings(for: device)
+            }
+        }
         // Принудительно сбрасываем статус успеха при изменении текста в полях, чтобы кнопка снова ожила
         .onChange(of: manager.localWifiSsid) { _, _ in manager.isSaveSuccess = false }
         .onChange(of: manager.localWifiPassword) { _, _ in manager.isSaveSuccess = false }

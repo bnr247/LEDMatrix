@@ -13,36 +13,6 @@ import SwiftUI
 import UIKit
 
 
-enum AppTheme: String, CaseIterable, Identifiable {
-    case system = "Системная"
-    case dark = "Тёмная (OLED)"
-    case neon = "Неоновая"
-    case amber = "Янтарная"
-    
-    var id: String { rawValue }
-    
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: return nil // Полностью следует системной схеме iOS
-        case .dark: return .dark
-        case .neon: return .dark // Неоновая также использует темную базу с яркими акцентами
-        case .amber: return .dark // Янтарная — тёплая монохромная LED-палитра
-        }
-    }
-    
-    /// Системная тема не добавляет собственного декора: только нативные
-    /// семантические цвета iOS, без обводок, свечений и теней.
-    var usesSystemAppearance: Bool { self == .system }
-    
-    /// Толщина обводки карточки для «декоративных» тем.
-    var cardBorderWidth: CGFloat {
-        switch self {
-        case .neon, .amber: return 1.2
-        default: return 1
-        }
-    }
-}
-
 @MainActor
 class MatrixManager: NSObject, ObservableObject {
     @Published var currentTheme: AppTheme = MatrixManager.loadInitialTheme() {
@@ -92,34 +62,29 @@ class MatrixManager: NSObject, ObservableObject {
         restoreLastSelectedDevice()
     }
     
-    /// Единый метод для смены устройства: загружает локальный кэш и подтягивает сеть
+    /// Единый метод для смены устройства: загружает локальный кэш и подтягивает сеть.
+    /// Новое устройство считается недоступным, пока проверка /settings не подтвердит обратное.
     func selectDevice(_ device: LEDMatrixDevice) {
         guard selectedDevice?.id != device.id else { return }
+        deviceReachabilityStatus[device.id] = false
         selectedDevice = device
         loadSettingsForCurrentDevice()
-            
+
         Task {
-            await fetchSettings(for: device)
-            await fetchWifiSettings(for: device)
+            await refreshDeviceState()
         }
     }
 
     func restoreLastSelectedDevice() {
         let lastId = UserDefaults.standard.string(forKey: lastSelectedDeviceIdKey)
-        if let found = savedDevices.first(where: { $0.id == lastId }) {
-            selectedDevice = found
-            loadSettingsForCurrentDevice()
-            Task {
-                await fetchSettings(for: found)
-                await fetchWifiSettings(for: found)
-            }
-        } else if let first = savedDevices.first {
-            selectedDevice = first
-            loadSettingsForCurrentDevice()
-            Task {
-                await fetchSettings(for: first)
-                await fetchWifiSettings(for: first)
-            }
+        let device = savedDevices.first(where: { $0.id == lastId }) ?? savedDevices.first
+        guard let device else { return }
+
+        selectedDevice = device
+        deviceReachabilityStatus[device.id] = false
+        loadSettingsForCurrentDevice()
+        Task {
+            await refreshDeviceState()
         }
     }
         
@@ -163,6 +128,26 @@ class MatrixManager: NSObject, ObservableObject {
             }
             self.isCheckingReachability = false
         }
+    }
+
+    /// Приводит состояние выбранного устройства в актуальное: кнопки сначала
+    /// неактивны, затем доступность подтверждается запросом /settings и подтягиваются настройки.
+    func refreshDeviceState() async {
+        guard let device = selectedDevice else { return }
+        deviceReachabilityStatus[device.id] = false
+        await checkAllSavedDevicesReachability()
+        await fetchSettings(for: device)
+        await fetchWifiSettings(for: device)
+    }
+
+    /// Вызывается при появлении главного экрана и при возвращении с экрана устройств.
+    func refreshMainScreenDeviceState() async {
+        if selectedDevice == nil, let first = savedDevices.first {
+            selectedDevice = first
+            deviceReachabilityStatus[first.id] = false
+            loadSettingsForCurrentDevice()
+        }
+        await refreshDeviceState()
     }
 
     /// Единичная проверка доступности устройства
@@ -505,573 +490,4 @@ class MatrixManager: NSObject, ObservableObject {
     @Published var isUsingFrontCamera = false
     @Published var showCameraGrid = true
     @Published var lastCapturedImage: UIImage? = nil
-}
-
-extension MatrixManager {
-    // Цвет основного фона
-    var backgroundColor: Color { Self.backgroundColor(for: currentTheme) }
-
-    static func backgroundColor(for theme: AppTheme) -> Color {
-        switch theme {
-        case .system:
-            return Color(uiColor: .systemGroupedBackground)
-        case .dark:
-            return Color.black // Чистый OLED черный
-        case .neon:
-            return Color(hex: "080C14") // Глубокий киберпанк-оттенок (ночной сине-угольный)
-        case .amber:
-            return Color(hex: "140D05") // Тёплый чёрный монохромных LED-дисплеев
-        }
-    }
-
-    // Цвет карточек / контейнеров
-    var cardBackgroundColor: Color { Self.cardBackgroundColor(for: currentTheme) }
-
-    static func cardBackgroundColor(for theme: AppTheme) -> Color {
-        switch theme {
-        case .system:
-            return Color(uiColor: .secondarySystemGroupedBackground)
-        case .dark:
-            return Color(hex: "1A1A1A") // Темный графит для OLED
-        case .neon:
-            return Color(hex: "111827") // Насыщенный темно-синий киберпанк-графит
-        case .amber:
-            return Color(hex: "241A0C") // Коричневатый корпус янтарного дисплея
-        }
-    }
-
-    // Основной цвет текста интерфейса
-    var appTextColor: Color {
-        switch currentTheme {
-        case .system:
-            return .primary
-        case .dark, .neon, .amber:
-            return lightAccentColor
-        }
-    }
-
-    /// Светлый оттенок акцента — заменяет чистый белый в декоративных темах.
-    var lightAccentColor: Color { Self.lightAccentColor(for: currentTheme) }
-
-    static func lightAccentColor(for theme: AppTheme) -> Color {
-        switch theme {
-        case .system:
-            return .primary
-        case .dark:
-            return Color(hex: "A6E6A6") // Насыщенный светло-зелёный OLED
-        case .neon:
-            return Color(hex: "A8E6F2") // Насыщенный светло-циановый неон
-        case .amber:
-            return Color(hex: "FFD9A0") // Разогретый янтарь
-        }
-    }
-
-    /// Цвет значений — совпадает с цветом названия темы, то есть с акцентом.
-    var valueTextColor: Color {
-        switch currentTheme {
-        case .system:
-            return .secondary
-        case .dark, .neon, .amber:
-            return accentColor
-        }
-    }
-
-    // Акцентный цвет
-    var accentColor: Color { Self.accentColor(for: currentTheme) }
-
-    static func accentColor(for theme: AppTheme) -> Color {
-        switch theme {
-        case .system:
-            return Color.accentColor // Реальный системный tint (без кастомного ассета)
-        case .dark:
-            return Color.green
-        case .neon:
-            return Color(hex: "00F0FF") // Яркий неоновый циан (электрик) для контраста
-        case .amber:
-            return Color(hex: "FFB000") // Классический янтарный светодиод
-        }
-    }
-
-    // Цвет обводки (рамок) кнопок и карточек
-    var borderColor: Color {
-        switch currentTheme {
-        case .system:
-            return Color(UIColor.separator)
-        case .dark:
-            return Color.green.opacity(0.5)
-        case .neon:
-            return Color(hex: "00F0FF").opacity(0.8) // Циановая неоновая граница
-        case .amber:
-            return Color(hex: "FFB000").opacity(0.7)
-        }
-    }
-
-    // MARK: - Расширенная палитра темы
-
-    /// Второстепенный текст: подписи, значения, подсказки.
-    var secondaryTextColor: Color { Self.secondaryTextColor(for: currentTheme) }
-
-    static func secondaryTextColor(for theme: AppTheme) -> Color {
-        switch theme {
-        case .system:
-            return .secondary
-        case .dark:
-            return Color(hex: "5FBF5F")
-        case .neon:
-            return Color(hex: "61B9CC")
-        case .amber:
-            return Color(hex: "B07C36")
-        }
-    }
-
-    /// Фон полей ввода и небольших вложенных контролов.
-    var fieldBackgroundColor: Color { Self.fieldBackgroundColor(for: currentTheme) }
-
-    static func fieldBackgroundColor(for theme: AppTheme) -> Color {
-        switch theme {
-        case .system:
-            return Color(uiColor: .systemFill)
-        case .dark:
-            return Color(hex: "242424")
-        case .neon:
-            return Color(hex: "0B1524")
-        case .amber:
-            return Color(hex: "1F160A")
-        }
-    }
-
-    /// Линии-разделители внутри карточек и списков.
-    var dividerColor: Color {
-        switch currentTheme {
-        case .system:
-            return .clear // Нативные разделители списков рисует система
-        case .dark:
-            return Color(hex: "7EE37E").opacity(0.12)
-        case .neon:
-            return Color(hex: "00F0FF").opacity(0.16)
-        case .amber:
-            return Color(hex: "FFB000").opacity(0.18)
-        }
-    }
-
-    /// Обводка карточек. В системной теме её нет
-    var cardBorderColor: Color {
-        switch currentTheme {
-        case .system:
-            return .clear
-        case .dark:
-            return Color.green.opacity(0.32)
-        case .neon:
-            return Color(hex: "00F0FF").opacity(0.45)
-        case .amber:
-            return Color(hex: "FFB000").opacity(0.5)
-        }
-    }
-
-    /// Подложка вокруг LED-сетки 16×16. Всегда почти чёрная, чтобы
-    /// светодиоды читались одинаково хорошо в любой теме.
-    var matrixPanelColor: Color {
-        switch currentTheme {
-        case .system:
-            return Color(hex: "171717")
-        case .dark:
-            return Color(hex: "0E0E0E")
-        case .neon:
-            return Color(hex: "05080F")
-        case .amber:
-            return Color(hex: "0D0904")
-        }
-    }
-
-    /// Цвет тени карточек. В системной теме теней нет.
-    var shadowColor: Color {
-        switch currentTheme {
-        case .system:
-            return .clear
-        case .dark:
-            return Color.black.opacity(0.45)
-        case .neon:
-            return Color(hex: "00F0FF").opacity(0.16)
-        case .amber:
-            return Color(hex: "FFB000").opacity(0.12)
-        }
-    }
-
-    /// Цвет текста/иконок поверх акцентной заливки.
-    var accentContrastColor: Color {
-        switch currentTheme {
-        case .system:
-            return .white
-        case .dark:
-            return .black
-        case .neon:
-            return Color(hex: "031018")
-        case .amber:
-            return Color(hex: "1A1206")
-        }
-    }
-
-    var successColor: Color {
-        switch currentTheme {
-        case .system:
-            return Color(UIColor.systemGreen)
-        case .dark:
-            return Color(hex: "4ADE80")
-        case .neon:
-            return Color(hex: "2DFFB2")
-        case .amber:
-            return Color(hex: "BCE86B")
-        }
-    }
-
-    var warningColor: Color {
-        switch currentTheme {
-        case .system:
-            return Color(UIColor.systemOrange)
-        case .dark:
-            return Color(hex: "FBBF24")
-        case .neon:
-            return Color(hex: "FFC857")
-        case .amber:
-            return Color(hex: "FFD166")
-        }
-    }
-
-    var dangerColor: Color {
-        switch currentTheme {
-        case .system:
-            return Color(UIColor.systemRed)
-        case .dark:
-            return Color(hex: "FF6B6B")
-        case .neon:
-            return Color(hex: "FF4D8D")
-        case .amber:
-            return Color(hex: "FF6B4A")
-        }
-    }
-
-    /// Фон всплывающих подсказок (тостов).
-    var toastBackgroundColor: Color {
-        switch currentTheme {
-        case .system:
-            return Color.black.opacity(0.82)
-        case .dark:
-            return Color(hex: "242424").opacity(0.96)
-        case .neon:
-            return Color(hex: "0B1524").opacity(0.96)
-        case .amber:
-            return Color(hex: "241A0C").opacity(0.96)
-        }
-    }
-}
-
-// MARK: - Общие тематические модификаторы
-
-/// Нативные стили кнопок, которые применяются только в системной теме.
-enum ThemedButtonStyle {
-    case plain
-    case borderless
-    case bordered
-    case borderedProminent
-}
-
-extension View {
-    /// Условный модификатор: позволяет выключать декоративные слои
-    /// только для нативной темы, не раздувая body.
-    @ViewBuilder
-    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
-        }
-    }
-
-    /// В системной теме кнопка получает нативный стиль iOS.
-    /// В остальных темах сохраняется `.plain`, чтобы работала кастомная обводка.
-    @ViewBuilder
-    func themedButtonStyle(_ manager: MatrixManager, _ style: ThemedButtonStyle) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            switch style {
-            case .plain:
-                self.buttonStyle(.plain)
-            case .borderless:
-                self.buttonStyle(.borderless)
-            case .bordered:
-                self.buttonStyle(.bordered)
-            case .borderedProminent:
-                self.buttonStyle(.borderedProminent)
-            }
-        } else {
-            self.buttonStyle(.plain)
-        }
-    }
-
-    /// Большая кнопка действия: в декоративных темах повторяет плитку функции
-    /// на главном экране — карточка, обводка акцентом и светлый акцентный текст.
-    /// В системной теме остаётся нативной prominent-кнопкой с заданным tint.
-    @ViewBuilder
-    func themedActionButton(_ manager: MatrixManager, buttonTint: Color? = nil, isEnabled: Bool = true) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            if let buttonTint {
-                self.buttonStyle(.borderedProminent).tint(buttonTint)
-            } else {
-                self.buttonStyle(.borderedProminent)
-            }
-        } else {
-            self
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(manager.cardBackgroundColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(buttonTint ?? manager.accentColor, lineWidth: manager.currentTheme == .neon ? 1.5 : 1)
-                        )
-                )
-                .foregroundColor(isEnabled ? manager.appTextColor : manager.secondaryTextColor)
-                .shadow(color: manager.shadowColor, radius: 5, x: 0, y: 3)
-                .buttonStyle(.plain)
-                .opacity(isEnabled ? 1 : 0.5)
-        }
-    }
-
-    /// Белый текст на тёмных плашках: в декоративных темах — светлый акцент,
-    /// в системной остаётся нативным белым.
-    @ViewBuilder
-    func themedLightText(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self.foregroundColor(.white)
-        } else {
-            self.foregroundColor(manager.lightAccentColor)
-        }
-    }
-
-    /// Системная тема вообще не вмешивается в оформление Form/List:
-    /// ни фон, ни tint — всё берётся из дефолтов iOS.
-    @MainActor
-    @ViewBuilder
-    func themedForm(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self
-                .scrollContentBackground(.hidden)
-                .background(manager.backgroundColor.ignoresSafeArea())
-                .foregroundColor(manager.appTextColor)
-                .tint(manager.accentColor)
-        }
-    }
-
-    /// Системная тема не рисует декоративную карточку: только нативная
-    /// семантическая заливка строки, без скругления, обводки и тени.
-    @MainActor
-    @ViewBuilder
-    func themedCard(_ manager: MatrixManager, cornerRadius: CGFloat = 16) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius)
-
-        if manager.currentTheme.usesSystemAppearance {
-            self.background(manager.cardBackgroundColor)
-        } else {
-            self
-                .background(shape.fill(manager.cardBackgroundColor))
-                .overlay(shape.stroke(manager.cardBorderColor, lineWidth: manager.currentTheme.cardBorderWidth))
-                .shadow(color: manager.shadowColor, radius: 6, x: 0, y: 3)
-        }
-    }
-
-    /// Название параметра: в декоративных темах светлый акцент,
-    /// в системной — нативный primary.
-    @ViewBuilder
-    func themedParameterText(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self.foregroundColor(manager.appTextColor)
-        }
-    }
-
-    /// Значение параметра: в декоративных темах акцент,
-    /// в системной — нативный текст без переопределения.
-    @ViewBuilder
-    func themedValueText(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self
-                .foregroundColor(manager.valueTextColor)
-                .tint(manager.accentColor)
-        }
-    }
-
-    /// Небольшая кнопка в стиле карточек главного экрана: фон темы,
-    /// обводка акцентом и светлый акцентный текст. Системная — нативная.
-    @ViewBuilder
-    func themedInlineButton(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self.buttonStyle(.bordered).controlSize(.small)
-        } else {
-            self
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(manager.cardBackgroundColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(manager.accentColor.opacity(0.7), lineWidth: 1)
-                        )
-                )
-                .foregroundColor(manager.lightAccentColor)
-                .buttonStyle(.plain)
-        }
-    }
-
-    /// Заголовок экрана: системная тема остаётся нативной, декоративные
-    /// красят заголовок светлым акцентом.
-    @ViewBuilder
-    func themedNavigationTitle(_ title: LocalizedStringKey, manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self.navigationTitle(title)
-        } else {
-            self.modifier(ThemedNavigationBarModifier(manager: manager, title: Text(title)))
-        }
-    }
-
-    @ViewBuilder
-    func themedNavigationTitle(_ title: String, manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self.navigationTitle(title)
-        } else {
-            self.modifier(ThemedNavigationBarModifier(manager: manager, title: Text(verbatim: title)))
-        }
-    }
-
-    /// Заголовки секций в системной теме остаются нативными (secondary).
-    @ViewBuilder
-    func themedSectionHeader(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self.foregroundColor(manager.accentColor)
-        }
-    }
-
-    /// Оставляет нативный полупрозрачный navbar в системной теме.
-    @MainActor
-    @ViewBuilder
-    func themedToolbarBackground(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self
-                .toolbarBackground(manager.cardBackgroundColor, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-        }
-    }
-
-    /// Тёмный «терминальный» navbar нужен только декоративным темам.
-    @MainActor
-    @ViewBuilder
-    func themedDarkToolbar(_ manager: MatrixManager) -> some View {
-        if manager.currentTheme.usesSystemAppearance {
-            self
-        } else {
-            self
-                .toolbarColorScheme(.dark, for: .navigationBar)
-                .toolbarBackground(manager.matrixPanelColor, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-        }
-    }
-}
-
-/// Системный `.navigationTitle` перекрашивается iOS в белый, поэтому заголовок
-/// рисуется отдельным `.principal`-элементом. Кнопка «Назад» и swipe-жест
-/// остаются системными — кастомная кнопка ломала навигацию.
-struct ThemedNavigationBarModifier: ViewModifier {
-    @ObservedObject var manager: MatrixManager
-    let title: Text
-
-    func body(content: Content) -> some View {
-        content
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .tint(manager.lightAccentColor)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    title
-                        .foregroundColor(manager.lightAccentColor)
-                        .fixedSize()
-                }
-            }
-            .background(UIKitThemeConfigurator(manager: manager))
-    }
-}
-
-/// Принудительно применяет UIKit-аппеаранс после того, как SwiftUI создал
-/// UINavigationBar/UITabBar. Appearance-прокси и `themedForm` не перекрашивают
-/// уже созданные бары, поэтому configurator вызывается на появлении экрана.
-struct UIKitThemeConfigurator: UIViewControllerRepresentable {
-    @ObservedObject var manager: MatrixManager
-
-    func makeUIViewController(context: Context) -> ThemeConfiguratorViewController {
-        ThemeConfiguratorViewController(manager: manager)
-    }
-
-    func updateUIViewController(_ uiViewController: ThemeConfiguratorViewController, context: Context) {
-        uiViewController.manager = manager
-        uiViewController.applyTheme()
-    }
-
-    final class ThemeConfiguratorViewController: UIViewController {
-        var manager: MatrixManager
-        private var didApplyAfterLayout = false
-
-        init(manager: MatrixManager) {
-            self.manager = manager
-            super.init(nibName: nil, bundle: nil)
-        }
-
-        required init?(coder: NSCoder) {
-            fatalError("init(coder:) has not been implemented")
-        }
-
-        override func viewDidAppear(_ animated: Bool) {
-            super.viewDidAppear(animated)
-            didApplyAfterLayout = false
-            applyTheme()
-            DispatchQueue.main.async { self.applyTheme() }
-        }
-
-        override func viewDidLayoutSubviews() {
-            super.viewDidLayoutSubviews()
-            guard !didApplyAfterLayout else { return }
-            didApplyAfterLayout = true
-            DispatchQueue.main.async { self.applyTheme() }
-        }
-
-        func applyTheme() {
-            let theme = manager.currentTheme
-            LEDMatrixApp.applyThemeAppearance(theme)
-
-            // Прямо красим навбар, который содержит текущий экран: SwiftUI
-            // пересоздаёт его после appearance-прокси и сбрасывает tint.
-            if let bar = navigationController?.navigationBar {
-                let light = UIColor(MatrixManager.lightAccentColor(for: theme))
-                bar.tintColor = theme.usesSystemAppearance ? nil : light
-                var chevron: UIImage?
-                if !theme.usesSystemAppearance {
-                    chevron = UIImage(systemName: "chevron.left")?
-                        .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
-                        .withTintColor(light, renderingMode: .alwaysOriginal)
-                }
-                bar.backIndicatorImage = chevron
-                bar.backIndicatorTransitionMaskImage = chevron
-            }
-
-            Task { @MainActor in
-                LEDMatrixApp.refreshExistingControls(for: theme)
-            }
-        }
-    }
 }

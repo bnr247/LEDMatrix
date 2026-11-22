@@ -755,6 +755,7 @@
       }
     },
     "Колонки" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -888,7 +889,11 @@
         }
       }
     },
+    "Настройки Wi-Fi" : {
+
+    },
     "Настройки Wifi" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1828,7 +1833,11 @@
         }
       }
     },
+    "Сброс Wi-Fi" : {
+
+    },
     "Сброс WiFi" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1947,6 +1956,7 @@
       }
     },
     "Сортировка" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

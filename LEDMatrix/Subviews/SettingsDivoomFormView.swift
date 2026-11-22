@@ -62,6 +62,9 @@ struct SettingsDivoomFormView: View {
         }
         .themedForm(manager)
         .themedNavigationTitle("Настройки Divoom", manager: manager)
+        .task {
+            await manager.refreshSettingsFromDevice()
+        }
         .onChange(of: manager.localDivoomEmail) { _, _ in manager.isSaveSuccess = false }
         .onChange(of: manager.localDivoomPassword) { _, _ in manager.isSaveSuccess = false }
         // Переносим инициализацию полей Divoom строго на момент открытия этой формы

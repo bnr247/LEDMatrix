@@ -46,6 +46,36 @@ extension MatrixManager {
         }
     }
     
+    /// Обновляет настройки с устройства без кэша — при входе в любой экран настроек.
+    /// В отличие от fetchSettings, не загружает циферблаты и шрифты.
+    func refreshSettingsFromDevice() async {
+        guard let device = selectedDevice,
+              let url = URL(string: "http://\(device.ipAddress)/settings") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("close", forHTTPHeaderField: "Connection")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 3.0
+        addBasicAuthHeader(to: &request)
+
+        do {
+            let config = URLSessionConfiguration.ephemeral
+            config.urlCache = nil
+            let session = URLSession(configuration: config)
+            let (data, response) = try await session.data(for: request)
+            guard let httpResp = response as? HTTPURLResponse,
+                  httpResp.statusCode == 200 else { return }
+            let decoded = try JSONDecoder().decode(MatrixSettings.self, from: data)
+            settings = decoded
+            // Поля равны прочитанным значениям, чтобы кнопка сохранения не активировалась
+            // просто из-за того, что экран открыли заново.
+            localDivoomEmail = decoded.divoomEmail
+            localDivoomPassword = decoded.divoomPasswordSet ? passwordPlaceholder : ""
+        } catch {
+            print("❌ Ошибка обновления настроек устройства: \(error)")
+        }
+    }
+
     /// Обновляет все параметры экрана «Дата и время» перед его открытием.
     /// Запрос идёт без кэша: иначе пикеры и переключатель показывают снимок,
     /// сделанный при запуске приложения, а не текущие настройки устройства.

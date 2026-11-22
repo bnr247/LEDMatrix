@@ -16,6 +16,50 @@ private final class GridScrollTracker {
     var lastVisibleIndex = 0
 }
 
+/// Крупный сегмент для шторки настроек галереи. У нативного segmented Picker
+/// фиксированная высота, поэтому здесь отдельные кнопки: они реально становятся
+/// больше, а не просто растягивают контейнер.
+private struct GallerySegmentButton: View {
+    @ObservedObject var manager: MatrixManager
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let content = Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .contentShape(Rectangle())
+        }
+
+        if manager.currentTheme.usesSystemAppearance {
+            if isSelected {
+                content.buttonStyle(.borderedProminent)
+            } else {
+                content.buttonStyle(.bordered)
+            }
+        } else {
+            content
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(isSelected ? manager.accentColor : manager.cardBackgroundColor)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(
+                            isSelected ? manager.accentColor : manager.cardBorderColor,
+                            lineWidth: manager.currentTheme.cardBorderWidth
+                        )
+                )
+                .foregroundColor(isSelected ? manager.accentContrastColor : manager.appTextColor)
+                .shadow(color: isSelected ? manager.shadowColor : .clear, radius: 5, x: 0, y: 2)
+        }
+    }
+}
+
 struct DivoomUniversalGridView: View {
     let title: String
     @ObservedObject var manager: MatrixManager
@@ -46,6 +90,9 @@ struct DivoomUniversalGridView: View {
         
     @State private var isShowingSettingsSheet = false
     @State private var scrollPositionId: String? = nil
+    // Помним сортировку, для которой уже загружена сетка: повторное появление
+    // экрана не должно дёргать сеть, а реальная смена сортировки — должна.
+    @State private var appliedSortOption: Int? = nil
     
     var body: some View {
         VStack(spacing: 0) {
@@ -201,60 +248,78 @@ struct DivoomUniversalGridView: View {
         .background(manager.backgroundColor)
         .sheet(isPresented: $isShowingSettingsSheet) {
             gallerySettingsSheet
-                .presentationDetents([.height(260)])
+                .presentationDetents([.height(330)])
                 .if(!manager.currentTheme.usesSystemAppearance) { content in
                     content.presentationBackground(manager.backgroundColor)
                 }
         }
         .task(id: fileSortOption) {
-            if items.isEmpty {
-                await loadInitialItems()
-            }
+            guard appliedSortOption != fileSortOption || items.isEmpty else { return }
+            appliedSortOption = fileSortOption
+            await loadInitialItems()
         }
     }
     
     private var gallerySettingsSheet: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             if !manager.currentTheme.usesSystemAppearance {
                 RoundedRectangle(cornerRadius: 2.5)
                     .fill(manager.secondaryTextColor.opacity(0.4))
                     .frame(width: 36, height: 5)
                     .padding(.top, 8)
             }
-            
+
             Text("Настройки галереи")
                 .font(.headline)
                 .foregroundColor(manager.appTextColor)
-            
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Элементов в ряду:")
-                        .font(.subheadline)
+
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Элементов в ряду:", systemImage: "square.grid.2x2")
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(manager.appTextColor)
-                    Spacer()
-                    Picker("Колонки", selection: $gridColumnsCount) {
-                        Text("2").tag(2)
-                        Text("3").tag(3)
+
+                    HStack(spacing: 8) {
+                        GallerySegmentButton(
+                            manager: manager,
+                            title: "2",
+                            systemImage: "square.grid.2x2",
+                            isSelected: gridColumnsCount == 2
+                        ) { gridColumnsCount = 2 }
+
+                        GallerySegmentButton(
+                            manager: manager,
+                            title: "3",
+                            systemImage: "square.grid.3x3",
+                            isSelected: gridColumnsCount == 3
+                        ) { gridColumnsCount = 3 }
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 120)
                 }
-                
-                HStack {
-                    Text("Сортировка:")
-                        .font(.subheadline)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Сортировка:", systemImage: "arrow.up.arrow.down")
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(manager.appTextColor)
-                    Spacer()
-                    Picker("Сортировка", selection: $fileSortOption) {
-                        Text("Популярные").tag(1)
-                        Text("Новые").tag(0)
+
+                    HStack(spacing: 8) {
+                        GallerySegmentButton(
+                            manager: manager,
+                            title: "Популярные",
+                            systemImage: "flame.fill",
+                            isSelected: fileSortOption == 1
+                        ) { fileSortOption = 1 }
+
+                        GallerySegmentButton(
+                            manager: manager,
+                            title: "Новые",
+                            systemImage: "sparkles",
+                            isSelected: fileSortOption == 0
+                        ) { fileSortOption = 0 }
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 220)
                 }
             }
             .padding(.horizontal, 20)
-            
+
             Spacer()
         }
         .if(!manager.currentTheme.usesSystemAppearance) { content in
@@ -278,6 +343,7 @@ struct DivoomUniversalGridView: View {
         isFetchingPage = false
         isLoadingMore = false
         scrollTracker.lastVisibleIndex = 0
+        scrollPositionId = nil
 
         do {
             let fetchStarted = Date()

@@ -138,6 +138,9 @@ struct SettingsGeneralFormView: View {
         }
         .themedForm(manager)
         .themedNavigationTitle("Общие настройки", manager: manager)
+        .task {
+            await manager.refreshSettingsFromDevice()
+        }
     }
 }
 

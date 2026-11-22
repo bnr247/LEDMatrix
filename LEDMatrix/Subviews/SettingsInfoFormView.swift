@@ -77,6 +77,9 @@ struct SettingsInfoFormView: View {
             .listRowBackground(manager.cardBackgroundColor)
         }
         .themedForm(manager)
+        .task {
+            await manager.refreshSettingsFromDevice()
+        }
         .refreshable {
             // Запрашиваем актуальные настройки по текущему выбранному устройству
             if let device = manager.selectedDevice {

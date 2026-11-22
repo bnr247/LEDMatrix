@@ -43,11 +43,13 @@ struct MainScreenView: View {
     
     @State private var isShowingAddDevice = false
     @State private var isShowingSettings = false
+    @State private var isShowingAppSettings = false
     @State private var selectedFeature: AppFeature? = nil
     
     private var isDeviceAvailable: Bool {
         guard let device = manager.selectedDevice else { return false }
-        return manager.deviceReachabilityStatus[device.id] ?? true
+        // Пока /settings не подтвердил доступность, кнопки выключены.
+        return manager.deviceReachabilityStatus[device.id] ?? false
     }
     
     var body: some View {
@@ -57,7 +59,7 @@ struct MainScreenView: View {
                 manager.backgroundColor
                     .ignoresSafeArea()
                 
-                VStack(spacing: 24) {
+                VStack(spacing: 28) {
                     // СЕКЦИЯ ВЫБОРА УСТРОЙСТВА И НАСТРОЕК
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Устройство")
@@ -179,9 +181,9 @@ struct MainScreenView: View {
                     .opacity(isDeviceAvailable ? 1.0 : 0.6)
                                         
                     // СЕТКА КНОПОК ФУНКЦИЙ (2x3)
-                    let columns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
+                    let columns = [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)]
 
-                    LazyVGrid(columns: columns, spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: 20) {
                         ForEach(AppFeature.allCases) { feature in
                             Button(action: {
                                 if isDeviceAvailable {
@@ -239,6 +241,17 @@ struct MainScreenView: View {
             .themedNavigationTitle("LED Matrix", manager: manager)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        isShowingAppSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title3)
+                            .if(!manager.currentTheme.usesSystemAppearance) { content in
+                                content.foregroundColor(manager.lightAccentColor)
+                            }
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         isShowingAddDevice = true
@@ -288,13 +301,28 @@ struct MainScreenView: View {
             .sheet(isPresented: $isShowingAddDevice) {
                 DeviceManagementSheet(manager: manager)
             }
+            .sheet(isPresented: $isShowingAppSettings) {
+                NavigationStack {
+                    AppSettingsView(manager: manager)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Готово") {
+                                    isShowingAppSettings = false
+                                }
+                            }
+                        }
+                }
+            }
             .onAppear {
                 manager.startScanning()
                 Task {
-                    await manager.checkAllSavedDevicesReachability()
-                    if manager.selectedDevice == nil, let firstDevice = manager.savedDevices.first {
-                        manager.selectDevice(firstDevice)
-                    }
+                    await manager.refreshMainScreenDeviceState()
+                }
+            }
+            .onChange(of: isShowingAddDevice) { _, isShowing in
+                guard !isShowing else { return }
+                Task {
+                    await manager.refreshMainScreenDeviceState()
                 }
             }
         }
@@ -371,15 +399,10 @@ struct DeviceManagementSheet: View {
                             Spacer()
                             Button("Добавить") {
                                 manager.saveDevice(device)
-                                manager.selectedDevice = device
-                                Task {
-                                    await manager.checkAllSavedDevicesReachability()
-                                }
+                                manager.selectDevice(device)
                                 dismiss()
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(manager.accentColor)
-                            .controlSize(.small)
+                            .themedInlineButton(manager)
                         }
                     }
                 }

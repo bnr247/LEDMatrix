@@ -39,21 +39,6 @@ struct SettingsView: View {
             }
             .listRowBackground(manager.cardBackgroundColor)
             
-            Section(header: Text("Внешний вид").themedSectionHeader(manager)) {
-                ThemedMenuPicker(
-                    manager: manager,
-                    title: "Тема оформления",
-                    options: AppTheme.allCases.enumerated().map { index, theme in
-                        ThemedDropdownOption(id: index, title: theme.rawValue, value: theme)
-                    },
-                    selection: Binding(
-                        get: { manager.currentTheme },
-                        set: { manager.currentTheme = $0 }
-                    )
-                )
-            }
-            .listRowBackground(manager.cardBackgroundColor)
-            
             Section(header: Text("Настройки устройства").themedSectionHeader(manager)) {
                 NavigationLink(destination: SettingsGeneralFormView(manager: manager)) {
                     Label("Основные", systemImage: "sparkles.tv")
@@ -111,6 +96,9 @@ struct SettingsView: View {
         }
         .themedForm(manager)
         .id(manager.currentTheme) // Принудительно пересоздаем вью при смене темы для мгновенного применения
+        .task {
+            await manager.refreshSettingsFromDevice()
+        }
         
         // Диалоговое окно переименования устройства
         .alert("Переименовать устройство", isPresented: $isRenameAlertPresented) {
@@ -230,10 +218,8 @@ struct SettingsDateTimeFormView: View {
         }
         .themedForm(manager)
         .themedNavigationTitle("Дата и время", manager: manager)
-        .onAppear {
-            Task {
-                await manager.refreshDateTimeSettings()
-            }
+        .task {
+            await manager.refreshSettingsFromDevice()
         }
     }
 }
