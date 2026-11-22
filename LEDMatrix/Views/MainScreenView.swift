@@ -110,7 +110,7 @@ struct MainScreenView: View {
                             Button(action: {
                                 isShowingSettings = true
                             }) {
-                                Image(systemName: "gearshape.fill")
+                                Image(systemName: "gearshape")
                                     .font(.title2)
                                     .if(!manager.currentTheme.usesSystemAppearance) { content in
                                         content
@@ -141,7 +141,7 @@ struct MainScreenView: View {
                                 .foregroundColor(isDeviceAvailable ? manager.accentColor : manager.secondaryTextColor)
                             Text("Яркость: ")
                                 .foregroundColor(manager.appTextColor)
-                            + Text(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)
+                                + Text(Double(manager.settings.brightnessPercent) / 100.0, format: .percent)
                                 .foregroundColor(manager.valueTextColor)
                             Spacer()
                         }

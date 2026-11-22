@@ -58,14 +58,9 @@ struct TextControlView: View {
                     .if(!manager.currentTheme.usesSystemAppearance) { content in
                         content.foregroundColor(manager.accentColor)
                     }
-            } footer: {
-                Text("Текст появится на матрице после нажатия кнопки отправки.")
-                    .if(!manager.currentTheme.usesSystemAppearance) { content in
-                        content.foregroundColor(manager.secondaryTextColor)
-                    }
             }
-            // Обводим только содержимое секции: заголовок «Сообщение» и
-            // описание под полем остаются снаружи, как у карточки «Яркость».
+            
+            // Обводим только содержимое секции
             .listRowBackground(
                 Group {
                     if manager.currentTheme.usesSystemAppearance {

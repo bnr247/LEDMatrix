@@ -2065,6 +2065,7 @@
       }
     },
     "Текст появится на матрице после нажатия кнопки отправки." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
